@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sifras Alfa — Acesso Restrito</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --cyber-blue: #ccff00;
+            --alert-red: #ff3366;
+            --text-main: #ffffff;
+            --glass-panel: rgba(18, 18, 18, 0.97);
+            --border-glow: rgba(204, 255, 0, 0.3);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.07) 0%, transparent 70%), #111111;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-wrapper {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .logo-box { text-align: center; margin-bottom: 40px; }
+        .logo-text { font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 900; }
+        .logo-alfa { color: var(--cyber-blue); text-shadow: 0 0 20px rgba(204, 255, 0, 0.5); }
+        .logo-sub { color: #555; font-size: 0.8rem; letter-spacing: 3px; margin-top: 5px; text-transform: uppercase; }
+        .panel {
+            background: var(--glass-panel);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 35px;
+            box-shadow: 0 0 60px rgba(0,0,0,0.5), 0 0 30px rgba(204,255,0,0.03);
+        }
+        .panel-title { font-family: 'Orbitron', sans-serif; font-size: 1rem; color: var(--cyber-blue); margin-bottom: 25px; display: flex; align-items: center; gap: 10px; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; margin-bottom: 8px; color: #a0aab5; font-size: 0.85rem; }
+        .input-group input {
+            width: 100%; padding: 14px 16px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px; color: #fff;
+            font-family: 'Outfit', sans-serif; font-size: 1rem; outline: none; transition: 0.3s;
+        }
+        .input-group input:focus { border-color: var(--cyber-blue); box-shadow: 0 0 12px var(--border-glow); }
+        .btn-login {
+            width: 100%; padding: 15px;
+            background: rgba(204, 255, 0, 0.1);
+            color: var(--cyber-blue);
+            border: 1px solid var(--cyber-blue);
+            border-radius: 8px;
+            font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; margin-top: 5px;
+        }
+        .btn-login:hover { background: var(--cyber-blue); color: #000; box-shadow: 0 0 25px var(--border-glow); }
+        .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+        .error-msg {
+            display: none;
+            background: rgba(255, 51, 102, 0.1);
+            border: 1px solid rgba(255, 51, 102, 0.4);
+            color: var(--alert-red);
+            padding: 12px; border-radius: 8px; font-size: 0.9rem; margin-top: 15px; text-align: center;
+        }
+        .error-msg.show { display: block; }
+        .footer-note { text-align: center; color: #333; font-size: 0.75rem; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="logo-box">
+            <div class="logo-text">SIFRAS <span class="logo-alfa">ALFA</span></div>
+            <div class="logo-sub">Acesso Restrito ao Painel</div>
+        </div>
+        <div class="panel">
+            <div class="panel-title"><i class="ph ph-lock-key"></i> Autenticação</div>
+            <div class="input-group">
+                <label>Senha de Acesso</label>
+                <input type="password" id="inputPassword" placeholder="••••••••••" autofocus>
+            </div>
+            <button class="btn-login" id="btnLogin" onclick="doLogin()">
+                <i class="ph-fill ph-sign-in"></i> ENTRAR NO PAINEL
+            </button>
+            <div class="error-msg" id="errorMsg">
+                <i class="ph ph-warning"></i> Senha incorreta. Tente novamente.
+            </div>
+        </div>
+        <div class="footer-note">Sifras Invest &copy; 2025 — Operações Algorítmicas</div>
+    </div>
+    <script>
+        document.getElementById('inputPassword').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') doLogin();
+        });
+        window.onload = async () => {
+            const token = localStorage.getItem('sifrasToken');
+            if (token) {
+                try {
+                    const res = await fetch('/status', { headers: { 'Authorization': `Bearer ${token}` } });
+                    if (res.ok) { window.location.href = '/'; return; }
+                } catch (e) {}
+                localStorage.removeItem('sifrasToken');
+            }
+        };
+        async function doLogin() {
+            const password = document.getElementById('inputPassword').value;
+            const btn = document.getElementById('btnLogin');
+            const errorMsg = document.getElementById('errorMsg');
+            if (!password) return;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-circle-notch"></i> Verificando...';
+            errorMsg.classList.remove('show');
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const data = await res.json();
+                if (res.ok && data.token) {
+                    localStorage.setItem('sifrasToken', data.token);
+                    window.location.href = '/';
+                } else {
+                    errorMsg.classList.add('show');
+                    document.getElementById('inputPassword').value = '';
+                    document.getElementById('inputPassword').focus();
+                }
+            } catch (e) {
+                errorMsg.innerHTML = '<i class="ph ph-warning"></i> Erro de conexão com o servidor.';
+                errorMsg.classList.add('show');
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph-fill ph-sign-in"></i> ENTRAR NO PAINEL';
+        }
+    </script>
+</body>
+</html>

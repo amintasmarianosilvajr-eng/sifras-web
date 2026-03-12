@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sifras Alfa — Painel Operacional</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --cyber-blue: #ccff00;
+            --cyber-gold: #f3ba2f;
+            --alert-red: #ff3366;
+            --cyber-green: #ccff00;
+            --text-main: #ffffff;
+            --glass-panel: rgba(18, 18, 18, 0.95);
+            --border-glow: rgba(204, 255, 0, 0.3);
+            --border-red: rgba(255, 51, 102, 0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+            background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.05) 0%, transparent 70%), #111111;
+        }
+
+        h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .logo-box { display: flex; align-items: center; gap: 15px; }
+        .logo-text { font-size: 1.5rem; font-weight: 900; }
+        .logo-alfa { color: var(--cyber-blue); text-shadow: 0 0 10px rgba(204, 255, 0, 0.5); }
+
+        .header-right { display: flex; align-items: center; gap: 15px; }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-logout {
+            padding: 8px 16px;
+            background: rgba(255, 51, 102, 0.08);
+            border: 1px solid rgba(255, 51, 102, 0.3);
+            color: var(--alert-red);
+            border-radius: 20px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.3s;
+        }
+        .btn-logout:hover { background: var(--alert-red); color: #fff; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+        }
+
+        .panel {
+            background: var(--glass-panel);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            position: relative;
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: var(--cyber-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; margin-bottom: 8px; color: #a0aab5; font-size: 0.9rem; }
+        .input-group input {
+            width: 100%; padding: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px; color: #fff;
+            font-family: 'Outfit', sans-serif; outline: none; transition: 0.3s;
+        }
+        .input-group input:focus { border-color: var(--cyber-blue); box-shadow: 0 0 10px var(--border-glow); }
+
+        .btn {
+            width: 100%; padding: 15px; border: none; border-radius: 8px;
+            font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s;
+        }
+
+        .btn-start { background: rgba(204, 255, 0, 0.1); color: var(--cyber-blue); border: 1px solid var(--cyber-blue); }
+        .btn-start:hover { background: var(--cyber-blue); color: #000; box-shadow: 0 0 20px var(--border-glow); }
+
+        .btn-panic { background-color: transparent; border: 1px solid var(--alert-red); color: var(--alert-red); }
+        .btn-panic:hover { background-color: var(--alert-red); color: #fff; box-shadow: 0 0 15px var(--alert-red); }
+
+        .fraction-group { display: flex; gap: 5px; margin-top: -10px; margin-bottom: 10px; }
+        .fraction-btn {
+            flex: 1; padding: 8px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff; border-radius: 6px; cursor: pointer;
+            font-family: 'Orbitron', sans-serif; font-size: 0.8rem; transition: all 0.2s ease;
+        }
+        .fraction-btn:hover { background: rgba(204, 255, 0, 0.2); border-color: var(--cyber-blue); }
+        .fraction-btn.active { background: var(--cyber-blue); color: #000; border-color: var(--cyber-blue); box-shadow: 0 0 10px rgba(204, 255, 0, 0.5); }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05); color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px; font-size: 0.9rem; margin-top: 10px;
+        }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+
+        .central-stage { display: flex; flex-direction: column; gap: 30px; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 20px; border-radius: 12px; text-align: center;
+        }
+
+        .stat-value { font-size: 2rem; font-family: 'Orbitron', sans-serif; color: #fff; margin: 10px 0; }
+        .stat-label { color: #888; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        .log-container {
+            height: 300px; overflow-y: auto;
+            background: #000; border-radius: 8px; padding: 15px;
+            font-family: monospace; font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry { padding: 8px 5px; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); }
+        .log-alt-0 { background-color: rgba(255, 255, 255, 0.02); }
+        .log-alt-1 { background-color: transparent; }
+
+        .log-card-sell {
+            background: rgba(204, 255, 0, 0.05);
+            border: 1px solid var(--cyber-blue);
+            border-left: 5px solid var(--cyber-blue);
+            padding: 15px; margin: 10px 0; border-radius: 6px;
+            font-family: 'Outfit', sans-serif;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        .log-card-sell .card-title { font-size: 1.1rem; color: var(--cyber-blue); font-weight: bold; margin-bottom: 5px; }
+        .log-card-sell .card-body { color: #fff; font-size: 0.95rem; line-height: 1.4; }
+
+        .log-time { color: #666; margin-right: 10px; }
+        .log-info { color: #a0aab5; }
+        .log-trigger { color: var(--cyber-gold); }
+        .log-buy { color: var(--cyber-blue); font-weight: bold; }
+        .log-sell { color: var(--cyber-green); font-weight: bold; }
+        .log-error { color: var(--alert-red); }
+        .log-warn { color: #ff9900; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        th { color: #888; font-size: 0.9rem; }
+        .profit-positive { color: var(--cyber-blue); }
+        .profit-negative { color: var(--alert-red); }
+
+        .profit-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(204, 255, 0, 0.1);
+            backdrop-filter: blur(5px);
+            z-index: 9999; display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: 0.5s;
+        }
+        .profit-overlay.show { opacity: 1; pointer-events: all; }
+        .profit-box {
+            background: #000; border: 2px solid var(--cyber-blue);
+            padding: 50px 100px; border-radius: 30px; text-align: center;
+            box-shadow: 0 0 100px rgba(204, 255, 0, 0.5);
+            transform: scale(0.8); transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .profit-overlay.show .profit-box { transform: scale(1); }
+        .profit-box h2 { font-size: 4rem; color: var(--cyber-blue); margin-bottom: 10px; }
+        .profit-box p { font-size: 1.5rem; color: #fff; }
+
+        @keyframes blinker { 50% { opacity: 0.2; } }
+        .blink { animation: blinker 1s linear infinite; }
+
+        .telemetry-card {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--cyber-blue);
+            padding: 20px; border-radius: 12px; margin-top: 20px; text-align: center;
+            box-shadow: 0 0 20px rgba(204, 255, 0, 0.1);
+            display: none; flex-direction: column; gap: 15px;
+        }
+        .telemetry-card.active { display: flex; }
+
+        .progress-container {
+            width: 100%; height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px; overflow: hidden; position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--alert-red) 0%, var(--cyber-gold) 50%, var(--cyber-blue) 100%);
+            width: 0%; transition: width 0.5s ease;
+        }
+        .progress-marker { position: absolute; top: 0; height: 100%; width: 2px; background: rgba(255, 255, 255, 0.3); }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--cyber-blue); }
+    </style>
+</head>
+
+<body>
+
+    <div class="profit-overlay" id="profitOverlay">
+        <div class="profit-box">
+            <h2 class="orbitron">LUCRO ATINGIDO!</h2>
+            <p>Operação Encerrada com Sucesso</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="logo-box">
+                <div class="logo-text orbitron">
+                    SIFRAS <span class="logo-alfa">ALFA</span>
+                    <span style="font-size: 0.8rem; color: #666; margin-left:10px;">MODO OPERACIONAL NÃO BINÁRIO</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="status-badge" id="sysStatusBadge">
+                    <i class="ph-fill ph-circle" style="color: #666;"></i> OFFLINE
+                </div>
+                <button class="btn-logout" onclick="doLogout()">
+                    <i class="ph ph-sign-out"></i> Sair
+                </button>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Lateral: Controles API -->
+            <div class="panel">
+                <h2 class="panel-title orbitron"><i class="ph ph-key"></i> Conexão Binance</h2>
+
+                <div class="input-group">
+                    <label>Nome do Cliente</label>
+                    <input type="text" id="clientName" placeholder="Ex: Amintas Silva">
+                </div>
+
+                <div class="input-group">
+                    <label>Binance API Key</label>
+                    <input type="password" id="apiKey" placeholder="Cole sua chave API aqui">
+                </div>
+
+                <div class="input-group">
+                    <label>Binance API Secret</label>
+                    <input type="password" id="apiSecret" placeholder="Cole sua chave Secreta aqui">
+                </div>
+
+                <div class="input-group" style="display: flex; align-items: center; gap: 10px; margin-top:20px;">
+                    <input type="checkbox" id="chkLoop" checked
+                        style="width: 20px; height: 20px; accent-color: var(--cyber-blue);">
+                    <label style="margin: 0; color: #fff;">Ativar Ciclo: 5 Operações + Pausa 20m</label>
+                </div>
+
+                <button class="btn btn-start" id="btnStart" onclick="startSystem()">
+                    <i class="ph-fill ph-power"></i> INICIAR FLUXO ALFA
+                </button>
+
+                <div class="input-group" style="margin-top: 10px; margin-bottom: 5px;">
+                    <label style="font-size: 0.85rem; color: #a0aab5;"><i class="ph ph-wallet"></i> Capital por Operação:</label>
+                    <div class="fraction-group">
+                        <button class="fraction-btn" onclick="selectFraction(0.25, this)">25%</button>
+                        <button class="fraction-btn" onclick="selectFraction(0.50, this)">50%</button>
+                        <button class="fraction-btn" onclick="selectFraction(0.75, this)">75%</button>
+                        <button class="fraction-btn active" onclick="selectFraction(1.00, this)">100%</button>
+                    </div>
+                </div>
+
+                <button class="btn btn-panic" id="btnPanic" onclick="panicSell()" style="margin-top: 10px;">
+                    <i class="ph-fill ph-warning-circle"></i> STOP GERAL E VENDER
+                </button>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="resetApi()"><i class="ph ph-arrows-clockwise"></i> Reset Chaves</button>
+                    <button class="btn btn-secondary" onclick="resetHistory()"><i class="ph ph-trash"></i> Limpar Extrato</button>
+                    <button class="btn btn-secondary" onclick="downloadReport()"><i class="ph ph-download-simple"></i> Baixar Extrato</button>
+                </div>
+            </div>
+
+            <!-- Central: Monitoramento -->
+            <div class="central-stage">
+
+                <div class="stats-grid">
+                    <div class="stat-card" style="border-color: var(--cyber-blue);">
+                        <div class="stat-label">Indicadora (Pivô 4ª)</div>
+                        <div class="stat-value" id="valPivot">Aguardando...</div>
+                        <div style="color: #a0aab5; font-size: 0.85rem;" id="valDistances">D2: 0% | D4: 0%</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Ciclo Atual</div>
+                        <div class="stat-value" id="valOpsCount">0 / 5</div>
+                        <div style="color: #a0aab5; font-size: 0.85rem;" id="valCooldown">Nenhum Cooldown</div>
+                    </div>
+
+                    <div class="stat-card" style="display:flex; flex-direction:column; justify-content:center;">
+                        <div class="stat-label">Trade Ativo</div>
+                        <div class="stat-value" id="valActiveTrade" style="font-size: 1.5rem; margin:5px 0;">---</div>
+                        <div style="font-size: 0.9rem; margin-top:5px; text-align:left; display:inline-block; margin-left:auto; margin-right:auto;" id="valTradeTarget">
+                            <span style="color:#a0aab5">📥 Compra:</span> ---<br>
+                            <span style="color:#fff">🔄 Atual:</span> ---<br>
+                            <span style="color:var(--cyber-gold)">🎯 Alvo:</span> ---
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Telemetria -->
+                <div class="telemetry-card" id="telemetryCard">
+                    <h3 class="orbitron" style="color: var(--cyber-blue); font-size: 1.2rem;">
+                        <i class="ph-fill ph-radar"></i> TELEMETRIA DE OPERAÇÃO: <span id="telemetrySymbol" style="color:#fff">---</span>
+                    </h3>
+                    <div style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: bold;">
+                        <span style="color: #666;">0.00%</span>
+                        <span id="telemetryPct" style="color: #fff; font-size: 1.5rem; text-shadow: 0 0 10px rgba(255,255,255,0.5);">+0.00%</span>
+                        <span style="color: var(--cyber-blue);">Meta: 0.80%</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="telemetryBar"></div>
+                        <div class="progress-marker" style="left: 25%;"></div>
+                        <div class="progress-marker" style="left: 50%;"></div>
+                        <div class="progress-marker" style="left: 75%;"></div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; gap:20px; margin-top:20px;">
+                    <!-- Histórico -->
+                    <div class="panel">
+                        <h2 class="panel-title orbitron"><i class="ph ph-list-numbers"></i> Últimas 10 Operações</h2>
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Ativo</th>
+                                        <th>Tipo</th>
+                                        <th>Lucro %</th>
+                                        <th>Data/Hora</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTableBody"></tbody>
+                            </table>
+                            <div style="margin-top: 15px; text-align: right; border-top: 1px solid #333; padding-top: 10px;">
+                                <strong class="orbitron">SALDO TOTAL: <span id="totalProfit" style="color:var(--cyber-blue)">0.00%</span></strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Terminal Logs -->
+                    <div class="panel">
+                        <h2 class="panel-title orbitron"><i class="ph ph-terminal"></i> Terminal Logs</h2>
+                        <div class="log-container" id="terminalLogs"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = ''; // Relativo — funciona em qualquer host
+        let refreshInterval = null;
+        let selectedBuyRatio = 1.00;
+
+        // ── Auth ─────────────────────────────────────────────
+        function getToken() {
+            return localStorage.getItem('sifrasToken') || '';
+        }
+
+        async function authFetch(url, options = {}) {
+            const token = getToken();
+            const headers = { ...(options.headers || {}), 'Authorization': `Bearer ${token}` };
+            const res = await fetch(url, { ...options, headers });
+            if (res.status === 401) {
+                localStorage.removeItem('sifrasToken');
+                window.location.href = '/login.html';
+                throw new Error('Não autorizado');
+            }
+            return res;
+        }
+
+        async function doLogout() {
+            try { await authFetch(`${API_URL}/logout`, { method: 'POST' }); } catch (e) {}
+            localStorage.removeItem('sifrasToken');
+            window.location.href = '/login.html';
+        }
+
+        // ── UI ───────────────────────────────────────────────
+        function selectFraction(ratio, btnElement) {
+            selectedBuyRatio = ratio;
+            document.querySelectorAll('.fraction-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+        }
+
+        async function fetchStatus() {
+            try {
+                const res = await authFetch(`${API_URL}/status`);
+                const data = await res.json();
+                updateUI(data);
+            } catch (e) {
+                if (e.message !== 'Não autorizado') {
+                    document.getElementById('sysStatusBadge').innerHTML = `<i class="ph-fill ph-circle" style="color: var(--alert-red);"></i> ERRO API`;
+                }
+            }
+        }
+
+        function updateUI(state) {
+            const badge = document.getElementById('sysStatusBadge');
+            if (state.status === 'OFFLINE') {
+                badge.innerHTML = `<i class="ph-fill ph-circle" style="color: #666;"></i> OFFLINE`;
+                badge.style.borderColor = 'rgba(255,255,255,0.1)';
+            } else if (state.status === 'SCANNING') {
+                badge.innerHTML = `<i class="ph-fill ph-circle blink" style="color: var(--cyber-green); text-shadow: 0 0 10px var(--cyber-green);"></i> CONECTADO (BUSCANDO)`;
+                badge.style.borderColor = 'var(--cyber-green)';
+            } else if (state.status === 'VALIDATING_VOL') {
+                badge.innerHTML = `<i class="ph-fill ph-circle blink" style="color: var(--cyber-gold); text-shadow: 0 0 10px var(--cyber-gold);"></i> VALIDAÇÃO 10s`;
+                badge.style.borderColor = 'var(--cyber-gold)';
+            } else if (state.status === 'IN_TRADE') {
+                badge.innerHTML = `<i class="ph-fill ph-circle blink" style="color: var(--cyber-green); text-shadow: 0 0 10px var(--cyber-green);"></i> COMPRADO`;
+                badge.style.borderColor = 'var(--cyber-green)';
+            } else if (state.status === 'PAUSED') {
+                badge.innerHTML = `<i class="ph-fill ph-circle blink" style="color: #ff9900;"></i> PAUSA 20 MIN`;
+                badge.style.borderColor = '#ff9900';
+            }
+
+            const pivotInfo = state.dashboardData?.pivotInfo;
+            if (pivotInfo) {
+                document.getElementById('valPivot').innerText = pivotInfo.pivot;
+                document.getElementById('valDistances').innerText = `${pivotInfo.t2}: ${pivotInfo.d2}% | ${pivotInfo.t4}: ${pivotInfo.d4}%`;
+            }
+
+            document.getElementById('valOpsCount').innerText = `${state.opsCount} / 5`;
+            document.getElementById('valCooldown').innerText = `${state.cooldownList.length} Ativos no Cooldown`;
+
+            if (state.activeSymbol && state.status === 'IN_TRADE') {
+                const buyP = state.buyPrice ? state.buyPrice.toFixed(6) : '0.000000';
+                const currP = state.currentPrice ? state.currentPrice.toFixed(6) : buyP;
+                const tgtP = state.targetPrice ? state.targetPrice.toFixed(6) : '0.000000';
+
+                document.getElementById('valActiveTrade').innerText = state.activeSymbol;
+                document.getElementById('valTradeTarget').innerHTML = `
+                    <span style="color:#a0aab5">📥 Compra:</span> $${buyP}<br>
+                    <span style="color:#fff">🔄 Atual:</span> $${currP}<br>
+                    <span style="color:var(--cyber-gold)">🎯 Alvo:</span> $${tgtP} (+0.8%)
+                `;
+
+                document.getElementById('telemetryCard').classList.add('active');
+                document.getElementById('telemetrySymbol').innerText = state.activeSymbol;
+
+                let currentProfitPct = 0;
+                if (state.buyPrice > 0) {
+                    currentProfitPct = ((state.currentPrice - state.buyPrice) / state.buyPrice) * 100;
+                }
+
+                document.getElementById('telemetryPct').innerText = `${currentProfitPct >= 0 ? '+' : ''}${currentProfitPct.toFixed(2)}%`;
+
+                let barWidth = (currentProfitPct / 0.8) * 100;
+                if (barWidth < 0) barWidth = 0;
+                if (barWidth > 100) barWidth = 100;
+                document.getElementById('telemetryBar').style.width = `${barWidth}%`;
+
+                if (currentProfitPct < 0) {
+                    document.getElementById('telemetryPct').style.color = 'var(--alert-red)';
+                } else if (currentProfitPct >= 0.8) {
+                    document.getElementById('telemetryPct').style.color = 'var(--cyber-blue)';
+                } else {
+                    document.getElementById('telemetryPct').style.color = 'var(--cyber-gold)';
+                }
+
+            } else {
+                document.getElementById('valActiveTrade').innerText = 'Nenhum';
+                document.getElementById('valTradeTarget').innerHTML = `
+                    <span style="color:#a0aab5">📥 Compra:</span> ---<br>
+                    <span style="color:#fff">🔄 Atual:</span> ---<br>
+                    <span style="color:var(--cyber-gold)">🎯 Alvo:</span> ---
+                `;
+                document.getElementById('telemetryCard').classList.remove('active');
+            }
+
+            const logContainer = document.getElementById('terminalLogs');
+            logContainer.innerHTML = state.logs.map((log, index) => {
+                if (log.type === 'card-sell') {
+                    return `
+                    <div class="log-card-sell">
+                        <div class="card-title"><i class="ph-fill ph-check-circle"></i> VENDA EXECUTADA COM SUCESSO</div>
+                        <div class="card-body">${log.msg}</div>
+                        <div style="color: #666; font-size:0.8rem; text-align:right; margin-top:8px;">[${log.timestamp}]</div>
+                    </div>`;
+                }
+                const altClass = `log-alt-${index % 2}`;
+                return `<div class="log-entry ${altClass} log-${log.type}"><span class="log-time">[${log.timestamp}]</span> ${log.msg}</div>`;
+            }).join('');
+
+            const histBody = document.getElementById('historyTableBody');
+            let sumProfit = 0;
+            histBody.innerHTML = state.history.slice(0, 10).map(h => {
+                sumProfit += h.profitPct;
+                const pClass = h.profitPct >= 0 ? 'profit-positive' : 'profit-negative';
+                return `<tr>
+                    <td><strong>${h.symbol}</strong></td>
+                    <td>${h.type}</td>
+                    <td class="${pClass}">${h.profitPct > 0 ? '+' : ''}${h.profitPct}%</td>
+                    <td><small style="color:#666">${h.date}</small></td>
+                </tr>`;
+            }).join('');
+
+            if (state.history.length === 0) {
+                histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666">Nenhuma operação ainda.</td></tr>';
+            }
+
+            const totalEl = document.getElementById('totalProfit');
+            totalEl.innerText = `${sumProfit > 0 ? '+' : ''}${sumProfit.toFixed(2)}%`;
+            totalEl.className = sumProfit >= 0 ? 'profit-positive' : 'profit-negative';
+
+            const overlay = document.getElementById('profitOverlay');
+            if (state.dashboardData?.triggerProfitAnim) {
+                if (!overlay.classList.contains('show')) overlay.classList.add('show');
+            } else {
+                overlay.classList.remove('show');
+            }
+
+            document.getElementById('btnStart').disabled = state.status !== 'OFFLINE';
+            document.getElementById('btnStart').style.opacity = state.status !== 'OFFLINE' ? '0.5' : '1';
+        }
+
+        // ── Ações ────────────────────────────────────────────
+        async function startSystem() {
+            const clientName = document.getElementById('clientName').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const apiSecret = document.getElementById('apiSecret').value;
+            const isLoop = document.getElementById('chkLoop').checked;
+
+            if (!apiKey || !apiSecret) {
+                alert("Preencha API Key e API Secret da Binance.");
+                return;
+            }
+
+            localStorage.setItem('sifrasClientName', clientName);
+            localStorage.setItem('sifrasApiKey', apiKey);
+            localStorage.setItem('sifrasApiSecret', apiSecret);
+
+            await authFetch(`${API_URL}/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientName, apiKey, apiSecret, isLoop, buyPercentage: selectedBuyRatio })
+            });
+        }
+
+        async function panicSell() {
+            if (confirm("ATENÇÃO: Isso irá interromper a verificação E venderá qualquer operação atual A MERCADO imediatamente. Confirmar STOP GERAL?")) {
+                await authFetch(`${API_URL}/sell-now`, { method: 'POST' });
+            }
+        }
+
+        async function resetApi() {
+            if (confirm("Zerar chaves da API e limpar logs?")) {
+                document.getElementById('apiKey').value = '';
+                document.getElementById('apiSecret').value = '';
+                document.getElementById('clientName').value = '';
+                localStorage.removeItem('sifrasClientName');
+                localStorage.removeItem('sifrasApiKey');
+                localStorage.removeItem('sifrasApiSecret');
+                await authFetch(`${API_URL}/reset`, { method: 'POST' });
+            }
+        }
+
+        async function resetHistory() {
+            if (confirm("Tem certeza que deseja apagar o extrato do dia e zerar o lucro atual?")) {
+                await authFetch(`${API_URL}/reset-history`, { method: 'POST' });
+            }
+        }
+
+        async function downloadReport() {
+            try {
+                const res = await authFetch(`${API_URL}/history`);
+                const history = await res.json();
+
+                if (!history || history.length === 0) {
+                    alert('Sem operações para baixar o extrato.');
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const clientName = document.getElementById('clientName').value || localStorage.getItem('sifrasClientName') || 'Investidor';
+
+                doc.setFontSize(18);
+                doc.text("SIFRAS INVEST - EXTRATO OPERACIONAL", 105, 20, null, null, "center");
+                doc.setFontSize(12);
+                doc.text(`Cliente: ${clientName}`, 20, 35);
+                doc.text(`Data do Relatório: ${new Date().toLocaleString('pt-BR')}`, 20, 42);
+                doc.text(`Lucro Total da Sessão: ${document.getElementById('totalProfit').innerText}`, 20, 49);
+
+                const columns = ["Data", "Moeda", "Entrada/Log", "Resultado (%)", "Status"];
+                const rows = history.map(item => {
+                    const statusText = item.profitPct > 0 ? "GAIN" : (item.profitPct < 0 ? "LOSS" : "FECHADO");
+                    return [item.date, item.symbol, item.type, `${item.profitPct.toFixed(2)}%`, statusText];
+                });
+
+                doc.autoTable({
+                    head: [columns], body: rows, startY: 60, theme: 'grid',
+                    headStyles: { fillColor: [0, 0, 0], textColor: [0, 242, 255] },
+                    alternateRowStyles: { fillColor: [240, 240, 240] }
+                });
+
+                doc.save(`Extrato_${clientName.replace(/\s+/g, '')}.pdf`);
+            } catch (e) {
+                alert('Erro ao gerar relatório: ' + e.message);
+            }
+        }
+
+        // ── Init ─────────────────────────────────────────────
+        window.onload = async () => {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            // Restaurar dados salvos
+            const savedName = localStorage.getItem('sifrasClientName');
+            const savedKey = localStorage.getItem('sifrasApiKey');
+            const savedSecret = localStorage.getItem('sifrasApiSecret');
+            if (savedName) document.getElementById('clientName').value = savedName;
+            if (savedKey) document.getElementById('apiKey').value = savedKey;
+            if (savedSecret) document.getElementById('apiSecret').value = savedSecret;
+
+            // Iniciar loop de atualização
+            refreshInterval = setInterval(fetchStatus, 1500);
+            fetchStatus();
+        };
+    </script>
+</body>
+
+</html>

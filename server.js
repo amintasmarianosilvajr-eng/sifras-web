@@ -457,22 +457,23 @@ app.post('/login', (req, res) => {
     if (!username) return res.status(400).json({ error: 'Username necessário' });
     username = username.trim().toLowerCase();
 
-    // UNIFICAÇÃO DE SESSÕES (Elimina o problema do robô fantasma/oculto)
-    for (const [existingName, existingState] of userStates.entries()) {
-        if (existingName.toLowerCase() === username && existingName !== username) {
-            console.log(`[SYSTEM] Capturando robô oculto: ${existingName} -> ${username}`);
-            userStates.delete(existingName);
-            existingState.username = username; 
-            userStates.set(username, existingState);
-        }
-    }
-
+    // 1. Verificar Credenciais
     if (!usersDB[username]) { usersDB[username] = { password }; saveUsersDB(); }
     else if (usersDB[username].password !== password) return res.status(401).json({ error: 'Incorreta' });
-    
+
+    // 2. Trava de Unicidade: Se já existe um robô na memória, não criar outro!
+    // Puxar o estado existente ou carregar um novo (loadUserState já cuida do reuse)
+    loadUserState(username); 
+
+    // 3. Gerir Tokens (derrubar logins antigos se houver)
+    for (const [t, u] of activeTokens.entries()) {
+        if (u === username) activeTokens.delete(t);
+    }
+
     const token = crypto.randomBytes(32).toString('hex');
     activeTokens.set(token, username);
-    if (!userStates.has(username)) loadUserState(username);
+    
+    console.log(`[AUTH] Login bem-sucedido: ${username}. Session unificada.`);
     return res.json({ token, username });
 });
 

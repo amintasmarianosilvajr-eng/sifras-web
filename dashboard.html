@@ -435,14 +435,19 @@
             btnElement.classList.add('active');
         }
 
+        let errorCount = 0;
         async function fetchStatus() {
             try {
                 const res = await authFetch(`${API_URL}/status`);
                 const data = await res.json();
+                errorCount = 0;
                 updateUI(data);
             } catch (e) {
                 if (e.message !== 'Não autorizado') {
-                    document.getElementById('sysStatusBadge').innerHTML = `<i class="ph-fill ph-circle" style="color: var(--alert-red);"></i> ERRO API`;
+                    errorCount++;
+                    if (errorCount > 3) {
+                        document.getElementById('sysStatusBadge').innerHTML = `<i class="ph-fill ph-circle" style="color: var(--alert-red);"></i> ERRO API`;
+                    }
                 }
             }
         }
@@ -469,11 +474,11 @@
             const pivotInfo = state.dashboardData?.pivotInfo;
             if (pivotInfo) {
                 document.getElementById('valPivot').innerText = pivotInfo.pivot;
-                document.getElementById('valDistances').innerText = `${pivotInfo.t2}: ${pivotInfo.d2}% | ${pivotInfo.t4}: ${pivotInfo.d4}%`;
+                document.getElementById('valDistances').innerText = `${pivotInfo.t2}: ${pivotInfo.d2}% | ${pivotInfo.t6}: ${pivotInfo.d6}%`;
             }
 
             document.getElementById('valOpsCount').innerText = `${state.opsCount} / 5`;
-            document.getElementById('valCooldown').innerText = `${state.cooldownList.length} Ativos no Cooldown`;
+            document.getElementById('valCooldown').innerText = `${state.lastTradedCoins.length} Moedas Bloqueadas (Regra 10)`;
 
             if (state.activeSymbol && state.status === 'IN_TRADE') {
                 const buyP = state.buyPrice ? state.buyPrice.toFixed(6) : '0.000000';

@@ -45,7 +45,7 @@ function createInitialState(username) {
         history: [], logs: [],
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
-        buyPercentage: 0.99
+        buyPercentage: 0.99, pauseUntil: null
     };
 }
 
@@ -216,7 +216,26 @@ async function runFluxoAlfaScanner(username) {
     const jump = globalMarket.coinJumps[target.symbol] || 0;
     if (Math.abs(jump) < 0.2) return;
 
-    // EXECUÇÃO REAL
+    // Lógica de Ciclo (5 ops e pausa)
+    if (state.opsCount >= 5 && state.isLoopActive) {
+        if (!state.pauseUntil) {
+            state.pauseUntil = Date.now() + 20 * 60000;
+            state.status = 'PAUSED';
+            addLog(username, "🛑 Ciclo de 5 concluído. Pausa de 20m ativada.", 'warn');
+            saveUserState(username);
+            return;
+        }
+        if (Date.now() < state.pauseUntil) {
+            state.status = 'PAUSED';
+            return;
+        } else {
+            state.opsCount = 0;
+            state.pauseUntil = null;
+            state.status = 'SCANNING';
+            addLog(username, "🔄 Pausa encerrada. Novo ciclo iniciado.", 'info');
+            saveUserState(username);
+        }
+    }
     await executeRealBuy(username, target.symbol, target.price);
 }
 

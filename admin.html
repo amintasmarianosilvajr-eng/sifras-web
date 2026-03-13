@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sifras Alfa — Painel Administrativo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --cyber-blue: #ccff00;
+            --cyber-gold: #f3ba2f;
+            --alert-red: #ff3366;
+            --cyber-green: #ccff00;
+            --text-main: #ffffff;
+            --glass-panel: rgba(18, 18, 18, 0.95);
+            --border-glow: rgba(204, 255, 0, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.05) 0%, transparent 70%), #111111;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1, h2, .orbitron { font-family: 'Orbitron', sans-serif; }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 2px solid var(--cyber-blue);
+            margin-bottom: 40px;
+        }
+
+        .logo-text { font-size: 1.8rem; font-weight: 900; }
+        .logo-alfa { color: var(--cyber-blue); text-shadow: 0 0 10px rgba(204, 255, 0, 0.5); }
+
+        .admin-badge {
+            background: rgba(204, 255, 0, 0.1);
+            border: 1px solid var(--cyber-blue);
+            color: var(--cyber-blue);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--glass-panel);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .stat-value { font-size: 2.2rem; font-family: 'Orbitron', sans-serif; color: var(--cyber-blue); margin-top: 5px; }
+        .stat-label { color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        .client-list {
+            background: var(--glass-panel);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 15px;
+            text-align: left;
+            color: var(--cyber-blue);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.95rem;
+        }
+
+        .status-pill {
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .status-scanning { background: rgba(204, 255, 0, 0.1); color: var(--cyber-blue); }
+        .status-in_trade { background: rgba(243, 186, 47, 0.1); color: var(--cyber-gold); }
+        .status-offline { background: rgba(102, 102, 102, 0.1); color: #888; }
+        .status-paused { background: rgba(255, 153, 0, 0.1); color: #ff9900; }
+
+        .step-text { color: #aaa; font-size: 0.85rem; font-style: italic; }
+        .amount-text { color: #fff; font-weight: bold; }
+        .profit-text { color: var(--cyber-green); font-family: 'Orbitron', sans-serif; }
+
+        .btn-refresh {
+            background: var(--cyber-blue);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-refresh:hover { box-shadow: 0 0 15px var(--cyber-blue); opacity: 0.9; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .live-dot {
+            width: 8px; height: 8px;
+            background: var(--cyber-blue);
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo-box">
+            <h1 class="orbitron" style="cursor:pointer" onclick="window.location.href='/'">SIFRAS <span class="logo-alfa">ALFA</span> <span class="admin-badge">ADMIN MONITOR</span></h1>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <div id="lastUpdateTime" style="color: #666; font-size: 0.8rem;">Atualizado em: --:--:--</div>
+            <button class="btn-refresh" onclick="updateOverview()">
+                <i class="ph ph-arrows-clockwise"></i> ATUALIZAR AGORA
+            </button>
+        </div>
+    </header>
+
+    <div class="stats-summary">
+        <div class="stat-card">
+            <div class="stat-label">Clientes Online</div>
+            <div class="stat-value" id="totalClients">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Em Operação</div>
+            <div class="stat-value" id="tradingCount">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Capital em Risco</div>
+            <div class="stat-value" id="riskValue">$ 0.00</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Performance Total</div>
+            <div class="stat-value" id="avgProfit">0.00%</div>
+        </div>
+    </div>
+
+    <div class="client-list">
+        <table>
+            <thead>
+                <tr>
+                    <th>IDENTIFICAÇÃO (LOGIN)</th>
+                    <th>STATUS MÁQUINA</th>
+                    <th>ETAPA REAL-TIME</th>
+                    <th>ATIVO</th>
+                    <th>VALOR ($)</th>
+                    <th>LUCRO ACUM.</th>
+                </tr>
+            </thead>
+            <tbody id="adminTableBody">
+                <tr>
+                    <td colspan="6" style="text-align: center; color: #666; padding: 40px;">Buscando dados da rede...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const ACCESS_KEY = 'alfa777'; // Usando a chave global para autenticação simples
+
+    async function updateOverview() {
+        try {
+            const res = await fetch('/admin/overview', {
+                headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
+            });
+            if (!res.ok) throw new Error('Falha no acesso admin');
+            
+            const data = await res.json();
+            renderTable(data);
+            renderStats(data);
+            document.getElementById('lastUpdateTime').innerText = `Atualizado em: ${new Date().toLocaleTimeString()}`;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function renderStats(data) {
+        document.getElementById('totalClients').innerText = data.length;
+        document.getElementById('tradingCount').innerText = data.filter(u => u.status === 'IN_TRADE').length;
+        
+        const totalRisk = data.reduce((sum, u) => sum + (u.buyAmountUSDT || 0), 0);
+        document.getElementById('riskValue').innerText = `$ ${totalRisk.toFixed(2)}`;
+
+        const totalProfit = data.reduce((sum, u) => sum + (u.totalProfit || 0), 0);
+        const avg = data.length > 0 ? (totalProfit / data.length) : 0;
+        document.getElementById('avgProfit').innerText = `${avg.toFixed(2)}%`;
+    }
+
+    function renderTable(data) {
+        const body = document.getElementById('adminTableBody');
+        if (data.length === 0) {
+            body.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666; padding: 40px;">Nenhum cliente conectado no momento.</td></tr>';
+            return;
+        }
+
+        body.innerHTML = data.map(u => `
+            <tr>
+                <td><strong><i class="ph ph-user"></i> ${u.username}</strong></td>
+                <td><span class="status-pill status-${u.status.toLowerCase()}">${u.status}</span></td>
+                <td><span class="step-text">${u.currentStep}</span></td>
+                <td class="orbitron" style="color:var(--cyber-blue)">${u.activeSymbol || '---'}</td>
+                <td class="amount-text">$ ${u.buyAmountUSDT.toFixed(2)}</td>
+                <td class="profit-text">${u.totalProfit.toFixed(2)}%</td>
+            </tr>
+        `).join('');
+    }
+
+    // Inicialização
+    setInterval(updateOverview, 3000);
+    updateOverview();
+</script>
+
+</body>
+</html>

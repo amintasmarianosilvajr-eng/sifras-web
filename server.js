@@ -14,7 +14,7 @@ const ADMIN_ACCESS_KEY = 'alfa777admin';
 
 // CONFIGURAÇÃO E PERSISTÊNCIA
 const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const USERS_FILE = path.join(DATA_DIR, 'users_db.json');
 let usersDB = {}; 
@@ -26,12 +26,14 @@ function saveUsersDB() { fs.writeFileSync(USERS_FILE, JSON.stringify(usersDB, nu
 const activeTokens = new Map();
 const userStates = new Map();
 
+// Blacklist Expandida (Times, Estáveis, Suspeitas)
 const BLACKLIST = ['CHESS', 'KP3R', 'REEF', 'VITE', 'UNFI', 'EPX', 'FOR', 'VGX', 'OAX', 'PROS', 'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'OG', 'BAR', 'PSG', 'CITY', 'JUV', 'ACM', 'ATM', 'ASR', 'INTER', 'TRA', 'AFC', 'MENGO', 'NAP', 'GAL', 'TH', 'PFL', 'ALL', 'LEGION', 'UCH', 'USDC', 'TUSD', 'BUSD', 'FDUSD', 'USDP', 'EUR'];
 
 let globalMarket = {
     top10: [],
     coinJumps: {},
     exchangeInfo: null,
+    lastExchangeFetch: 0,
     lastUpdate: 0,
     priceHistory: {}
 };
@@ -39,7 +41,7 @@ let globalMarket = {
 function createInitialState(username) {
     return {
         username, clientName: '', apiKey: '', apiSecret: '', status: 'OFFLINE', opsCount: 0, 
-        lastTradedCoins: [], // Para regra de 5 moedas
+        lastTradedCoins: [], // Para regra de 10 moedas
         history: [], logs: [],
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
@@ -67,8 +69,8 @@ function saveUserState(username) {
     if (!state) return;
     const userFile = path.join(DATA_DIR, `trade_${username}.json`);
     fs.writeFileSync(userFile, JSON.stringify({ 
-        clientName: state.clientName, history: state.history, totalProfit: state.totalProfit, 
-        opsCount: state.opsCount, apiKey: state.apiKey, apiSecret: state.apiSecret, 
+        clientName: state.clientName, history: state.history, opsCount: state.opsCount, 
+        apiKey: state.apiKey, apiSecret: state.apiSecret, 
         buyPercentage: state.buyPercentage, lastTradedCoins: state.lastTradedCoins 
     }, null, 2));
 }
@@ -79,14 +81,48 @@ function addLog(username, msg, type = 'info') {
     const timestamp = new Date().toLocaleTimeString();
     state.logs.unshift({ timestamp, msg, type });
     if (state.logs.length > 50) state.logs.pop();
+    console.log(`[${username}] ${msg}`);
 }
 
+// ------------------------------------------------------------
+// BINANCE REQUEST UTILS (REAL)
+// ------------------------------------------------------------
+function getSignature(queryString, apiSecret) {
+    return crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
+}
+
+async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
+    const state = userStates.get(username);
+    if (!state || !state.apiKey || !state.apiSecret) return { error: true, msg: "Chaves ausentes" };
+
+    try {
+        const timestamp = Date.now();
+        let queryString = `timestamp=${timestamp}`;
+        Object.keys(params).forEach(key => queryString += `&${key}=${params[key]}`);
+        const signature = getSignature(queryString, state.apiSecret);
+        const url = `https://api.binance.com${endpoint}?${queryString}&signature=${signature}`;
+
+        const res = await axios({
+            method,
+            url,
+            headers: { 'X-MBX-APIKEY': state.apiKey },
+            timeout: 10000
+        });
+
+        return res.data;
+    } catch (e) {
+        return { error: true, msg: e.response?.data?.msg || e.message };
+    }
+}
+
+// ------------------------------------------------------------
 // SINCRONIZAÇÃO MERCADO (3s)
+// ------------------------------------------------------------
 setInterval(async () => {
     try {
         const now = Date.now();
         
-        // 1. Atualizar ExchangeInfo (a cada 30min) para filtrar moedas monitoradas e deslistadas
+        // Atualizar ExchangeInfo (30min)
         if (!globalMarket.exchangeInfo || now - globalMarket.lastExchangeFetch > 1800000) {
             const exres = await axios.get('https://api.binance.com/api/v3/exchangeInfo');
             globalMarket.exchangeInfo = exres.data;
@@ -100,17 +136,12 @@ setInterval(async () => {
             .filter(i => {
                 if (!i.symbol.endsWith('USDT')) return false;
                 const symbolBase = i.symbol.replace('USDT', '');
-                
-                // Filtro Blacklist (Fan Tokens, Estáveis e Suspeitas)
                 if (BLACKLIST.includes(symbolBase)) return false;
-                
-                // Filtro moedas de monitoramento e deslistagem (via exchangeInfo)
                 if (globalMarket.exchangeInfo) {
                     const info = globalMarket.exchangeInfo.symbols.find(s => s.symbol === i.symbol);
                     if (!info || info.status !== 'TRADING') return false;
                     if (info.tags && info.tags.includes('monitoring')) return false;
                 }
-
                 return true;
             })
             .map(i => ({ symbol: i.symbol, price: parseFloat(i.lastPrice), vol24h: parseFloat(i.priceChangePercent) }))
@@ -131,7 +162,6 @@ setInterval(async () => {
         }
         globalMarket.lastUpdate = now;
 
-        // Rodar Scanner para cada usuário ativo
         for (const [username, state] of userStates) {
             if (state.isLoopActive && state.status === 'SCANNING') {
                 await runFluxoAlfaScanner(username);
@@ -157,7 +187,7 @@ async function runFluxoAlfaScanner(username) {
     const LIMIT = 20.0;
 
     if (d2 < LIMIT && d6 < LIMIT) {
-        target = (d2 <= d6) ? rank2 : rank6; // Desempate por maior proximidade
+        target = (d2 <= d6) ? rank2 : rank6;
     } else if (d2 < LIMIT) {
         target = rank2;
     } else if (d6 < LIMIT) {
@@ -165,45 +195,136 @@ async function runFluxoAlfaScanner(username) {
     }
 
     if (!target) return;
-
-    // Regra de 5 moedas
     if (state.lastTradedCoins.includes(target.symbol)) return;
 
-    // Gatilho 10s (0.2%)
     const jump = globalMarket.coinJumps[target.symbol] || 0;
     if (Math.abs(jump) < 0.2) return;
 
-    // Entrada Confirmada
+    // EXECUÇÃO REAL
+    await executeRealBuy(username, target.symbol, target.price);
+}
+
+async function executeRealBuy(username, symbol, price) {
+    const state = userStates.get(username);
     state.status = 'IN_TRADE';
-    state.activeSymbol = target.symbol;
-    state.buyPrice = target.price;
-    state.targetPrice = target.price * 1.009; // 0.9% LUCRO
-    addLog(username, `🚀 COMPRA CONFIRMADA: ${target.symbol} (Alvo 0.9%)`, 'buy');
+    state.activeSymbol = symbol;
+
+    addLog(username, `🎯 GATILHO: ${symbol}. Checando saldo...`, 'trigger');
+
+    const account = await binanceRequest(username, '/api/v3/account');
+    if (account.error) {
+        addLog(username, `Erro Saldo: ${account.msg}`, 'error');
+        return resetTradeState(username);
+    }
+
+    const usdt = parseFloat(account.balances.find(b => b.asset === 'USDT')?.free || 0);
+    if (usdt < 11) {
+        addLog(username, `Saldo insuficiente: $${usdt.toFixed(2)}`, 'error');
+        return resetTradeState(username);
+    }
+
+    const amountToUse = usdt * (state.buyPercentage === 1.0 ? 0.99 : state.buyPercentage);
     
-    // Monitoramento de Venda (Simulado para Web, Real precisaria de chaves)
-    startTradeMonitor(username, target.symbol);
+    // ORDEM DE COMPRA REAL
+    const order = await binanceRequest(username, '/api/v3/order', 'POST', {
+        symbol, side: 'BUY', type: 'MARKET', quoteOrderQty: amountToUse.toFixed(6)
+    });
+
+    if (order.error) {
+        addLog(username, `Erro Compra: ${order.msg}`, 'error');
+        return resetTradeState(username);
+    }
+
+    let realPrice = price;
+    let qty = amountToUse / price;
+    if (order.fills?.length > 0) {
+        const sumCost = order.fills.reduce((s, f) => s + (parseFloat(f.price) * parseFloat(f.qty)), 0);
+        const sumQty = order.fills.reduce((s, f) => s + parseFloat(f.qty), 0);
+        realPrice = sumCost / sumQty;
+        qty = sumQty;
+    }
+
+    state.buyPrice = realPrice;
+    state.buyQty = qty;
+    state.targetPrice = realPrice * 1.009; // META 0.9%
+    addLog(username, `🚀 COMPRA EXECUTADA: ${symbol} @ $${realPrice.toFixed(6)}`, 'buy');
+    
+    startTradeMonitor(username, symbol);
 }
 
 function startTradeMonitor(username, symbol) {
     const state = userStates.get(username);
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
         if (state.status !== 'IN_TRADE') return clearInterval(interval);
-        const current = globalMarket.top10.find(c => c.symbol === symbol)?.price || state.buyPrice;
-        state.currentPrice = current;
-        if (current >= state.targetPrice) {
-            state.status = 'SCANNING';
-            state.lastTradedCoins.push(symbol);
-            if (state.lastTradedCoins.length > 10) state.lastTradedCoins.shift();
-            addLog(username, `💰 VENDA EXECUTADA: ${symbol} (+0.9%)`, 'card-sell');
-            state.history.unshift({ symbol, date: new Date().toLocaleString(), profitPct: 0.9, type: 'LUCRO FLUXO ALFA' });
-            saveUserState(username);
-            clearInterval(interval);
-        }
+        
+        try {
+            const res = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+            const current = parseFloat(res.data.price);
+            state.currentPrice = current;
+
+            if (current >= state.targetPrice) {
+                clearInterval(interval);
+                await executeRealSell(username, symbol, 'LUCRO');
+            }
+        } catch (e) {}
     }, 2000);
 }
 
-// ROTAS
+async function executeRealSell(username, symbol, reason) {
+    const state = userStates.get(username);
+    const coinBase = symbol.replace('USDT', '');
+    
+    addLog(username, `💰 VENDENDO: ${symbol} (${reason})`, 'info');
+
+    const account = await binanceRequest(username, '/api/v3/account');
+    if (account.error) return addLog(username, `Erro Venda (Account): ${account.msg}`, 'error');
+
+    const balance = parseFloat(account.balances.find(b => b.asset === coinBase)?.free || 0);
+    if (balance <= 0) return resetTradeState(username);
+
+    // Filtro de Precisão (LOT_SIZE)
+    let precision = 0;
+    if (globalMarket.exchangeInfo) {
+        const sInfo = globalMarket.exchangeInfo.symbols.find(s => s.symbol === symbol);
+        const lot = sInfo?.filters.find(f => f.filterType === 'LOT_SIZE');
+        if (lot) {
+            const step = lot.stepSize;
+            precision = step.indexOf('1') - step.indexOf('.');
+            if (precision < 0) precision = 0;
+        }
+    }
+
+    const order = await binanceRequest(username, '/api/v3/order', 'POST', {
+        symbol, side: 'SELL', type: 'MARKET', quantity: balance.toFixed(precision)
+    });
+
+    if (order.error) {
+        addLog(username, `Erro Venda: ${order.msg}`, 'error');
+        return; 
+    }
+
+    const profit = 0.9; // Aproximado para o log e histórico
+    state.history.unshift({ symbol, date: new Date().toLocaleString(), profitPct: profit, type: 'LUCRO ELITE' });
+    state.lastTradedCoins.push(symbol);
+    if (state.lastTradedCoins.length > 10) state.lastTradedCoins.shift();
+    state.opsCount++;
+    addLog(username, `✅ SUCESSO: ${symbol} Vendido.`, 'card-sell');
+    saveUserState(username);
+    resetTradeState(username);
+}
+
+function resetTradeState(username) {
+    const state = userStates.get(username);
+    if (!state) return;
+    state.activeSymbol = null;
+    state.status = state.isLoopActive ? 'SCANNING' : 'OFFLINE';
+}
+
+// ------------------------------------------------------------
+// ROTAS EXPRESS
+// ------------------------------------------------------------
 app.use(express.static(path.join(__dirname)));
+
 app.post('/gateway', (req, res) => {
     const { accessKey } = req.body;
     if (accessKey === GLOBAL_ACCESS_KEY || accessKey === ADMIN_ACCESS_KEY) return res.json({ success: true });
@@ -231,12 +352,46 @@ function requireAuth(req, res, next) {
 }
 
 app.get('/status', requireAuth, (req, res) => res.json(req.state));
-app.post('/start', requireAuth, (req, res) => {
+
+app.post('/start', requireAuth, async (req, res) => {
     const { clientName, apiKey, apiSecret, buyPercentage } = req.body;
-    Object.assign(req.state, { clientName, apiKey, apiSecret, buyPercentage: parseFloat(buyPercentage) || 0.99, isLoopActive: true, status: 'SCANNING' });
-    addLog(req.username, `Conectado: ${clientName}. Iniciando Fluxo Alfa 0.9% (Trava 10 Moedas)`, 'info');
+    
+    // TESTE DE CONEXÃO IMEDIATO
+    const tempState = { apiKey, apiSecret };
+    const timestamp = Date.now();
+    const sig = crypto.createHmac('sha256', apiSecret).update(`timestamp=${timestamp}`).digest('hex');
+    try {
+        const test = await axios.get(`https://api.binance.com/api/v3/account?timestamp=${timestamp}&signature=${sig}`, {
+            headers: { 'X-MBX-APIKEY': apiKey }, timeout: 5000
+        });
+        if (test.data.canTrade) {
+            Object.assign(req.state, { clientName, apiKey, apiSecret, buyPercentage: parseFloat(buyPercentage) || 0.99, isLoopActive: true, status: 'SCANNING' });
+            addLog(req.username, `Conectado com Sucesso: ${clientName}. IP Railway Autorizado.`, 'info');
+            saveUserState(req.username);
+            return res.json({ success: true });
+        }
+    } catch (e) {
+        const errMsg = e.response?.data?.msg || "Erro de Conexão: Verifique se o IP da Railway está liberado na Binance.";
+        addLog(req.username, `Falha no Start: ${errMsg}`, 'error');
+        return res.status(400).json({ error: errMsg });
+    }
+});
+
+app.post('/stop', requireAuth, (req, res) => {
+    req.state.isLoopActive = false;
+    req.state.status = 'OFFLINE';
+    addLog(req.username, "Radar Desligado.", 'warn');
+    res.json({ success: true });
+});
+
+app.post('/panic', requireAuth, async (req, res) => {
+    if (req.state.status === 'IN_TRADE' && req.state.activeSymbol) {
+        await executeRealSell(req.username, req.state.activeSymbol, 'PANIC');
+    }
+    req.state.isLoopActive = false;
+    req.state.status = 'OFFLINE';
     res.json({ success: true });
 });
 
 const PORT = process.env.PORT || 3014;
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Elite Fluxo Alfa na Porta ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Elite Fluxo Alfa Real na Porta ${PORT}`));

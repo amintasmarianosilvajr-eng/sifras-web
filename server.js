@@ -426,9 +426,13 @@ app.post('/gateway', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-    const { username, password } = req.body;
+    let { username, password } = req.body;
+    if (!username) return res.status(400).json({ error: 'Username necessário' });
+    username = username.trim().toLowerCase();
+
     if (!usersDB[username]) { usersDB[username] = { password }; saveUsersDB(); }
     else if (usersDB[username].password !== password) return res.status(401).json({ error: 'Incorreta' });
+    
     const token = crypto.randomBytes(32).toString('hex');
     activeTokens.set(token, username);
     if (!userStates.has(username)) loadUserState(username);

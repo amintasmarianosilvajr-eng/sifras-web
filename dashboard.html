@@ -478,6 +478,12 @@
             badge.innerHTML = `<i class="ph-fill ph-circle ${isBlinking ? 'blink' : ''}" style="color: ${statusColor}; text-shadow: 0 0 10px ${statusColor};"></i> ${statusText}`;
             badge.style.borderColor = statusColor;
 
+            // Info de Diagnóstico no Console ou Terminal se houver erro
+            if (state.serverIp && state.serverIp !== 'N/A' && !document.getElementById('serverIpDisplay')) {
+                 const terminal = document.getElementById('terminalLogs');
+                 terminal.innerHTML = `<div class="log-entry log-info" id="serverIpDisplay"><span class="log-time">[SISTEMA]</span> IP do Servidor: ${state.serverIp} | Relógio: ${state.binanceClockOk ? 'OK' : 'Sincronizando...'}</div>` + terminal.innerHTML;
+            }
+
             const pivotInfo = state.dashboardData?.pivotInfo;
             if (pivotInfo && pivotInfo.t2) {
                 document.getElementById('valPivot').innerText = pivotInfo.pivot || 'Aguardando...';

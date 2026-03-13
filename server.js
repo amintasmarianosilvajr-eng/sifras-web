@@ -60,6 +60,7 @@ function loadUserState(username) {
             state.isLoopActive = false;
         } catch (e) {}
     }
+    if (!Array.isArray(state.lastTradedCoins)) state.lastTradedCoins = [];
     userStates.set(username, state);
     return state;
 }

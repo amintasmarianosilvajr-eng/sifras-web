@@ -87,6 +87,20 @@ function addLog(username, msg, type = 'info') {
 // ------------------------------------------------------------
 // BINANCE REQUEST UTILS (REAL)
 // ------------------------------------------------------------
+let binanceTimeOffset = 0;
+
+async function syncBinanceTime() {
+    try {
+        const res = await axios.get('https://api.binance.com/api/v3/time');
+        binanceTimeOffset = res.data.serverTime - Date.now();
+        console.log(`[SYSTEM] Horário Sincronizado. Offset: ${binanceTimeOffset}ms`);
+    } catch (e) {
+        console.error("Erro ao sincronizar horário:", e.message);
+    }
+}
+syncBinanceTime(); // Sync inicial
+setInterval(syncBinanceTime, 600000); // Sync a cada 10min
+
 function getSignature(queryString, apiSecret) {
     return crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
 }
@@ -96,8 +110,8 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
     if (!state || !state.apiKey || !state.apiSecret) return { error: true, msg: "Chaves ausentes" };
 
     try {
-        const timestamp = Date.now();
-        let queryString = `timestamp=${timestamp}`;
+        const timestamp = Date.now() + binanceTimeOffset;
+        let queryString = `timestamp=${timestamp}&recvWindow=10000`; // Janela maior para segurança
         Object.keys(params).forEach(key => queryString += `&${key}=${params[key]}`);
         const signature = getSignature(queryString, state.apiSecret);
         const url = `https://api.binance.com${endpoint}?${queryString}&signature=${signature}`;
@@ -111,6 +125,8 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
 
         return res.data;
     } catch (e) {
+        // Log detalhado para o console da Railway
+        console.error(`[BINANCE ERROR] ${method} ${endpoint}:`, e.response?.data || e.message);
         return { error: true, msg: e.response?.data?.msg || e.message };
     }
 }
@@ -356,22 +372,32 @@ app.get('/status', requireAuth, (req, res) => res.json(req.state));
 app.post('/start', requireAuth, async (req, res) => {
     const { clientName, apiKey, apiSecret, buyPercentage } = req.body;
     
-    // TESTE DE CONEXÃO IMEDIATO
-    const tempState = { apiKey, apiSecret };
-    const timestamp = Date.now();
-    const sig = crypto.createHmac('sha256', apiSecret).update(`timestamp=${timestamp}`).digest('hex');
+    // TESTE DE CONEXÃO IMEDIATO COM TIME SYNC
+    const timestamp = Date.now() + binanceTimeOffset;
+    const queryString = `timestamp=${timestamp}&recvWindow=10000`;
+    const sig = crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
+    
     try {
-        const test = await axios.get(`https://api.binance.com/api/v3/account?timestamp=${timestamp}&signature=${sig}`, {
-            headers: { 'X-MBX-APIKEY': apiKey }, timeout: 5000
+        const test = await axios.get(`https://api.binance.com/api/v3/account?${queryString}&signature=${sig}`, {
+            headers: { 'X-MBX-APIKEY': apiKey }, timeout: 8000
         });
+        
         if (test.data.canTrade) {
             Object.assign(req.state, { clientName, apiKey, apiSecret, buyPercentage: parseFloat(buyPercentage) || 0.99, isLoopActive: true, status: 'SCANNING' });
-            addLog(req.username, `Conectado com Sucesso: ${clientName}. IP Railway Autorizado.`, 'info');
+            addLog(req.username, `Conectado com Sucesso: ${clientName}. Próxima Varredura em 3s.`, 'info');
             saveUserState(req.username);
             return res.json({ success: true });
+        } else {
+            return res.status(400).json({ error: "Sua conta Binance não tem permissão para operar Spot. Verifique os controles da API." });
         }
     } catch (e) {
-        const errMsg = e.response?.data?.msg || "Erro de Conexão: Verifique se o IP da Railway está liberado na Binance.";
+        let errMsg = e.response?.data?.msg || "Erro de Conexão: O servidor da Binance não respondeu.";
+        
+        // Tratar erros comuns de IP e Permissão
+        if (e.response?.status === 403) errMsg = "ACESSO NEGADO: Verifique se o IP da Railway está na sua Whitelist da Binance.";
+        if (e.response?.status === 401) errMsg = "CHAVES INVÁLIDAS: Verifique se copiou a API Key e Secret corretamente.";
+        
+        console.error(`[START ERROR] User: ${req.username}:`, e.response?.data || e.message);
         addLog(req.username, `Falha no Start: ${errMsg}`, 'error');
         return res.status(400).json({ error: errMsg });
     }

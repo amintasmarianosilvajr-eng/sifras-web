@@ -61,6 +61,18 @@ async function binanceFetchBalance(username) {
 function loadUserState(username) {
     const state = createInitialState(username);
     const userFile = path.join(DATA_DIR, `trade_${username}.json`);
+    
+    // MIGRATION: Se não existe minúsculo, procura por qualquer versão case-insensitive
+    if (!fs.existsSync(userFile)) {
+        const files = fs.readdirSync(DATA_DIR);
+        const legacyFile = files.find(f => f.toLowerCase() === `trade_${username.toLowerCase()}.json`);
+        if (legacyFile) {
+            const oldPath = path.join(DATA_DIR, legacyFile);
+            fs.renameSync(oldPath, userFile);
+            console.log(`[SYSTEM] Migrado arquivo legado: ${legacyFile} -> ${path.basename(userFile)}`);
+        }
+    }
+
     if (fs.existsSync(userFile)) {
         try {
             const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
@@ -69,6 +81,7 @@ function loadUserState(username) {
         } catch (e) {}
     }
     if (!Array.isArray(state.lastTradedCoins)) state.lastTradedCoins = [];
+    if (!Array.isArray(state.logs)) state.logs = [];
     userStates.set(username, state);
     return state;
 }
@@ -82,7 +95,7 @@ function saveUserState(username) {
         apiKey: state.apiKey, apiSecret: state.apiSecret, 
         buyPercentage: state.buyPercentage, lastTradedCoins: state.lastTradedCoins,
         status: state.status, isLoopActive: state.isLoopActive,
-        pauseUntil: state.pauseUntil
+        pauseUntil: state.pauseUntil, logs: state.logs.slice(0, 30) // Salva os últimos 30 logs
     }, null, 2));
 }
 
@@ -93,6 +106,11 @@ function addLog(username, msg, type = 'info') {
     state.logs.unshift({ timestamp, msg, type });
     if (state.logs.length > 50) state.logs.pop();
     console.log(`[${username}] ${msg}`);
+    
+    // Salva logs importantes imediatamente
+    if (type === 'buy' || type === 'card-sell' || type === 'error' || type === 'warn') {
+        saveUserState(username);
+    }
 }
 
 // ------------------------------------------------------------
@@ -429,6 +447,16 @@ app.post('/login', (req, res) => {
     let { username, password } = req.body;
     if (!username) return res.status(400).json({ error: 'Username necessário' });
     username = username.trim().toLowerCase();
+
+    // UNIFICAÇÃO DE SESSÕES (Elimina o problema do robô fantasma/oculto)
+    for (const [existingName, existingState] of userStates.entries()) {
+        if (existingName.toLowerCase() === username && existingName !== username) {
+            console.log(`[SYSTEM] Capturando robô oculto: ${existingName} -> ${username}`);
+            userStates.delete(existingName);
+            existingState.username = username; 
+            userStates.set(username, existingState);
+        }
+    }
 
     if (!usersDB[username]) { usersDB[username] = { password }; saveUsersDB(); }
     else if (usersDB[username].password !== password) return res.status(401).json({ error: 'Incorreta' });

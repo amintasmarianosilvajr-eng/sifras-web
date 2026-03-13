@@ -275,7 +275,7 @@
             <div class="panel">
                 <h2 class="panel-title orbitron"><i class="ph ph-key"></i> Conexão Binance</h2>
 
-                <div class="input-group" style="display:none;">
+                <div class="input-group">
                     <label>Nome do Cliente</label>
                     <input type="text" id="clientName" placeholder="Ex: Amintas Silva">
                 </div>
@@ -328,7 +328,7 @@
                     <div class="stat-card" style="border-color: var(--cyber-blue);">
                         <div class="stat-label">Indicadora (Pivô 4ª)</div>
                         <div class="stat-value" id="valPivot">Aguardando...</div>
-                        <div style="color: #a0aab5; font-size: 0.85rem;" id="valDistances">D2: 0% | D4: 0%</div>
+                        <div style="color: #a0aab5; font-size: 0.85rem;" id="valDistances">D2: 0% | D6: 0%</div>
                     </div>
 
                     <div class="stat-card">
@@ -343,7 +343,7 @@
                         <div style="font-size: 0.9rem; margin-top:5px; text-align:left; display:inline-block; margin-left:auto; margin-right:auto;" id="valTradeTarget">
                             <span style="color:#a0aab5">📥 Compra:</span> ---<br>
                             <span style="color:#fff">🔄 Atual:</span> ---<br>
-                            <span style="color:var(--cyber-gold)">🎯 Alvo:</span> ---
+                            <span style="color:var(--cyber-gold)">🎯 Alvo:</span> --- (+0.9%)
                         </div>
                     </div>
                 </div>
@@ -356,7 +356,7 @@
                     <div style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: bold;">
                         <span style="color: #666;">0.00%</span>
                         <span id="telemetryPct" style="color: #fff; font-size: 1.5rem; text-shadow: 0 0 10px rgba(255,255,255,0.5);">+0.00%</span>
-                        <span style="color: var(--cyber-blue);">Meta: 0.80%</span>
+                        <span style="color: var(--cyber-blue);">Meta: 0.90%</span>
                     </div>
                     <div class="progress-container">
                         <div class="progress-bar" id="telemetryBar"></div>
@@ -484,7 +484,7 @@
                 document.getElementById('valTradeTarget').innerHTML = `
                     <span style="color:#a0aab5">📥 Compra:</span> $${buyP}<br>
                     <span style="color:#fff">🔄 Atual:</span> $${currP}<br>
-                    <span style="color:var(--cyber-gold)">🎯 Alvo:</span> $${tgtP} (+0.8%)
+                    <span style="color:var(--cyber-gold)">🎯 Alvo:</span> $${tgtP} (+0.9%)
                 `;
 
                 document.getElementById('telemetryCard').classList.add('active');
@@ -497,14 +497,14 @@
 
                 document.getElementById('telemetryPct').innerText = `${currentProfitPct >= 0 ? '+' : ''}${currentProfitPct.toFixed(2)}%`;
 
-                let barWidth = (currentProfitPct / 0.8) * 100;
+                let barWidth = (currentProfitPct / 0.9) * 100;
                 if (barWidth < 0) barWidth = 0;
                 if (barWidth > 100) barWidth = 100;
                 document.getElementById('telemetryBar').style.width = `${barWidth}%`;
 
                 if (currentProfitPct < 0) {
                     document.getElementById('telemetryPct').style.color = 'var(--alert-red)';
-                } else if (currentProfitPct >= 0.8) {
+                } else if (currentProfitPct >= 0.9) {
                     document.getElementById('telemetryPct').style.color = 'var(--cyber-blue)';
                 } else {
                     document.getElementById('telemetryPct').style.color = 'var(--cyber-gold)';

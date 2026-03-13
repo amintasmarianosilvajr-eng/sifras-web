@@ -83,62 +83,83 @@
     <div class="login-wrapper">
         <div class="logo-box">
             <div class="logo-text">SIFRAS <span class="logo-alfa">ALFA</span></div>
-            <div class="logo-sub">Acesso Restrito ao Painel</div>
+            <div class="logo-sub">Acesso do Cliente</div>
         </div>
+
         <div class="panel">
-            <div class="panel-title"><i class="ph ph-lock-key"></i> Autenticação</div>
+            <div class="panel-title"><i class="ph ph-user"></i> Login Individual</div>
             <div class="input-group">
-                <label>Senha de Acesso</label>
-                <input type="password" id="inputPassword" placeholder="••••••••••" autofocus>
+                <label>E-mail ou Usuário</label>
+                <input type="text" id="inputUsername" placeholder="Seu e-mail ou usuário" autofocus>
+            </div>
+            <div class="input-group">
+                <label>Senha Pessoal</label>
+                <input type="password" id="inputPassword" placeholder="••••••••••">
             </div>
             <button class="btn-login" id="btnLogin" onclick="doLogin()">
-                <i class="ph-fill ph-sign-in"></i> ENTRAR NO PAINEL
+                <i class="ph-fill ph-sign-in"></i> ENTRAR OU CADASTRAR
             </button>
-            <div class="error-msg" id="errorMsg">
-                <i class="ph ph-warning"></i> Senha incorreta. Tente novamente.
+            <div style="text-align: center; margin-top: 10px; color: #555; font-size: 0.8rem;">
+                <i class="ph ph-info"></i> Seu perfil será criado automaticamente no primeiro acesso.
+            </div>
+            <div class="error-msg" id="errorLogin">
+                <i class="ph ph-warning"></i> Credenciais incorretas ou erro no acesso.
+            </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="gateway.html" style="color: #666; font-size: 0.8rem; text-decoration: none;">&larr; Voltar para Segurança</a>
             </div>
         </div>
+
         <div class="footer-note">Sifras Invest &copy; 2025 — Operações Algorítmicas</div>
     </div>
     <script>
-        document.getElementById('inputPassword').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') doLogin();
-        });
+        document.getElementById('inputPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+        document.getElementById('inputUsername').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('inputPassword').focus(); });
+
         window.onload = async () => {
+            // Verifica se passou pelo gateway
+            if (!sessionStorage.getItem('gatewayOk')) {
+                window.location.href = 'gateway.html';
+                return;
+            }
+
             const token = localStorage.getItem('sifrasToken');
             if (token) {
                 try {
                     const res = await fetch('/status', { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.ok) { window.location.href = '/'; return; }
+                    if (res.ok) { window.location.href = '/dashboard.html'; return; }
                 } catch (e) {}
                 localStorage.removeItem('sifrasToken');
             }
         };
+
         async function doLogin() {
+            const username = document.getElementById('inputUsername').value;
             const password = document.getElementById('inputPassword').value;
             const btn = document.getElementById('btnLogin');
-            const errorMsg = document.getElementById('errorMsg');
-            if (!password) return;
+            const errorMsg = document.getElementById('errorLogin');
+            if (!username || !password) return;
+
             btn.disabled = true;
             btn.innerHTML = '<i class="ph ph-circle-notch"></i> Verificando...';
             errorMsg.classList.remove('show');
+
             try {
                 const res = await fetch('/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
+                    body: JSON.stringify({ username, password })
                 });
                 const data = await res.json();
                 if (res.ok && data.token) {
                     localStorage.setItem('sifrasToken', data.token);
-                    window.location.href = '/';
+                    localStorage.setItem('sifrasUser', data.username);
+                    window.location.href = '/dashboard.html';
                 } else {
                     errorMsg.classList.add('show');
-                    document.getElementById('inputPassword').value = '';
-                    document.getElementById('inputPassword').focus();
                 }
             } catch (e) {
-                errorMsg.innerHTML = '<i class="ph ph-warning"></i> Erro de conexão com o servidor.';
+                errorMsg.innerHTML = 'Erro de conexão com o servidor.';
                 errorMsg.classList.add('show');
             }
             btn.disabled = false;

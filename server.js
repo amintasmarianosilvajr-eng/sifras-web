@@ -59,7 +59,10 @@ async function binanceFetchBalance(username) {
 }
 
 function loadUserState(username) {
-    const state = createInitialState(username);
+    let state = userStates.get(username);
+    const isNew = !state;
+    if (isNew) state = createInitialState(username);
+    
     const userFile = path.join(DATA_DIR, `trade_${username}.json`);
     
     // MIGRATION: Se não existe minúsculo, procura por qualquer versão case-insensitive
@@ -76,13 +79,19 @@ function loadUserState(username) {
     if (fs.existsSync(userFile)) {
         try {
             const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+            // Removemos logs do overwrite para não duplicar se já houver em memória
+            const incomingLogs = data.logs || [];
+            delete data.logs; 
             Object.assign(state, data);
+            if (state.logs.length === 0) state.logs = incomingLogs;
+            
             console.log(`[USER] Estado carregado para ${username}. Status: ${state.status} | Loop: ${state.isLoopActive}`);
         } catch (e) {}
     }
     if (!Array.isArray(state.lastTradedCoins)) state.lastTradedCoins = [];
     if (!Array.isArray(state.logs)) state.logs = [];
-    userStates.set(username, state);
+    
+    if (isNew) userStates.set(username, state);
     return state;
 }
 

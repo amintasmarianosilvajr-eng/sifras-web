@@ -394,30 +394,39 @@ app.post('/start', requireAuth, async (req, res) => {
     
     // TESTE DE CONEXÃO IMEDIATO COM TIME SYNC
     const timestamp = Date.now() + binanceTimeOffset;
-    const queryString = `timestamp=${timestamp}&recvWindow=10000`;
+    const queryString = `timestamp=${timestamp}&recvWindow=60000`; // Janela máxima
     const sig = crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
     
     try {
         const test = await axios.get(`https://api.binance.com/api/v3/account?${queryString}&signature=${sig}`, {
-            headers: { 'X-MBX-APIKEY': apiKey }, timeout: 8000
+            headers: { 'X-MBX-APIKEY': apiKey }, timeout: 10000
         });
         
-        if (test.data.canTrade) {
-            Object.assign(req.state, { clientName, apiKey, apiSecret, buyPercentage: parseFloat(buyPercentage) || 0.99, isLoopActive: true, status: 'SCANNING' });
-            addLog(req.username, `Conectado com Sucesso: ${clientName}. Próxima Varredura em 3s.`, 'info');
+        if (test.data && test.data.canTrade !== undefined) {
+            Object.assign(req.state, { 
+                clientName, apiKey, apiSecret, 
+                buyPercentage: parseFloat(buyPercentage) || 0.99, 
+                isLoopActive: true, status: 'SCANNING',
+                opsCount: req.state.opsCount || 0,
+                pauseUntil: null
+            });
+            addLog(req.username, `✅ Conectado com Sucesso! Radar Elite Ativo.`, 'info');
             saveUserState(req.username);
             return res.json({ success: true });
-        } else {
-            return res.status(400).json({ error: "Sua conta Binance não tem permissão para operar Spot. Verifique os controles da API." });
         }
     } catch (e) {
         let errMsg = e.response?.data?.msg || "Erro de Conexão: O servidor da Binance não respondeu.";
         
-        // Tratar erros comuns de IP e Permissão
-        if (e.response?.status === 403) errMsg = "ACESSO NEGADO: Verifique se o IP da Railway está na sua Whitelist da Binance.";
-        if (e.response?.status === 401) errMsg = "CHAVES INVÁLIDAS: Verifique se copiou a API Key e Secret corretamente.";
+        // Logs de suporte
+        if (e.response?.status === 403) {
+            errMsg = "🔒 BINANCE BLOQUEOU O IP: O servidor da Railway não consegue falar com a Binance. Tente usar o robô exe (desktop) ou mude a região do servidor.";
+        } else if (e.response?.status === 401) {
+            errMsg = "❌ CHAVES INCORRETAS: Verifique se a API Key e o Secret estão corretos.";
+        } else if (e.code === 'ECONNABORTED') {
+            errMsg = "⌛ TIMEOUT: A conexão com a Binance demorou demais. Tente novamente.";
+        }
         
-        console.error(`[START ERROR] User: ${req.username}:`, e.response?.data || e.message);
+        console.error(`[CONNECTION TEST FAILED] ${req.username}:`, e.response?.data || e.message);
         addLog(req.username, `Falha no Start: ${errMsg}`, 'error');
         return res.status(400).json({ error: errMsg });
     }

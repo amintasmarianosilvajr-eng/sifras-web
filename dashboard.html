@@ -479,16 +479,19 @@
             badge.style.borderColor = statusColor;
 
             const pivotInfo = state.dashboardData?.pivotInfo;
-            if (pivotInfo) {
-                document.getElementById('valPivot').innerText = pivotInfo.pivot;
+            if (pivotInfo && pivotInfo.t2) {
+                document.getElementById('valPivot').innerText = pivotInfo.pivot || 'Aguardando...';
                 document.getElementById('valDistances').innerHTML = `
                     <span style="color:var(--cyber-blue)">${pivotInfo.t2}:</span> ${pivotInfo.d2}% | 
                     <span style="color:var(--alert-red)">${pivotInfo.t6}:</span> ${pivotInfo.d6}%
                 `;
+            } else {
+                document.getElementById('valPivot').innerText = 'Aguardando...';
+                document.getElementById('valDistances').innerText = 'D2: --- | D6: ---';
             }
 
-            document.getElementById('valOpsCount').innerText = `${state.opsCount} / 5`;
-            document.getElementById('valCooldown').innerText = `${state.lastTradedCoins.length} Moedas Bloqueadas (Regra 10)`;
+            document.getElementById('valOpsCount').innerText = `${state.opsCount || 0} / 5`;
+            document.getElementById('valCooldown').innerText = state.status === 'PAUSED' ? 'Em Pausa de Ciclo' : `${(state.lastTradedCoins || []).length} Moedas Bloqueadas`;
 
             if (state.activeSymbol && state.status === 'IN_TRADE') {
                 const buyP = state.buyPrice ? state.buyPrice.toFixed(6) : '0.000000';

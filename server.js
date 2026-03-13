@@ -224,8 +224,8 @@ async function runFluxoAlfaScanner(username) {
     // Logs de Varredura (Detalhados conforme pedido)
     // Throttling do log de "Aguardando" para uma vez a cada 15 segundos aproximadamente
     if (!state._lastLogTime || Date.now() - state._lastLogTime > 15000) {
-        addLog(username, `🔍 Varredura: Pivô (4ª) ${rank4.symbol} (${rank4.vol24h}%). Rastreando Alvos...`, 'info');
-        addLog(username, `📏 Proximidades: D2 (${rank2.symbol}): ${d2.toFixed(2)}% | D6 (${rank6.symbol}): ${d6.toFixed(2)}%`, 'info');
+        addLog(username, `🔍 VARREDURA: Pivô (4ª) ${rank4.symbol} [${rank4.vol24h.toFixed(2)}%]`, 'info');
+        addLog(username, `📏 DISTÂNCIAS: D2 (${rank2.symbol}): ${d2.toFixed(2)}% | D6 (${rank6.symbol}): ${d6.toFixed(2)}%`, 'info');
         state._lastLogTime = Date.now();
     }
 
@@ -234,13 +234,13 @@ async function runFluxoAlfaScanner(username) {
 
     if (d2 < LIMIT && d6 < LIMIT) {
         target = (d2 <= d6) ? rank2 : rank6;
-        addLog(username, `⚖️ Critério de Desempate: Ambos em 20%. Selecionado ${target.symbol} por maior proximidade.`, 'trigger');
+        addLog(username, `⚖️ DESEMPATE ELITE: ${rank2.symbol} vs ${rank6.symbol}. Selecionado ${target.symbol} (Menor D).`, 'trigger');
     } else if (d2 < LIMIT) {
         target = rank2;
-        addLog(username, `🎯 Alvo Validado: ${target.symbol} em aproximação com o pivô.`, 'trigger');
+        addLog(username, `🎯 ALVO IDENTIFICADO: ${target.symbol} (Proximidade D2: ${d2.toFixed(2)}%)`, 'trigger');
     } else if (d6 < LIMIT) {
         target = rank6;
-        addLog(username, `🎯 Alvo Validado: ${target.symbol} em aproximação com o pivô.`, 'trigger');
+        addLog(username, `🎯 ALVO IDENTIFICADO: ${target.symbol} (Proximidade D6: ${d6.toFixed(2)}%)`, 'trigger');
     }
 
     if (!target) return;
@@ -394,7 +394,15 @@ async function executeRealSell(username, symbol, reason) {
     state.lastTradedCoins.push(symbol);
     if (state.lastTradedCoins.length > 10) state.lastTradedCoins.shift();
     state.opsCount++;
-    addLog(username, `✅ SUCESSO: ${symbol} Vendido.`, 'card-sell');
+    
+    // ATIVAR SUPER CARD NO MEIO DA TELA
+    state.dashboardData.triggerProfitAnim = true;
+    setTimeout(() => {
+        const s = userStates.get(username);
+        if (s) s.dashboardData.triggerProfitAnim = false;
+    }, 5000);
+
+    addLog(username, `💰✅ SUCESSO ABSOLUTO: ${symbol} Vendido com +${profit}% de Lucro!`, 'card-sell');
     saveUserState(username);
     resetTradeState(username);
 }

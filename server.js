@@ -56,8 +56,7 @@ function loadUserState(username) {
         try {
             const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
             Object.assign(state, data);
-            state.status = 'OFFLINE';
-            state.isLoopActive = false;
+            console.log(`[USER] Estado carregado para ${username}. Status: ${state.status} | Loop: ${state.isLoopActive}`);
         } catch (e) {}
     }
     if (!Array.isArray(state.lastTradedCoins)) state.lastTradedCoins = [];
@@ -72,7 +71,9 @@ function saveUserState(username) {
     fs.writeFileSync(userFile, JSON.stringify({ 
         clientName: state.clientName, history: state.history, opsCount: state.opsCount, 
         apiKey: state.apiKey, apiSecret: state.apiSecret, 
-        buyPercentage: state.buyPercentage, lastTradedCoins: state.lastTradedCoins 
+        buyPercentage: state.buyPercentage, lastTradedCoins: state.lastTradedCoins,
+        status: state.status, isLoopActive: state.isLoopActive,
+        pauseUntil: state.pauseUntil
     }, null, 2));
 }
 

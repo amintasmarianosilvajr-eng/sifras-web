@@ -550,7 +550,39 @@ app.get('/painel_alfa', (req, res) => {
 });
 
 app.get('/admin/overview', async (req, res) => {
-    // ... (mesmo código anterior)
+    const auth = req.headers['authorization'];
+    if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
+        return res.status(401).json({ error: 'Não autorizado' });
+    }
+
+    const overview = [];
+    for (const [username, state] of userStates.entries()) {
+        overview.push({
+            username,
+            status: state.status,
+            activeSymbol: state.activeSymbol || '---',
+            balanceUSDT: state.balanceUSDT || 0,
+            buyAmountUSDT: state.buyQty * state.buyPrice || 0,
+            totalProfit: state.history.reduce((sum, h) => sum + (h.profitPct || 0), 0),
+            currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? 'Em Trade (Alvo 0.9%)' : 'Aguardando Start')
+        });
+    }
+    res.json(overview);
+});
+
+app.post('/admin/stop-all', async (req, res) => {
+    const auth = req.headers['authorization'];
+    if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
+        return res.status(401).json({ error: 'Não autorizado' });
+    }
+
+    for (const [username, state] of userStates.entries()) {
+        state.isLoopActive = false;
+        state.status = 'OFFLINE';
+        addLog(username, "🚨 EMERGÊNCIA: Todos os robôs desligados via Stop Global.", 'error');
+        saveUserState(username);
+    }
+    res.json({ success: true, count: userStates.size });
 });
 
 app.post('/admin/stop-user', async (req, res) => {

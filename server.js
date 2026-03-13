@@ -492,6 +492,7 @@ app.get('/admin/overview', async (req, res) => {
             username,
             status: state.status,
             activeSymbol: state.activeSymbol || '---',
+            balanceUSDT: state.balanceUSDT || 0,
             buyAmountUSDT: state.buyQty * state.buyPrice || 0,
             totalProfit: state.history.reduce((sum, h) => sum + h.profitPct, 0),
             currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? 'Em Trade (Alvo 0.9%)' : 'Aguardando Start')

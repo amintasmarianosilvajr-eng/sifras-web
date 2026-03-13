@@ -192,13 +192,14 @@
                     <th>STATUS MÁQUINA</th>
                     <th>ETAPA REAL-TIME</th>
                     <th>ATIVO</th>
-                    <th>VALOR ($)</th>
+                    <th>VALOR OPERAÇÃO ($)</th>
+                    <th>SALDO CONTA (USDT)</th>
                     <th>LUCRO ACUM.</th>
                 </tr>
             </thead>
             <tbody id="adminTableBody">
                 <tr>
-                    <td colspan="6" style="text-align: center; color: #666; padding: 40px;">Buscando dados da rede...</td>
+                    <td colspan="7" style="text-align: center; color: #666; padding: 40px;">Buscando dados da rede...</td>
                 </tr>
             </tbody>
         </table>
@@ -239,7 +240,7 @@
     function renderTable(data) {
         const body = document.getElementById('adminTableBody');
         if (data.length === 0) {
-            body.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666; padding: 40px;">Nenhum cliente conectado no momento.</td></tr>';
+            body.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666; padding: 40px;">Nenhum cliente conectado no momento.</td></tr>';
             return;
         }
 
@@ -250,6 +251,7 @@
                 <td><span class="step-text">${u.currentStep}</span></td>
                 <td class="orbitron" style="color:var(--cyber-blue)">${u.activeSymbol || '---'}</td>
                 <td class="amount-text">$ ${u.buyAmountUSDT.toFixed(2)}</td>
+                <td class="amount-text" style="color:var(--cyber-blue)">$ ${u.balanceUSDT.toFixed(2)}</td>
                 <td class="profit-text">${u.totalProfit.toFixed(2)}%</td>
             </tr>
         `).join('');

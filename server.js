@@ -221,22 +221,51 @@ async function runFluxoAlfaScanner(username) {
 
     state.dashboardData.pivotInfo = { pivot: rank4.symbol, d2: d2.toFixed(2), d6: d6.toFixed(2), t2: rank2.symbol, t6: rank6.symbol };
 
+    // Logs de Varredura (Detalhados conforme pedido)
+    // Throttling do log de "Aguardando" para uma vez a cada 15 segundos aproximadamente
+    if (!state._lastLogTime || Date.now() - state._lastLogTime > 15000) {
+        addLog(username, `🔍 Varredura: Pivô (4ª) ${rank4.symbol} (${rank4.vol24h}%). Rastreando Alvos...`, 'info');
+        addLog(username, `📏 Proximidades: D2 (${rank2.symbol}): ${d2.toFixed(2)}% | D6 (${rank6.symbol}): ${d6.toFixed(2)}%`, 'info');
+        state._lastLogTime = Date.now();
+    }
+
     let target = null;
     const LIMIT = 20.0;
 
     if (d2 < LIMIT && d6 < LIMIT) {
         target = (d2 <= d6) ? rank2 : rank6;
+        addLog(username, `⚖️ Critério de Desempate: Ambos em 20%. Selecionado ${target.symbol} por maior proximidade.`, 'trigger');
     } else if (d2 < LIMIT) {
         target = rank2;
+        addLog(username, `🎯 Alvo Validado: ${target.symbol} em aproximação com o pivô.`, 'trigger');
     } else if (d6 < LIMIT) {
         target = rank6;
+        addLog(username, `🎯 Alvo Validado: ${target.symbol} em aproximação com o pivô.`, 'trigger');
     }
 
     if (!target) return;
-    if (state.lastTradedCoins.includes(target.symbol)) return;
+
+    // Filtro de Repetição
+    if (state.lastTradedCoins.includes(target.symbol)) {
+        if (!state._lastRepLog || state._lastRepLog !== target.symbol) {
+            addLog(username, `🛡️ Filtro: ${target.symbol} ignorado (Regra das 10 Operações).`, 'warn');
+            state._lastRepLog = target.symbol;
+        }
+        return;
+    }
 
     const jump = globalMarket.coinJumps[target.symbol] || 0;
-    if (Math.abs(jump) < 0.2) return;
+    if (Math.abs(jump) < 0.2) {
+        if (!state._lastVolLog || state._lastVolLog !== target.symbol) {
+             addLog(username, `📉 Aguardando Volatilidade em ${target.symbol}: Atual ${jump.toFixed(2)}% (Mínimo 0.2%)`, 'info');
+             state._lastVolLog = target.symbol;
+        }
+        return;
+    }
+
+    // Reset logs repetitivos ao encontrar gatilho real
+    state._lastVolLog = null;
+    state._lastRepLog = null;
 
     // Lógica de Ciclo (5 ops e pausa)
     if (state.opsCount >= 5 && state.isLoopActive) {

@@ -596,32 +596,44 @@
                 return;
             }
 
-            // Log local para feedback imediato
             const terminal = document.getElementById('terminalLogs');
             const time = new Date().toLocaleTimeString();
-            terminal.innerHTML = `<div class="log-entry log-info"><span class="log-time">[${time}]</span> Tentando conectar com a Binance...</div>` + terminal.innerHTML;
+            terminal.innerHTML = `<div class="log-entry log-info"><span class="log-time">[${time}]</span> Enviando solicitação para o servidor...</div>` + terminal.innerHTML;
 
             localStorage.setItem('sifrasClientName', clientName);
             localStorage.setItem('sifrasApiKey', apiKey);
             localStorage.setItem('sifrasApiSecret', apiSecret);
 
             try {
+                // Controller para timeout manual do fetch
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+
                 const res = await authFetch(`${API_URL}/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientName, apiKey, apiSecret, isLoop, buyPercentage: selectedBuyRatio })
+                    body: JSON.stringify({ clientName, apiKey, apiSecret, isLoop, buyPercentage: selectedBuyRatio }),
+                    signal: controller.signal
                 });
                 
-                if (!res.ok) {
+                clearTimeout(timeoutId);
+
+                if (res.ok) {
+                    terminal.innerHTML = `<div class="log-entry log-sell"><span class="log-time">[${time}]</span> CONEXÃO ESTABELECIDA! Aguardando radar...</div>` + terminal.innerHTML;
+                } else {
                     const data = await res.json();
                     const errMsg = data.error || 'Erro desconhecido na API';
-                    alert(`ERRO AO CONECTAR: ${errMsg}`);
-                    terminal.innerHTML = `<div class="log-entry log-error"><span class="log-time">[${time}]</span> FALHA: ${errMsg}</div>` + terminal.innerHTML;
+                    alert(`ERRO NA CONEXÃO: ${errMsg}`);
+                    terminal.innerHTML = `<div class="log-entry log-error"><span class="log-time">[${time}]</span> NEGADO PELA BINANCE: ${errMsg}</div>` + terminal.innerHTML;
                 }
             } catch (e) {
-                console.error(e);
-                alert(`ERRO DE REDE: Não foi possível alcançar o servidor. Verifique sua internet.`);
-                terminal.innerHTML = `<div class="log-entry log-error"><span class="log-time">[${time}]</span> ERRO TÉCNICO: ${e.message}</div>` + terminal.innerHTML;
+                if (e.name === 'AbortError') {
+                    alert("TIMEOUT: O servidor demorou demais para responder. Provável bloqueio de IP da Binance no servidor.");
+                    terminal.innerHTML = `<div class="log-entry log-error"><span class="log-time">[${time}]</span> ERRO: Timeout na comunicação (Servidor Lento/Bloqueado).</div>` + terminal.innerHTML;
+                } else {
+                    alert(`ERRO DE REDE: ${e.message}`);
+                    terminal.innerHTML = `<div class="log-entry log-error"><span class="log-time">[${time}]</span> ERRO TÉCNICO: ${e.message}</div>` + terminal.innerHTML;
+                }
             }
         }
 

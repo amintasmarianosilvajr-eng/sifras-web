@@ -453,28 +453,38 @@
         }
 
         function updateUI(state) {
-            const badge = document.getElementById('sysStatusBadge');
-            if (state.status === 'OFFLINE') {
-                badge.innerHTML = `<i class="ph-fill ph-circle" style="color: #666;"></i> OFFLINE`;
-                badge.style.borderColor = 'rgba(255,255,255,0.1)';
-            } else if (state.status === 'SCANNING') {
-                badge.innerHTML = `<i class="ph-fill ph-circle blink" style="color: var(--cyber-green); text-shadow: 0 0 10px var(--cyber-green);"></i> CONECTADO (BUSCANDO)`;
-                badge.style.borderColor = 'var(--cyber-green)';
-            } else if (state.status === 'VALIDATING_VOL') {
-                badge.innerHTML = `<i class="ph-fill ph-circle blink" style="color: var(--cyber-gold); text-shadow: 0 0 10px var(--cyber-gold);"></i> VALIDAÇÃO 10s`;
-                badge.style.borderColor = 'var(--cyber-gold)';
+            let statusText = state.status;
+            let statusColor = '#666';
+            let isBlinking = false;
+
+            if (state.status === 'SCANNING') {
+                statusText = 'CONECTADO (BUSCANDO)';
+                statusColor = 'var(--cyber-green)';
+                isBlinking = true;
             } else if (state.status === 'IN_TRADE') {
-                badge.innerHTML = `<i class="ph-fill ph-circle blink" style="color: var(--cyber-green); text-shadow: 0 0 10px var(--cyber-green);"></i> COMPRADO`;
-                badge.style.borderColor = 'var(--cyber-green)';
+                statusText = 'COMPRADO (ALVO 0.9%)';
+                statusColor = 'var(--cyber-green)';
+                isBlinking = true;
             } else if (state.status === 'PAUSED') {
-                badge.innerHTML = `<i class="ph-fill ph-circle blink" style="color: #ff9900;"></i> PAUSA 20 MIN`;
-                badge.style.borderColor = '#ff9900';
+                const remaining = Math.max(0, Math.ceil((state.pauseUntil - Date.now()) / 60000));
+                statusText = `PAUSA CICLO (${remaining} MIN)`;
+                statusColor = '#ff9900';
+                isBlinking = true;
+            } else if (state.status === 'OFFLINE') {
+                statusText = 'OFFLINE';
+                statusColor = '#666';
             }
+
+            badge.innerHTML = `<i class="ph-fill ph-circle ${isBlinking ? 'blink' : ''}" style="color: ${statusColor}; text-shadow: 0 0 10px ${statusColor};"></i> ${statusText}`;
+            badge.style.borderColor = statusColor;
 
             const pivotInfo = state.dashboardData?.pivotInfo;
             if (pivotInfo) {
                 document.getElementById('valPivot').innerText = pivotInfo.pivot;
-                document.getElementById('valDistances').innerText = `${pivotInfo.t2}: ${pivotInfo.d2}% | ${pivotInfo.t6}: ${pivotInfo.d6}%`;
+                document.getElementById('valDistances').innerHTML = `
+                    <span style="color:var(--cyber-blue)">${pivotInfo.t2}:</span> ${pivotInfo.d2}% | 
+                    <span style="color:var(--alert-red)">${pivotInfo.t6}:</span> ${pivotInfo.d6}%
+                `;
             }
 
             document.getElementById('valOpsCount').innerText = `${state.opsCount} / 5`;

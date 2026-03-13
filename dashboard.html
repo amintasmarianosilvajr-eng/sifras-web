@@ -596,19 +596,32 @@
                 return;
             }
 
+            // Log local para feedback imediato
+            const terminal = document.getElementById('terminalLogs');
+            const time = new Date().toLocaleTimeString();
+            terminal.innerHTML = `<div class="log-entry log-info"><span class="log-time">[${time}]</span> Tentando conectar com a Binance...</div>` + terminal.innerHTML;
+
             localStorage.setItem('sifrasClientName', clientName);
             localStorage.setItem('sifrasApiKey', apiKey);
             localStorage.setItem('sifrasApiSecret', apiSecret);
 
-            const res = await authFetch(`${API_URL}/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientName, apiKey, apiSecret, isLoop, buyPercentage: selectedBuyRatio })
-            });
-            
-            if (!res.ok) {
-                const data = await res.json();
-                alert(`ERRO AO INICIAR: ${data.error || 'Erro desconhecido'}`);
+            try {
+                const res = await authFetch(`${API_URL}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientName, apiKey, apiSecret, isLoop, buyPercentage: selectedBuyRatio })
+                });
+                
+                if (!res.ok) {
+                    const data = await res.json();
+                    const errMsg = data.error || 'Erro desconhecido na API';
+                    alert(`ERRO AO CONECTAR: ${errMsg}`);
+                    terminal.innerHTML = `<div class="log-entry log-error"><span class="log-time">[${time}]</span> FALHA: ${errMsg}</div>` + terminal.innerHTML;
+                }
+            } catch (e) {
+                console.error(e);
+                alert(`ERRO DE REDE: Não foi possível alcançar o servidor. Verifique sua internet.`);
+                terminal.innerHTML = `<div class="log-entry log-error"><span class="log-time">[${time}]</span> ERRO TÉCNICO: ${e.message}</div>` + terminal.innerHTML;
             }
         }
 

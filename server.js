@@ -94,7 +94,10 @@ async function syncBinanceTime() {
     try {
         const res = await axios.get('https://api.binance.com/api/v3/time');
         binanceTimeOffset = res.data.serverTime - Date.now();
-        console.log(`[SYSTEM] Horário Sincronizado. Offset: ${binanceTimeOffset}ms`);
+        
+        // Descobrir IP do Servidor para o usuário
+        const ipRes = await axios.get('https://api.ipify.org?format=json').catch(() => ({ data: { ip: 'N/A' } }));
+        console.log(`[SYSTEM] Horário Sincronizado. Offset: ${binanceTimeOffset}ms | IP Servidor: ${ipRes.data.ip}`);
     } catch (e) {
         console.error("Erro ao sincronizar horário:", e.message);
     }

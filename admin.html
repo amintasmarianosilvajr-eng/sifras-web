@@ -195,11 +195,12 @@
                     <th>VALOR OPERAÇÃO ($)</th>
                     <th>SALDO CONTA (USDT)</th>
                     <th>LUCRO ACUM.</th>
+                    <th>AÇÕES</th>
                 </tr>
             </thead>
             <tbody id="adminTableBody">
                 <tr>
-                    <td colspan="7" style="text-align: center; color: #666; padding: 40px;">Buscando dados da rede...</td>
+                    <td colspan="8" style="text-align: center; color: #666; padding: 40px;">Buscando dados da rede...</td>
                 </tr>
             </tbody>
         </table>
@@ -208,6 +209,28 @@
 
 <script>
     const ACCESS_KEY = 'alfa777'; // Usando a chave global para autenticação simples
+
+    async function stopUser(targetUser) {
+        if (!confirm(`Tem certeza que deseja interromper o robô do usuário ${targetUser}?`)) return;
+        try {
+            const res = await fetch('/admin/stop-user', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${ACCESS_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ targetUser })
+            });
+            if (res.ok) {
+                alert(`Robô de ${targetUser} interrompido com sucesso.`);
+                updateOverview();
+            } else {
+                alert('Erro ao interromper robô.');
+            }
+        } catch (e) {
+            alert('Falha na comunicação.');
+        }
+    }
 
     async function updateOverview() {
         try {
@@ -240,7 +263,7 @@
     function renderTable(data) {
         const body = document.getElementById('adminTableBody');
         if (data.length === 0) {
-            body.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666; padding: 40px;">Nenhum cliente conectado no momento.</td></tr>';
+            body.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666; padding: 40px;">Nenhum cliente conectado no momento.</td></tr>';
             return;
         }
 
@@ -253,6 +276,11 @@
                 <td class="amount-text">$ ${u.buyAmountUSDT.toFixed(2)}</td>
                 <td class="amount-text" style="color:var(--cyber-blue)">$ ${u.balanceUSDT.toFixed(2)}</td>
                 <td class="profit-text">${u.totalProfit.toFixed(2)}%</td>
+                <td>
+                    <button onclick="stopUser('${u.username}')" style="background:rgba(255,51,102,0.1); border:1px solid var(--alert-red); color:var(--alert-red); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                        STOP
+                    </button>
+                </td>
             </tr>
         `).join('');
     }

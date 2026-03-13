@@ -518,24 +518,25 @@ app.get('/painel_alfa', (req, res) => {
 });
 
 app.get('/admin/overview', async (req, res) => {
+    // ... (mesmo código anterior)
+});
+
+app.post('/admin/stop-user', async (req, res) => {
     const auth = req.headers['authorization'];
     if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
         return res.status(401).json({ error: 'Não autorizado' });
     }
 
-    const overview = [];
-    for (const [username, state] of userStates.entries()) {
-        overview.push({
-            username,
-            status: state.status,
-            activeSymbol: state.activeSymbol || '---',
-            balanceUSDT: state.balanceUSDT || 0,
-            buyAmountUSDT: state.buyQty * state.buyPrice || 0,
-            totalProfit: state.history.reduce((sum, h) => sum + h.profitPct, 0),
-            currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? 'Em Trade (Alvo 0.9%)' : 'Aguardando Start')
-        });
+    const { targetUser } = req.body;
+    const state = userStates.get(targetUser);
+    if (state) {
+        state.isLoopActive = false;
+        state.status = 'OFFLINE';
+        addLog(targetUser, "🛑 INTERRUPÇÃO ADMINISTRATIVA: Robô desligado via Painel Admin.", 'warn');
+        saveUserState(targetUser);
+        return res.json({ success: true });
     }
-    res.json(overview);
+    res.status(404).json({ error: 'Usuário não encontrado' });
 });
 
 const PORT = process.env.PORT || 3014;

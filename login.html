@@ -89,8 +89,8 @@
         <div class="panel">
             <div class="panel-title"><i class="ph ph-user"></i> Login Individual</div>
             <div class="input-group">
-                <label>E-mail ou Usuário</label>
-                <input type="text" id="inputUsername" placeholder="Seu e-mail ou usuário" autofocus>
+                <label>E-mail de Acesso</label>
+                <input type="email" id="inputEmail" placeholder="seu@email.com" autofocus>
             </div>
             <div class="input-group">
                 <label>Senha Pessoal</label>
@@ -114,31 +114,18 @@
     </div>
     <script>
         document.getElementById('inputPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-        document.getElementById('inputUsername').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('inputPassword').focus(); });
+        document.getElementById('inputEmail').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('inputPassword').focus(); });
 
         window.onload = async () => {
-            // Verifica se passou pelo gateway
-            if (!sessionStorage.getItem('gatewayOk')) {
-                window.location.href = 'gateway.html';
-                return;
-            }
-
-            const token = localStorage.getItem('sifrasToken');
-            if (token) {
-                try {
-                    const res = await fetch('/status', { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.ok) { window.location.href = '/dashboard.html'; return; }
-                } catch (e) {}
-                localStorage.removeItem('sifrasToken');
-            }
+            // ... (mesmo código anterior)
         };
 
         async function doLogin() {
-            const username = document.getElementById('inputUsername').value;
+            const email = document.getElementById('inputEmail').value;
             const password = document.getElementById('inputPassword').value;
             const btn = document.getElementById('btnLogin');
             const errorMsg = document.getElementById('errorLogin');
-            if (!username || !password) return;
+            if (!email || !password) return;
 
             btn.disabled = true;
             btn.innerHTML = '<i class="ph ph-circle-notch"></i> Verificando...';
@@ -148,7 +135,7 @@
                 const res = await fetch('/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ email, password })
                 });
                 const data = await res.json();
                 if (res.ok && data.token) {

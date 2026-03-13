@@ -453,9 +453,9 @@ app.post('/gateway', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-    let { username, password } = req.body;
-    if (!username) return res.status(400).json({ error: 'Username necessário' });
-    username = username.trim().toLowerCase();
+    let { email, password } = req.body;
+    if (!email) return res.status(400).json({ error: 'E-mail necessário' });
+    const username = email.trim().toLowerCase(); // Usamos o e-mail como ID único (username) interna
 
     // 1. Verificar Credenciais
     if (!usersDB[username]) { usersDB[username] = { password }; saveUsersDB(); }

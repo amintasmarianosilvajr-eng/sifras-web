@@ -210,6 +210,31 @@
 <script>
     const ACCESS_KEY = 'alfa777'; // Usando a chave global para autenticação simples
 
+    async function stopAll() {
+        if (!confirm('⚠️ ALERTA: Deseja interromper TODOS os robôs operando agora? Isso parará inclusive robôs legítimos e órfãos.')) return;
+        const btn = document.getElementById('btnStopAll');
+        btn.disabled = true;
+        btn.innerText = 'PARANDO...';
+        try {
+            const res = await fetch('/admin/stop-all', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                alert(`Sucesso! ${data.count} robôs foram desligados.`);
+                updateOverview();
+            } else {
+                alert('Erro ao tentar parar todos.');
+            }
+        } catch (e) {
+            alert('Falha na conexão com o servidor.');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'PARAR TODOS (EMERGÊNCIA)';
+        }
+    }
+
     async function stopUser(targetUser) {
         if (!confirm(`Tem certeza que deseja interromper o robô do usuário ${targetUser}?`)) return;
         try {

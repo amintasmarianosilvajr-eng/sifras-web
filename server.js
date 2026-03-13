@@ -97,7 +97,8 @@ async function syncBinanceTime() {
         
         // Descobrir IP do Servidor para o usuário
         const ipRes = await axios.get('https://api.ipify.org?format=json').catch(() => ({ data: { ip: 'N/A' } }));
-        console.log(`[SYSTEM] Horário Sincronizado. Offset: ${binanceTimeOffset}ms | IP Servidor: ${ipRes.data.ip}`);
+        globalMarket.serverIp = ipRes.data.ip;
+        console.log(`[SYSTEM] Horário Sincronizado. Offset: ${binanceTimeOffset}ms | IP Servidor: ${globalMarket.serverIp}`);
     } catch (e) {
         console.error("Erro ao sincronizar horário:", e.message);
     }
@@ -187,8 +188,10 @@ setInterval(async () => {
                 await runFluxoAlfaScanner(username);
             }
         }
-    } catch (e) {}
-}, 3000);
+        } catch (e) {
+            console.error("[MARKET ERROR] Falha ao buscar ranking Binance:", e.message);
+        }
+    }, 3000);
 
 async function runFluxoAlfaScanner(username) {
     const state = userStates.get(username);
@@ -390,7 +393,13 @@ function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Auth' });
 }
 
-app.get('/status', requireAuth, (req, res) => res.json(req.state));
+app.get('/status', requireAuth, async (req, res) => {
+    const data = { ...req.state };
+    // Adicionar info de diagnóstico
+    data.serverIp = globalMarket.serverIp || 'N/A';
+    data.binanceClockOk = Math.abs(binanceTimeOffset) < 60000;
+    res.json(data);
+});
 
 app.post('/start', requireAuth, async (req, res) => {
     const { clientName, apiKey, apiSecret, buyPercentage } = req.body;

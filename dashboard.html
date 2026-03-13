@@ -262,6 +262,9 @@
                     <i class="ph-fill ph-circle" style="color: #666;"></i> OFFLINE
                 </div>
                 <div class="status-badge" style="background: rgba(204, 255, 0, 0.05); border-color: var(--cyber-blue);">
+                    <i class="ph ph-wallet" style="color: var(--cyber-blue);"></i> <span id="valBalanceUSDT">$ 0.00</span>
+                </div>
+                <div class="status-badge" style="background: rgba(204, 255, 0, 0.05); border-color: var(--cyber-blue);">
                     <i class="ph ph-user" style="color: var(--cyber-blue);"></i> <span id="userNameLabel">---</span>
                 </div>
                 <button class="btn-logout" onclick="doLogout()">
@@ -504,6 +507,8 @@
                 document.getElementById('valPivot').innerText = 'Aguardando...';
                 document.getElementById('valDistances').innerText = 'D2: --- | D6: ---';
             }
+
+            document.getElementById('valBalanceUSDT').innerText = `$ ${state.balanceUSDT ? state.balanceUSDT.toFixed(2) : '0.00'}`;
 
             document.getElementById('valOpsCount').innerText = `${state.opsCount || 0} / 5`;
             document.getElementById('valCooldown').innerText = state.status === 'PAUSED' ? 'Em Pausa de Ciclo' : `${(state.lastTradedCoins || []).length} Moedas Bloqueadas`;

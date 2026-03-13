@@ -42,11 +42,20 @@ function createInitialState(username) {
     return {
         username, clientName: '', apiKey: '', apiSecret: '', status: 'OFFLINE', opsCount: 0, 
         lastTradedCoins: [], // Para regra de 10 moedas
-        history: [], logs: [],
+        history: [], logs: [], balanceUSDT: 0,
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
         buyPercentage: 0.99, pauseUntil: null
     };
+}
+
+async function binanceFetchBalance(username) {
+    const account = await binanceRequest(username, '/api/v3/account');
+    if (account && account.balances) {
+        const usdt = account.balances.find(b => b.asset === 'USDT');
+        if (usdt) return parseFloat(usdt.free);
+    }
+    return 0;
 }
 
 function loadUserState(username) {
@@ -185,6 +194,11 @@ setInterval(async () => {
         globalMarket.lastUpdate = now;
 
         for (const [username, state] of userStates) {
+            // Atualizar Saldo USDT a cada ~30s (aprox. 10 ciclos de 3s)
+            if (now % 30000 < 3000) {
+                binanceFetchBalance(username).then(bal => state.balanceUSDT = bal);
+            }
+            
             if (state.isLoopActive && state.status === 'SCANNING') {
                 await runFluxoAlfaScanner(username);
             }
@@ -459,6 +473,31 @@ app.post('/panic', requireAuth, async (req, res) => {
     req.state.isLoopActive = false;
     req.state.status = 'OFFLINE';
     res.json({ success: true });
+});
+
+// ROTA ADMIN
+app.get('/painel_alfa', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+app.get('/admin/overview', async (req, res) => {
+    const auth = req.headers['authorization'];
+    if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
+        return res.status(401).json({ error: 'Não autorizado' });
+    }
+
+    const overview = [];
+    for (const [username, state] of userStates.entries()) {
+        overview.push({
+            username,
+            status: state.status,
+            activeSymbol: state.activeSymbol || '---',
+            buyAmountUSDT: state.buyQty * state.buyPrice || 0,
+            totalProfit: state.history.reduce((sum, h) => sum + h.profitPct, 0),
+            currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? 'Em Trade (Alvo 0.9%)' : 'Aguardando Start')
+        });
+    }
+    res.json(overview);
 });
 
 const PORT = process.env.PORT || 3014;

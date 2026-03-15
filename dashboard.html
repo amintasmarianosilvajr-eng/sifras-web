@@ -144,7 +144,7 @@
 
         .central-stage { display: flex; flex-direction: column; gap: 30px; }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 
         .stat-card {
             background: rgba(0, 0, 0, 0.4);
@@ -342,6 +342,14 @@
                         <div style="color: #a0aab5; font-size: 0.85rem;" id="valCooldown">Nenhum Cooldown</div>
                     </div>
 
+                    <div class="stat-card" style="display:flex; flex-direction:column; justify-content:center; border-color: var(--cyber-gold);">
+                        <div class="stat-label">Lucro Realizado (BRL)</div>
+                        <div class="stat-value" id="valRealizedBRL" style="font-size: 1.5rem; margin:5px 0; color: var(--cyber-gold);">R$ 0,00</div>
+                        <div style="color: #a0aab5; font-size: 0.85rem;" id="valProfitPool">
+                            Next BRL: $0.00 / $15.00
+                        </div>
+                    </div>
+
                     <div class="stat-card" style="display:flex; flex-direction:column; justify-content:center;">
                         <div class="stat-label">Trade Ativo</div>
                         <div class="stat-value" id="valActiveTrade" style="font-size: 1.5rem; margin:5px 0;">---</div>
@@ -511,6 +519,8 @@
             }
 
             document.getElementById('valBalanceUSDT').innerText = `$ ${state.balanceUSDT ? state.balanceUSDT.toFixed(2) : '0.00'}`;
+            document.getElementById('valRealizedBRL').innerText = `R$ ${(state.realizedProfitBRL || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('valProfitPool').innerText = `Próximo Alvo: $${(state.profitPoolUSDT || 0).toFixed(2)} / $15.00`;
 
             document.getElementById('valOpsCount').innerText = `${state.opsCount || 0} / 5`;
             document.getElementById('valCooldown').innerText = state.status === 'PAUSED' ? 'Em Pausa de Ciclo' : `${(state.lastTradedCoins || []).length} Moedas Bloqueadas`;

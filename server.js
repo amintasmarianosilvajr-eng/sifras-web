@@ -62,7 +62,8 @@ function createInitialState(username) {
         history: [], logs: [], balanceUSDT: 0,
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
-        buyPercentage: 0.99, pauseUntil: null
+        buyPercentage: 0.99, pauseUntil: null,
+        profitPoolUSDT: 0, realizedProfitBRL: 0 // NOVO: Controle de lucro em BRL
     };
 }
 
@@ -123,7 +124,8 @@ function saveUserState(username) {
         status: state.status, isLoopActive: state.isLoopActive,
         activeSymbol: state.activeSymbol, buyPrice: state.buyPrice, buyQty: state.buyQty, // NOVO: Persistir dados do trade ativo
         targetPrice: state.targetPrice, currentPrice: state.currentPrice,
-        pauseUntil: state.pauseUntil, logs: state.logs.slice(0, 30) // Salva os últimos 30 logs
+        pauseUntil: state.pauseUntil, logs: state.logs.slice(0, 30), // Salva os últimos 30 logs
+        profitPoolUSDT: state.profitPoolUSDT, realizedProfitBRL: state.realizedProfitBRL
     }, null, 2));
 }
 
@@ -510,7 +512,14 @@ async function executeRealSell(username, symbol, reason) {
     state.lastTradedCoins.push(symbol);
     if (state.lastTradedCoins.length > 10) state.lastTradedCoins.shift();
     state.opsCount++;
-    
+
+    // Lógica de Acúmulo para Realização em BRL
+    const tradeProfitUSDT = (state.buyQty * state.currentPrice) - (state.buyQty * state.buyPrice);
+    if (tradeProfitUSDT > 0) {
+        state.profitPoolUSDT += tradeProfitUSDT;
+        addLog(username, `💵 Lucro da operação: +$${tradeProfitUSDT.toFixed(2)}. Acumulado para BRL: $${state.profitPoolUSDT.toFixed(2)} / $15.00`, 'info');
+    }
+
     // ATIVAR SUPER CARD NO MEIO DA TELA
     state.dashboardData.triggerProfitAnim = true;
     setTimeout(() => {
@@ -521,6 +530,51 @@ async function executeRealSell(username, symbol, reason) {
         addLog(username, `💰✅ SUCESSO ABSOLUTO: ${symbol} Vendido com +${profit}% de Lucro!`, 'card-sell');
     saveUserState(username);
     resetTradeState(username);
+
+    // Verificar se atingiu a meta de $15 para converter BRL
+    if (state.profitPoolUSDT >= 15) {
+        realizeProfitToBRL(username);
+    }
+}
+
+async function realizeProfitToBRL(username) {
+    const state = userStates.get(username);
+    if (!state) return;
+
+    addLog(username, `🇧🇷 ALVO ATINGIDO: Convertendo $15.00 de lucro para BRL...`, 'warn');
+
+    try {
+        // Vender 15 USDT pelo par USDTBRL (Compra BRL a mercado)
+        const order = await binanceRequest(username, '/api/v3/order', 'POST', {
+            symbol: 'USDTBRL',
+            side: 'SELL',
+            type: 'MARKET',
+            quoteOrderQty: "15.00"
+        });
+
+        if (order.error) {
+            addLog(username, `Erro na conversão BRL: ${order.msg}`, 'error');
+            return;
+        }
+
+        let brlReceived = 0;
+        if (order.fills?.length > 0) {
+            brlReceived = order.fills.reduce((sum, f) => sum + parseFloat(f.quoteQty), 0);
+        }
+
+        state.realizedProfitBRL += brlReceived;
+        state.profitPoolUSDT -= 15;
+        
+        // Pausa de 10 minutos conforme solicitado
+        state.pauseUntil = Date.now() + 10 * 60000;
+        state.status = 'PAUSED';
+
+        addLog(username, `✅ LUCRO PROTEGIDO: R$ ${brlReceived.toFixed(2)} adicionados à sua carteira. O robô entrará em pausa de 10 minutos.`, 'buy');
+        saveUserState(username);
+
+    } catch (e) {
+        addLog(username, `Erro crítico BRL: ${e.message}`, 'error');
+    }
 }
 
 async function startFluxoAlfa(username) {
@@ -653,6 +707,8 @@ function requireAuth(req, res, next) {
 app.get('/status', requireAuth, async (req, res) => {
     const data = { ...req.state };
     data.profit24h = sum24hProfit(req.state.history);
+    data.profitPoolUSDT = req.state.profitPoolUSDT || 0;
+    data.realizedProfitBRL = req.state.realizedProfitBRL || 0;
     // Adicionar info de diagnóstico
     data.serverIp = globalMarket.serverIp || 'N/A';
     data.binanceClockOk = Math.abs(binanceTimeOffset) < 60000;
@@ -743,6 +799,7 @@ app.get('/admin/overview', async (req, res) => {
             currentPrice: state.currentPrice || 0,
             totalProfit: state.history.reduce((sum, h) => sum + (h.profitPct || 0), 0),
             profit24h: sum24hProfit(state.history),
+            realizedProfitBRL: state.realizedProfitBRL || 0,
             currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? 'Em Trade (Alvo 0.9%)' : 'Aguardando Start')
         });
     }

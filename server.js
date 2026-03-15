@@ -507,17 +507,30 @@ async function executeRealSell(username, symbol, reason) {
         return; 
     }
 
-    const profit = 0.9; // Aproximado para o log e histórico
-    state.history.unshift({ symbol, date: new Date().toLocaleString(), profitPct: profit, type: 'LUCRO ELITE' });
+    let realSellPrice = state.currentPrice;
+    if (order.fills && order.fills.length > 0) {
+        let totalQtyFilled = 0;
+        let totalCost = 0;
+        order.fills.forEach(f => {
+            let p = parseFloat(f.price);
+            let q = parseFloat(f.qty);
+            totalQtyFilled += q;
+            totalCost += (p * q);
+        });
+        if (totalQtyFilled > 0) realSellPrice = totalCost / totalQtyFilled;
+    }
+
+    const profit = ((realSellPrice - state.buyPrice) / state.buyPrice) * 100; // Porcentagem real
+    state.history.unshift({ symbol, date: new Date().toLocaleString(), profitPct: parseFloat(profit.toFixed(2)), type: 'LUCRO ELITE' });
     state.lastTradedCoins.push(symbol);
     if (state.lastTradedCoins.length > 10) state.lastTradedCoins.shift();
     state.opsCount++;
 
-    // Lógica de Acúmulo para Realização em BRL
-    const tradeProfitUSDT = (state.buyQty * state.currentPrice) - (state.buyQty * state.buyPrice);
+    // Lógica de Acúmulo para Realização em BRL (USANDO VALORES REAIS DA BINANCE)
+    const tradeProfitUSDT = (truncatedBalance * realSellPrice) - (truncatedBalance * state.buyPrice);
     if (tradeProfitUSDT > 0) {
         state.profitPoolUSDT += tradeProfitUSDT;
-        addLog(username, `💵 Lucro da operação: +$${tradeProfitUSDT.toFixed(2)}. Acumulado para BRL: $${state.profitPoolUSDT.toFixed(2)} / $15.00`, 'info');
+        addLog(username, `💵 Lucro Real (sobre ${truncatedBalance} moedas): +$${tradeProfitUSDT.toFixed(2)}. Acumulado BRL: $${state.profitPoolUSDT.toFixed(2)} / $15.00`, 'info');
     }
 
     // ATIVAR SUPER CARD NO MEIO DA TELA

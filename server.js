@@ -492,9 +492,66 @@ async function executeRealSell(username, symbol, reason) {
         if (s) s.dashboardData.triggerProfitAnim = false;
     }, 5000);
 
-    addLog(username, `💰✅ SUCESSO ABSOLUTO: ${symbol} Vendido com +${profit}% de Lucro!`, 'card-sell');
+        addLog(username, `💰✅ SUCESSO ABSOLUTO: ${symbol} Vendido com +${profit}% de Lucro!`, 'card-sell');
     saveUserState(username);
     resetTradeState(username);
+}
+
+async function startFluxoAlfa(username) {
+    const state = userStates.get(username);
+    if (!state) return;
+
+    addLog(username, "⚡ Verificando integridade e buscando posições abertas...", 'info');
+    
+    // Tentar resgatar trade se o arquivo foi perdido mas a conta tem moedas
+    const rescued = await rescueTradeState(username);
+    if (rescued) return; // Se resgatou, o startTradeMonitor já foi lançado
+
+    state.isLoopActive = true;
+    state.status = 'SCANNING';
+    saveUserState(username);
+    addLog(username, "🔍 Radar Alfa iniciado. Aguardando sinal de entrada...", 'info');
+}
+
+// NOVO: Função para resgatar trades órfãos (se o servidor resetar sem salvar o arquivo)
+async function rescueTradeState(username) {
+    try {
+        const account = await binanceRequest(username, '/api/v3/account');
+        if (account.error) return false;
+
+        // Procurar por qualquer moeda com saldo > 10 dólares (exceto USDT/FDUSD)
+        const activeBalance = account.balances.find(b => 
+            !['USDT', 'FDUSD', 'BNB', 'USDC'].includes(b.asset) && 
+            parseFloat(b.free) > 0
+        );
+
+        if (!activeBalance) return false;
+
+        const symbol = activeBalance.asset + 'USDT';
+        addLog(username, `🧐 Detectada posição aberta em ${symbol}. Tentando resgatar...`, 'warn');
+
+        // Buscar histórico de ordens para saber o preço de compra
+        const orders = await binanceRequest(username, '/api/v3/allOrders', 'GET', { symbol, limit: 10 });
+        const lastBuy = orders.reverse().find(o => o.side === 'BUY' && o.status === 'FILLED');
+
+        if (lastBuy) {
+            const state = userStates.get(username);
+            state.status = 'IN_TRADE';
+            state.activeSymbol = symbol;
+            state.buyPrice = parseFloat(lastBuy.price);
+            state.buyQty = parseFloat(activeBalance.free);
+            state.targetPrice = state.buyPrice * 1.009;
+            state.isLoopActive = true;
+            
+            addLog(username, `♻️ POSIÇÃO RESGATADA: ${symbol} comprada a $${state.buyPrice.toFixed(6)}. Retomando monitoramento de lucro.`, 'buy');
+            saveUserState(username);
+            startTradeMonitor(username, symbol);
+            return true;
+        }
+    } catch (e) {
+        console.error(`[RESCUE] Erro ao tentar resgatar trade para ${username}:`, e.message);
+    }
+    return false;
 }
 
 function resetTradeState(username) {
@@ -575,13 +632,15 @@ app.post('/start', requireAuth, async (req, res) => {
         if (test.data && test.data.canTrade !== undefined) {
             Object.assign(req.state, { 
                 clientName, apiKey, apiSecret, 
-                buyPercentage: parseFloat(buyPercentage) || 0.99, 
-                isLoopActive: true, status: 'SCANNING',
+                buyPercentage: parseFloat(buyPercentage) || 0.99,
                 opsCount: req.state.opsCount || 0,
                 pauseUntil: null
             });
-            addLog(req.username, `✅ Conectado com Sucesso! Radar Elite Ativo.`, 'info');
             saveUserState(req.username);
+            
+            // Inicia o Radar ou Resgata Operação Ativa
+            startFluxoAlfa(req.username);
+            
             return res.json({ success: true });
         }
     } catch (e) {

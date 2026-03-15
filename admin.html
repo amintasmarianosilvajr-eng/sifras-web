@@ -135,19 +135,11 @@
         }
         .btn-refresh:hover { box-shadow: 0 0 15px var(--cyber-blue); opacity: 0.9; }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
-        .live-dot {
-            width: 8px; height: 8px;
-            background: var(--cyber-blue);
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-            animation: pulse 1.5s infinite;
-        }
+        .spin { animation: spin 1s linear infinite; }
     </style>
 </head>
 <body>
@@ -162,7 +154,7 @@
             <button onclick="stopAll()" style="background:var(--alert-red); color:#fff; border:none; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer;" id="btnStopAll">
                 <i class="ph ph-warning-octagon"></i> STOP ALL (EMERGÊNCIA)
             </button>
-            <button class="btn-refresh" onclick="updateOverview()">
+            <button class="btn-refresh" onclick="updateOverview(true)">
                 <i class="ph ph-arrows-clockwise"></i> ATUALIZAR AGORA
             </button>
         </div>
@@ -288,12 +280,13 @@
         }
     }
 
-    async function updateOverview() {
+    async function updateOverview(isManual = false) {
         const btn = document.querySelector('.btn-refresh');
-        const originalText = btn.innerHTML;
         try {
-            btn.style.opacity = '0.5';
-            btn.innerHTML = '<i class="ph ph-circle-notch blink"></i> ATUALIZANDO...';
+            if (isManual) {
+                btn.style.opacity = '0.5';
+                btn.innerHTML = '<i class="ph ph-circle-notch spin"></i> ATUALIZANDO...';
+            }
             
             const res = await fetch(`/admin/overview?t=${Date.now()}`, {
                 headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
@@ -307,8 +300,10 @@
         } catch (e) {
             console.error(e);
         } finally {
-            btn.style.opacity = '1';
-            btn.innerHTML = originalText;
+            if (isManual) {
+                btn.style.opacity = '1';
+                btn.innerHTML = '<i class="ph ph-arrows-clockwise"></i> ATUALIZAR AGORA';
+            }
         }
     }
 

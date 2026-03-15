@@ -195,6 +195,7 @@
                     <th>STATUS MÁQUINA</th>
                     <th>ETAPA REAL-TIME</th>
                     <th>ATIVO</th>
+                    <th>VALOR COMPRA ($)</th>
                     <th>VALOR OPERAÇÃO ($)</th>
                     <th>SALDO CONTA (USDT)</th>
                     <th>LUCRO ACUM.</th>
@@ -260,6 +261,32 @@
         }
     }
 
+    async function deleteUser(targetUser) {
+        if (!confirm(`⚠️ ALERTA MÁXIMO:\n\nDeseja EXCLUIR PERMANENTEMENTE o usuário ${targetUser}?\n\nIsso apagará todos os arquivos de configuração, histórico e dados deste cliente do servidor. Esta ação não pode ser desfeita.`)) return;
+        
+        const feedback = prompt(`Para confirmar a exclusão de ${targetUser}, digite DELETE:`);
+        if (feedback !== 'DELETE') return alert('Exclusão cancelada. Confirmação incorreta.');
+
+        try {
+            const res = await fetch('/admin/delete-user', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${ACCESS_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ targetUser })
+            });
+            if (res.ok) {
+                alert(`Usuário ${targetUser} foi removido para sempre.`);
+                updateOverview();
+            } else {
+                alert('Erro ao excluir usuário.');
+            }
+        } catch (e) {
+            alert('Falha na comunicação com o servidor.');
+        }
+    }
+
     async function updateOverview() {
         try {
             const res = await fetch('/admin/overview', {
@@ -301,13 +328,19 @@
                 <td><span class="status-pill status-${u.status.toLowerCase()}">${u.status}</span></td>
                 <td><span class="step-text">${u.currentStep}</span></td>
                 <td class="orbitron" style="color:var(--cyber-blue)">${u.activeSymbol || '---'}</td>
-                <td class="amount-text">$ ${u.buyAmountUSDT.toFixed(2)}</td>
+                <td class="amount-text" title="Preço de Compra">$ ${u.buyPrice > 0 ? u.buyPrice.toFixed(6) : '---'}</td>
+                <td class="amount-text" title="Montante Alocado">$ ${u.buyAmountUSDT.toFixed(2)}</td>
                 <td class="amount-text" style="color:var(--cyber-blue)">$ ${u.balanceUSDT.toFixed(2)}</td>
                 <td class="profit-text">${u.totalProfit.toFixed(2)}%</td>
                 <td>
-                    <button onclick="stopUser('${u.username}')" style="background:rgba(255,51,102,0.1); border:1px solid var(--alert-red); color:var(--alert-red); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
-                        STOP
-                    </button>
+                    <div style="display: flex; gap: 5px;">
+                        <button onclick="stopUser('${u.username}')" style="background:rgba(255,153,0,0.1); border:1px solid #ff9900; color:#ff9900; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                            STOP
+                        </button>
+                        <button onclick="deleteUser('${u.username}')" style="background:rgba(255,51,102,0.1); border:1px solid var(--alert-red); color:var(--alert-red); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                            EXCLUIR
+                        </button>
+                    </div>
                 </td>
             </tr>
         `).join('');

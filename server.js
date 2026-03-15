@@ -17,6 +17,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const USERS_FILE = path.join(DATA_DIR, 'users_db.json');
+const SESSIONS_FILE = path.join(DATA_DIR, 'session_tokens.json'); // NOVO: Persistência de sessões
+
 let usersDB = {}; 
 if (fs.existsSync(USERS_FILE)) {
     try { usersDB = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch (e) {}
@@ -24,6 +26,21 @@ if (fs.existsSync(USERS_FILE)) {
 function saveUsersDB() { fs.writeFileSync(USERS_FILE, JSON.stringify(usersDB, null, 2)); }
 
 const activeTokens = new Map();
+// Carregar sessões persistentes
+if (fs.existsSync(SESSIONS_FILE)) {
+    try {
+        const savedSessions = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
+        Object.keys(savedSessions).forEach(t => activeTokens.set(t, savedSessions[t]));
+        console.log(`[SYSTEM] ${activeTokens.size} sessões recuperadas do disco.`);
+    } catch (e) {}
+}
+
+function saveSessions() {
+    const obj = {};
+    activeTokens.forEach((v, k) => obj[k] = v);
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(obj, null, 2));
+}
+
 const userStates = new Map();
 
 // Blacklist Expandida (Times, Estáveis, Suspeitas)
@@ -104,6 +121,8 @@ function saveUserState(username) {
         apiKey: state.apiKey, apiSecret: state.apiSecret, 
         buyPercentage: state.buyPercentage, lastTradedCoins: state.lastTradedCoins,
         status: state.status, isLoopActive: state.isLoopActive,
+        activeSymbol: state.activeSymbol, buyPrice: state.buyPrice, buyQty: state.buyQty, // NOVO: Persistir dados do trade ativo
+        targetPrice: state.targetPrice, currentPrice: state.currentPrice,
         pauseUntil: state.pauseUntil, logs: state.logs.slice(0, 30) // Salva os últimos 30 logs
     }, null, 2));
 }
@@ -234,6 +253,32 @@ setInterval(async () => {
             console.error("[MARKET ERROR] Falha ao buscar ranking Binance:", e.message);
         }
     }, 3000);
+
+// --- NOVO: FUNÇÃO DE BOOTSTRAP PARA AUTO-RESUME ---
+async function bootstrapRobots() {
+    console.log("[SYSTEM] Verificando robôs para Auto-Resume...");
+    if (!fs.existsSync(DATA_DIR)) return;
+
+    const files = fs.readdirSync(DATA_DIR);
+    const tradeFiles = files.filter(f => f.startsWith('trade_') && f.endsWith('.json'));
+
+    for (const file of tradeFiles) {
+        const username = file.replace('trade_', '').replace('.json', '');
+        const state = loadUserState(username);
+
+        // Se o robô estava em operação real, retomar o monitoramento
+        if (state.isLoopActive && state.status === 'IN_TRADE' && state.activeSymbol) {
+            console.log(`[RESUME] Retomando monitoramento de ${state.activeSymbol} para ${username}`);
+            addLog(username, `🔄 Servidor Reiniciado. Retomando monitoramento de ${state.activeSymbol}...`, 'info');
+            startTradeMonitor(username, state.activeSymbol);
+        } else if (state.isLoopActive && (state.status === 'SCANNING' || state.status === 'PAUSED')) {
+             console.log(`[RESUME] Reativando Radar para ${username}`);
+        }
+    }
+}
+
+// Iniciar bootstrap após o primeiro sync de mercado (3s depois)
+setTimeout(bootstrapRobots, 5000);
 
 async function runFluxoAlfaScanner(username) {
     const state = userStates.get(username);
@@ -395,20 +440,38 @@ async function executeRealSell(username, symbol, reason) {
     const balance = parseFloat(account.balances.find(b => b.asset === coinBase)?.free || 0);
     if (balance <= 0) return resetTradeState(username);
 
-    // Filtro de Precisão (LOT_SIZE)
-    let precision = 0;
+    // Filtro Matemático Blindado de Precisão (LOT_SIZE)
+    let stepPrecision = 0;
+    let stepSizeNum = 0;
     if (globalMarket.exchangeInfo) {
         const sInfo = globalMarket.exchangeInfo.symbols.find(s => s.symbol === symbol);
         const lot = sInfo?.filters.find(f => f.filterType === 'LOT_SIZE');
         if (lot) {
-            const step = lot.stepSize;
-            precision = step.indexOf('1') - step.indexOf('.');
-            if (precision < 0) precision = 0;
+            stepSizeNum = parseFloat(lot.stepSize);
+            const stepStr = stepSizeNum.toString();
+            if (stepStr.includes('.')) {
+                stepPrecision = stepStr.split('.')[1].length;
+            }
         }
     }
 
+    let truncatedBalance = balance;
+    if (stepSizeNum > 0) {
+        // Trunca exatamente no múltiplo do stepSize permitido pela Binance
+        truncatedBalance = Math.floor((balance + 1e-9) / stepSizeNum) * stepSizeNum;
+    } else {
+        truncatedBalance = Math.floor(balance);
+    }
+    
+    if (truncatedBalance <= 0) {
+        addLog(username, `Erro Venda: Saldo insuficiente após truncamento (${balance})`, 'error');
+        return resetTradeState(username);
+    }
+    
+    const quantityString = stepPrecision > 0 ? truncatedBalance.toFixed(stepPrecision) : truncatedBalance.toString();
+
     const order = await binanceRequest(username, '/api/v3/order', 'POST', {
-        symbol, side: 'SELL', type: 'MARKET', quantity: balance.toFixed(precision)
+        symbol, side: 'SELL', type: 'MARKET', quantity: quantityString
     });
 
     if (order.error) {
@@ -472,6 +535,7 @@ app.post('/login', (req, res) => {
 
     const token = crypto.randomBytes(32).toString('hex');
     activeTokens.set(token, username);
+    saveSessions(); // NOVO: Salvar token no disco
     
     console.log(`[AUTH] Login bem-sucedido: ${username}. Session unificada.`);
     return res.json({ token, username });
@@ -573,6 +637,8 @@ app.get('/admin/overview', async (req, res) => {
             activeSymbol: state.activeSymbol || '---',
             balanceUSDT: state.balanceUSDT || 0,
             buyAmountUSDT: state.buyQty * state.buyPrice || 0,
+            buyPrice: state.buyPrice || 0,
+            currentPrice: state.currentPrice || 0,
             totalProfit: state.history.reduce((sum, h) => sum + (h.profitPct || 0), 0),
             currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? 'Em Trade (Alvo 0.9%)' : 'Aguardando Start')
         });
@@ -611,6 +677,47 @@ app.post('/admin/stop-user', async (req, res) => {
         return res.json({ success: true });
     }
     res.status(404).json({ error: 'Usuário não encontrado' });
+});
+
+app.post('/admin/delete-user', async (req, res) => {
+    const auth = req.headers['authorization'];
+    if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
+        return res.status(401).json({ error: 'Não autorizado' });
+    }
+
+    const { targetUser } = req.body;
+    if (!targetUser) return res.status(400).json({ error: 'Usuário não especificado' });
+
+    console.log(`[ADMIN] Tentando deletar usuário: ${targetUser}`);
+
+    // 1. Parar robô se estiver ativo
+    const state = userStates.get(targetUser);
+    if (state) {
+        state.isLoopActive = false;
+        state.status = 'OFFLINE';
+    }
+
+    // 2. Remover da Memória
+    userStates.delete(targetUser);
+
+    // 3. Remover do DB de Usuários
+    if (usersDB[targetUser]) {
+        delete usersDB[targetUser];
+        saveUsersDB();
+    }
+
+    // 4. Deletar Arquivo Físico
+    const userFile = path.join(DATA_DIR, `trade_${targetUser}.json`);
+    if (fs.existsSync(userFile)) {
+        try {
+            fs.unlinkSync(userFile);
+            console.log(`[ADMIN] Arquivo deletado: ${userFile}`);
+        } catch (e) {
+            console.error(`[ADMIN] Erro ao deletar arquivo trade de ${targetUser}:`, e.message);
+        }
+    }
+
+    res.json({ success: true, message: `Usuário ${targetUser} removido permanentemente.` });
 });
 
 const PORT = process.env.PORT || 3014;

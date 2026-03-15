@@ -141,6 +141,19 @@ function addLog(username, msg, type = 'info') {
     }
 }
 
+function sum24hProfit(history) {
+    if (!history || history.length === 0) return 0;
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    return history
+        .filter(h => {
+             // Aceita formatos de data "15/03/2026, 09:30:00" ou timestamps ISO
+             const hDate = new Date(h.date).getTime();
+             return (now - hDate) < oneDay;
+        })
+        .reduce((sum, h) => sum + (h.profitPct || 0), 0);
+}
+
 // ------------------------------------------------------------
 // BINANCE REQUEST UTILS (REAL)
 // ------------------------------------------------------------
@@ -240,7 +253,20 @@ setInterval(async () => {
         globalMarket.lastUpdate = now;
 
         for (const [username, state] of userStates) {
-            // Atualizar Saldo USDT a cada ~30s (aprox. 10 ciclos de 3s)
+            // Sincronizar Pivô para todos (mesmo em trade)
+            if (globalMarket.top10.length >= 6) {
+                const r2 = globalMarket.top10[1];
+                const r4 = globalMarket.top10[3];
+                const r6 = globalMarket.top10[5];
+                state.dashboardData.pivotInfo = { 
+                    pivot: r4.symbol, 
+                    d2: Math.abs(r2.vol24h - r4.vol24h).toFixed(2), 
+                    d6: Math.abs(r6.vol24h - r4.vol24h).toFixed(2), 
+                    t2: r2.symbol, t6: r6.symbol 
+                };
+            }
+
+            // Atualizar Saldo USDT a cada ~30s
             if (now % 30000 < 3000) {
                 binanceFetchBalance(username).then(bal => state.balanceUSDT = bal);
             }
@@ -626,6 +652,7 @@ function requireAuth(req, res, next) {
 
 app.get('/status', requireAuth, async (req, res) => {
     const data = { ...req.state };
+    data.profit24h = sum24hProfit(req.state.history);
     // Adicionar info de diagnóstico
     data.serverIp = globalMarket.serverIp || 'N/A';
     data.binanceClockOk = Math.abs(binanceTimeOffset) < 60000;
@@ -715,6 +742,7 @@ app.get('/admin/overview', async (req, res) => {
             buyPrice: state.buyPrice || 0,
             currentPrice: state.currentPrice || 0,
             totalProfit: state.history.reduce((sum, h) => sum + (h.profitPct || 0), 0),
+            profit24h: sum24hProfit(state.history),
             currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? 'Em Trade (Alvo 0.9%)' : 'Aguardando Start')
         });
     }

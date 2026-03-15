@@ -592,8 +592,14 @@
             }
 
             const totalEl = document.getElementById('totalProfit');
-            totalEl.innerText = `${sumProfit > 0 ? '+' : ''}${sumProfit.toFixed(2)}%`;
-            totalEl.className = sumProfit >= 0 ? 'profit-positive' : 'profit-negative';
+            const p24h = state.profit24h || 0;
+            const p24hClass = p24h >= 0 ? 'profit-positive' : 'profit-negative';
+            
+            totalEl.innerHTML = `
+                <span style="color:#666; font-size: 0.8rem; margin-right: 15px;">24H: <span class="${p24hClass}">${p24h > 0 ? '+' : ''}${p24h.toFixed(2)}%</span></span>
+                SALDO TOTAL: <span style="color:var(--cyber-blue)">${sumProfit > 0 ? '+' : ''}${sumProfit.toFixed(2)}%</span>
+            `;
+            totalEl.className = 'orbitron';
 
             const overlay = document.getElementById('profitOverlay');
             if (state.dashboardData?.triggerProfitAnim) {

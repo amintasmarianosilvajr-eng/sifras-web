@@ -289,8 +289,13 @@
     }
 
     async function updateOverview() {
+        const btn = document.querySelector('.btn-refresh');
+        const originalText = btn.innerHTML;
         try {
-            const res = await fetch('/admin/overview', {
+            btn.style.opacity = '0.5';
+            btn.innerHTML = '<i class="ph ph-circle-notch blink"></i> ATUALIZANDO...';
+            
+            const res = await fetch(`/admin/overview?t=${Date.now()}`, {
                 headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
             });
             if (!res.ok) throw new Error('Falha no acesso admin');
@@ -301,6 +306,9 @@
             document.getElementById('lastUpdateTime').innerText = `Atualizado em: ${new Date().toLocaleTimeString()}`;
         } catch (e) {
             console.error(e);
+        } finally {
+            btn.style.opacity = '1';
+            btn.innerHTML = originalText;
         }
     }
 

@@ -513,43 +513,59 @@ async function startFluxoAlfa(username) {
     addLog(username, "🔍 Radar Alfa iniciado. Aguardando sinal de entrada...", 'info');
 }
 
-// NOVO: Função para resgatar trades órfãos (se o servidor resetar sem salvar o arquivo)
 async function rescueTradeState(username) {
     try {
         const account = await binanceRequest(username, '/api/v3/account');
         if (account.error) return false;
 
-        // Procurar por qualquer moeda com saldo > 10 dólares (exceto USDT/FDUSD)
-        const activeBalance = account.balances.find(b => 
-            !['USDT', 'FDUSD', 'BNB', 'USDC'].includes(b.asset) && 
+        // 1. Filtrar todos os saldos significativos (que não sejam moedas base/estáveis)
+        const candidates = account.balances.filter(b => 
+            !['USDT', 'FDUSD', 'BNB', 'USDC', 'ETH', 'BTC'].includes(b.asset) && 
             parseFloat(b.free) > 0
         );
 
-        if (!activeBalance) return false;
+        if (candidates.length === 0) return false;
 
-        const symbol = activeBalance.asset + 'USDT';
-        addLog(username, `🧐 Detectada posição aberta em ${symbol}. Tentando resgatar...`, 'warn');
+        console.log(`[RESCUE] Candidatos encontrados: ${candidates.map(c => c.asset).join(', ')}`);
 
-        // Buscar histórico de ordens para saber o preço de compra
-        const orders = await binanceRequest(username, '/api/v3/allOrders', 'GET', { symbol, limit: 10 });
-        const lastBuy = orders.reverse().find(o => o.side === 'BUY' && o.status === 'FILLED');
-
-        if (lastBuy) {
-            const state = userStates.get(username);
-            state.status = 'IN_TRADE';
-            state.activeSymbol = symbol;
-            state.buyPrice = parseFloat(lastBuy.price);
-            state.buyQty = parseFloat(activeBalance.free);
-            state.targetPrice = state.buyPrice * 1.009;
-            state.isLoopActive = true;
+        // 2. Tentar encontrar o trade real (o que tem histórico de compra mais recente)
+        for (const balance of candidates) {
+            const symbol = balance.asset + 'USDT';
             
-            addLog(username, `♻️ POSIÇÃO RESGATADA: ${symbol} comprada a $${state.buyPrice.toFixed(6)}. Retomando monitoramento de lucro.`, 'buy');
-            saveUserState(username);
-            startTradeMonitor(username, symbol);
-            return true;
+            // Verificar se o par existe e está ativo
+            const sInfo = globalMarket.exchangeInfo?.symbols.find(s => s.symbol === symbol);
+            if (!sInfo || sInfo.status !== 'TRADING') continue;
+
+            const qty = parseFloat(balance.free);
+            
+            // Buscar histórico de ordens para este símbolo
+            const orders = await binanceRequest(username, '/api/v3/allOrders', 'GET', { symbol, limit: 10 });
+            if (orders.error) continue;
+
+            // Encontrar a última COMPRA preenchida
+            const lastBuy = [...orders].reverse().find(o => o.side === 'BUY' && o.status === 'FILLED');
+            
+            if (lastBuy) {
+                // Verificar se a quantidade atual é compatível com a compra (para não pegar dust antigo)
+                const boughtQty = parseFloat(lastBuy.origQty);
+                if (qty < boughtQty * 0.9) continue; // Se sobrou menos de 90%, provavelmente é sobra de um trade antigo
+
+                const state = userStates.get(username);
+                state.status = 'IN_TRADE';
+                state.activeSymbol = symbol;
+                state.buyPrice = parseFloat(lastBuy.price) || parseFloat(lastBuy.cummulativeQuoteQty) / parseFloat(lastBuy.executedQty) || 0;
+                state.buyQty = qty;
+                state.targetPrice = state.buyPrice * 1.009;
+                state.isLoopActive = true;
+                
+                addLog(username, `♻️ POSIÇÃO RESGATADA: ${symbol} comprada a $${state.buyPrice.toFixed(6)}. Retomando monitoramento de lucro.`, 'buy');
+                saveUserState(username);
+                startTradeMonitor(username, symbol);
+                return true;
+            }
         }
     } catch (e) {
-        console.error(`[RESCUE] Erro ao tentar resgatar trade para ${username}:`, e.message);
+        console.error(`[RESCUE] Erro crítico ao resgatar trade para ${username}:`, e.message);
     }
     return false;
 }

@@ -331,7 +331,7 @@
 
                 <div class="stats-grid">
                     <div class="stat-card" style="border-color: var(--cyber-blue);">
-                        <div class="stat-label">Indicadora (Pivô 4ª)</div>
+                        <div class="stat-label">Fator Pixel Alfa</div>
                         <div class="stat-value" id="valPivot">Aguardando...</div>
                         <div style="color: #a0aab5; font-size: 0.85rem;" id="valDistances">D2: 0% | D6: 0%</div>
                     </div>
@@ -526,9 +526,9 @@
             document.getElementById('valCooldown').innerText = state.status === 'PAUSED' ? 'Em Pausa de Ciclo' : `${(state.lastTradedCoins || []).length} Moedas Bloqueadas`;
 
             if (state.activeSymbol && state.status === 'IN_TRADE') {
-                const buyP = state.buyPrice ? state.buyPrice.toFixed(6) : '0.000000';
-                const currP = state.currentPrice ? state.currentPrice.toFixed(6) : buyP;
-                const tgtP = state.targetPrice ? state.targetPrice.toFixed(6) : '0.000000';
+                const buyP = state.buyPrice ? state.buyPrice.toFixed(9) : '0.000000000';
+                const currP = state.currentPrice ? state.currentPrice.toFixed(9) : buyP;
+                const tgtP = state.targetPrice ? state.targetPrice.toFixed(9) : '0.000000000';
 
                 document.getElementById('valActiveTrade').innerText = state.activeSymbol;
                 document.getElementById('valTradeTarget').innerHTML = `

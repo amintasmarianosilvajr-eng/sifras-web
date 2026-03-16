@@ -1,0 +1,5 @@
+node_modules
+.git
+.env
+trade_data.json
+README.md

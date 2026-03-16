@@ -132,7 +132,7 @@ function saveUserState(username) {
 function addLog(username, msg, type = 'info') {
     const state = userStates.get(username);
     if (!state) return;
-    const timestamp = new Date().toLocaleTimeString();
+    const timestamp = new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     state.logs.unshift({ timestamp, msg, type });
     if (state.logs.length > 50) state.logs.pop();
     console.log(`[${username}] ${msg}`);
@@ -210,7 +210,7 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
 // ------------------------------------------------------------
 // SINCRONIZAÇÃO MERCADO (3s)
 // ------------------------------------------------------------
-setInterval(async () => {
+setInterval(async () => { // OTIMIZAÇÃO: intervalo reduzido de 3000ms → 1500ms para menor latência no gatilho
     try {
         const now = Date.now();
         
@@ -248,7 +248,8 @@ setInterval(async () => {
             }
             const jump = ((coin.price - globalMarket.priceHistory[coin.symbol].old) / globalMarket.priceHistory[coin.symbol].old) * 100;
             globalMarket.coinJumps[coin.symbol] = jump;
-            if (now - globalMarket.priceHistory[coin.symbol].time >= 9500) {
+            // OTIMIZAÇÃO: janela exata de 10s para cálculo preciso do salto
+            if (now - globalMarket.priceHistory[coin.symbol].time >= 10000) {
                 globalMarket.priceHistory[coin.symbol] = { old: coin.price, time: now };
             }
         }
@@ -273,14 +274,14 @@ setInterval(async () => {
                 binanceFetchBalance(username).then(bal => state.balanceUSDT = bal);
             }
             
-            if (state.isLoopActive && state.status === 'SCANNING') {
+            if (state.isLoopActive && (state.status === 'SCANNING' || state.status === 'PAUSED')) {
                 await runFluxoAlfaScanner(username);
             }
         }
         } catch (e) {
             console.error("[MARKET ERROR] Falha ao buscar ranking Binance:", e.message);
         }
-    }, 3000);
+    }, 1500);
 
 // --- NOVO: FUNÇÃO DE BOOTSTRAP PARA AUTO-RESUME ---
 async function bootstrapRobots() {
@@ -312,35 +313,43 @@ async function runFluxoAlfaScanner(username) {
     const state = userStates.get(username);
     if (!state || globalMarket.top10.length < 6) return;
 
+    // Verificação de Resumo de Pausa (Geral)
+    if (state.status === 'PAUSED' && state.pauseUntil) {
+        if (Date.now() < state.pauseUntil) return; 
+        
+        state.status = 'SCANNING';
+        state.pauseUntil = null;
+        if (state.opsCount >= 5) state.opsCount = 0;
+        addLog(username, "🔄 Pausa encerrada. Retomando radar...", 'info');
+        saveUserState(username);
+    }
+
     const rank2 = globalMarket.top10[1];
-    const rank4 = globalMarket.top10[3]; // INDICADORA
-    const rank6 = globalMarket.top10[5];
+    const rank3 = globalMarket.top10[2]; // ALVO 2
+    const rank4 = globalMarket.top10[3]; // PIVÔ (INDICADORA)
 
     const d2 = Math.abs(rank2.vol24h - rank4.vol24h);
-    const d6 = Math.abs(rank6.vol24h - rank4.vol24h);
+    const d3 = Math.abs(rank3.vol24h - rank4.vol24h);
 
-    state.dashboardData.pivotInfo = { pivot: rank4.symbol, d2: d2.toFixed(2), d6: d6.toFixed(2), t2: rank2.symbol, t6: rank6.symbol };
+    state.dashboardData.pivotInfo = { pivot: rank4.symbol, d2: d2.toFixed(2), d6: d3.toFixed(2), t2: rank2.symbol, t6: rank3.symbol };
 
-    // Logs de Varredura (Detalhados conforme pedido)
-    // Throttling do log de "Aguardando" para uma vez a cada 15 segundos aproximadamente
+    // Logs de Varredura
     if (!state._lastLogTime || Date.now() - state._lastLogTime > 15000) {
         addLog(username, `🔍 VARREDURA: Pivô (4ª) ${rank4.symbol} [${rank4.vol24h.toFixed(2)}%]`, 'info');
-        addLog(username, `📏 DISTÂNCIAS: D2 (${rank2.symbol}): ${d2.toFixed(2)}% | D6 (${rank6.symbol}): ${d6.toFixed(2)}%`, 'info');
+        addLog(username, `📏 DISTÂNCIAS: D2 (${rank2.symbol}): ${d2.toFixed(2)}% | D3 (${rank3.symbol}): ${d3.toFixed(2)}%`, 'info');
         state._lastLogTime = Date.now();
     }
 
     let target = null;
-    const LIMIT = 20.0;
+    const jump2 = globalMarket.coinJumps[rank2.symbol] || 0;
+    const jump3 = globalMarket.coinJumps[rank3.symbol] || 0;
 
-    if (d2 < LIMIT && d6 < LIMIT) {
-        target = (d2 <= d6) ? rank2 : rank6;
-        addLog(username, `⚖️ DESEMPATE ELITE: ${rank2.symbol} vs ${rank6.symbol}. Selecionado ${target.symbol} (Menor D).`, 'trigger');
-    } else if (d2 < LIMIT) {
+    if (jump2 >= 0.2) {
         target = rank2;
-        addLog(username, `🎯 ALVO IDENTIFICADO: ${target.symbol} (Proximidade D2: ${d2.toFixed(2)}%)`, 'trigger');
-    } else if (d6 < LIMIT) {
-        target = rank6;
-        addLog(username, `🎯 ALVO IDENTIFICADO: ${target.symbol} (Proximidade D6: ${d6.toFixed(2)}%)`, 'trigger');
+        addLog(username, `🎯 GATILHO RANK 2: ${target.symbol} (+${jump2.toFixed(2)}% em 10s)`, 'trigger');
+    } else if (jump3 >= 0.2) {
+        target = rank3;
+        addLog(username, `🎯 GATILHO RANK 3: ${target.symbol} (+${jump3.toFixed(2)}% em 10s)`, 'trigger');
     }
 
     if (!target) return;
@@ -367,26 +376,15 @@ async function runFluxoAlfaScanner(username) {
     state._lastVolLog = null;
     state._lastRepLog = null;
 
-    // Lógica de Ciclo (5 ops e pausa)
-    if (state.opsCount >= 5 && state.isLoopActive) {
-        if (!state.pauseUntil) {
-            state.pauseUntil = Date.now() + 20 * 60000;
-            state.status = 'PAUSED';
-            addLog(username, "🛑 Ciclo de 5 concluído. Pausa de 20m ativada.", 'warn');
-            saveUserState(username);
-            return;
-        }
-        if (Date.now() < state.pauseUntil) {
-            state.status = 'PAUSED';
-            return;
-        } else {
-            state.opsCount = 0;
-            state.pauseUntil = null;
-            state.status = 'SCANNING';
-            addLog(username, "🔄 Pausa encerrada. Novo ciclo iniciado.", 'info');
-            saveUserState(username);
-        }
+    // Acionamento de Pausa por Ciclo (5 ops)
+    if (state.opsCount >= 5 && state.isLoopActive && !state.pauseUntil) {
+        state.pauseUntil = Date.now() + 20 * 60000;
+        state.status = 'PAUSED';
+        addLog(username, "🛑 Ciclo de 5 concluído. Pausa de 20m ativada.", 'warn');
+        saveUserState(username);
+        return;
     }
+    
     await executeRealBuy(username, target.symbol, target.price);
 }
 
@@ -395,15 +393,22 @@ async function executeRealBuy(username, symbol, price) {
     state.status = 'IN_TRADE';
     state.activeSymbol = symbol;
 
-    addLog(username, `🎯 GATILHO: ${symbol}. Checando saldo...`, 'trigger');
-
-    const account = await binanceRequest(username, '/api/v3/account');
-    if (account.error) {
-        addLog(username, `Erro Saldo: ${account.msg}`, 'error');
-        return resetTradeState(username);
+    // OTIMIZAÇÃO: usar saldo cacheado para evitar chamada serial à Binance antes de cada compra
+    // Se o cache estiver zerado, busca uma vez como fallback
+    let usdt = state.balanceUSDT || 0;
+    if (usdt < 11) {
+        addLog(username, `⏳ Cache de saldo baixo ($${usdt.toFixed(2)}). Buscando saldo atualizado...`, 'info');
+        const account = await binanceRequest(username, '/api/v3/account');
+        if (account.error) {
+            addLog(username, `Erro Saldo: ${account.msg}`, 'error');
+            return resetTradeState(username);
+        }
+        usdt = parseFloat(account.balances.find(b => b.asset === 'USDT')?.free || 0);
+        state.balanceUSDT = usdt; // Atualizar cache
     }
 
-    const usdt = parseFloat(account.balances.find(b => b.asset === 'USDT')?.free || 0);
+    addLog(username, `🎯 GATILHO: ${symbol}. Saldo: $${usdt.toFixed(2)} (cache)`, 'trigger');
+
     if (usdt < 11) {
         addLog(username, `Saldo insuficiente: $${usdt.toFixed(2)}`, 'error');
         return resetTradeState(username);
@@ -451,6 +456,13 @@ function startTradeMonitor(username, symbol) {
             if (current >= state.targetPrice) {
                 clearInterval(interval);
                 await executeRealSell(username, symbol, 'LUCRO');
+            } else {
+                const roi = ((current - state.buyPrice) / state.buyPrice) * 100;
+                if (roi <= -3.0) {
+                    clearInterval(interval);
+                    addLog(username, `🛡️ ANTI-RESTART: ROI atingiu ${roi.toFixed(2)}%. Executando ajuste automático...`, 'warn');
+                    await executeRealSell(username, symbol, 'ANTI-RESTART');
+                }
             }
         } catch (e) {}
     }, 2000);
@@ -521,7 +533,8 @@ async function executeRealSell(username, symbol, reason) {
     }
 
     const profit = ((realSellPrice - state.buyPrice) / state.buyPrice) * 100; // Porcentagem real
-    state.history.unshift({ symbol, date: new Date().toLocaleString(), profitPct: parseFloat(profit.toFixed(2)), type: 'LUCRO ELITE' });
+    const histType = reason === 'ANTI-RESTART' ? 'ANTI-RESTART (AUTO)' : (reason === 'LUCRO' ? 'LUCRO ELITE' : reason);
+    state.history.unshift({ symbol, date: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }), profitPct: parseFloat(profit.toFixed(2)), type: histType });
     state.lastTradedCoins.push(symbol);
     if (state.lastTradedCoins.length > 10) state.lastTradedCoins.shift();
     state.opsCount++;
@@ -809,6 +822,7 @@ app.get('/admin/overview', async (req, res) => {
             balanceUSDT: state.balanceUSDT || 0,
             buyAmountUSDT: state.buyQty * state.buyPrice || 0,
             buyPrice: state.buyPrice || 0,
+            targetPrice: state.targetPrice || 0,
             currentPrice: state.currentPrice || 0,
             totalProfit: state.history.reduce((sum, h) => sum + (h.profitPct || 0), 0),
             profit24h: sum24hProfit(state.history),
@@ -846,6 +860,28 @@ app.post('/admin/stop-user', async (req, res) => {
         state.isLoopActive = false;
         state.status = 'OFFLINE';
         addLog(targetUser, "🛑 INTERRUPÇÃO ADMINISTRATIVA: Robô desligado via Painel Admin.", 'warn');
+        saveUserState(targetUser);
+        return res.json({ success: true });
+    }
+    res.status(404).json({ error: 'Usuário não encontrado' });
+});
+
+app.post('/admin/anti-restart', async (req, res) => {
+    const auth = req.headers['authorization'];
+    if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
+        return res.status(401).json({ error: 'Não autorizado' });
+    }
+
+    const { targetUser } = req.body;
+    const state = userStates.get(targetUser);
+    if (state) {
+        if (state.status === 'IN_TRADE' && state.activeSymbol) {
+            addLog(targetUser, "⚡ ANTI-RESTART MANUAL: Forçando venda e retomada via Admin.", 'warn');
+            await executeRealSell(targetUser, state.activeSymbol, 'ANTI-RESTART');
+        } else {
+            state.status = 'SCANNING';
+        }
+        state.isLoopActive = true;
         saveUserState(targetUser);
         return res.json({ success: true });
     }

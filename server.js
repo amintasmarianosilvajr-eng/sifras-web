@@ -10,7 +10,7 @@ app.use(cors());
 
 // Senhas de Acesso
 const GLOBAL_ACCESS_KEY = 'alfa777';
-const ADMIN_ACCESS_KEY = 'alfa777admin';
+const ADMIN_ACCESS_KEY = 'alfa7772026@';
 
 // CONFIGURAÇÃO E PERSISTÊNCIA
 const DATA_DIR = path.join(__dirname, 'data');
@@ -57,13 +57,16 @@ let globalMarket = {
 
 function createInitialState(username) {
     return {
-        username, clientName: '', apiKey: '', apiSecret: '', status: 'OFFLINE', opsCount: 0, 
-        lastTradedCoins: [], // Para regra de 10 moedas
+        username, clientName: '', apiKey: '', apiSecret: '', status: 'OFFLINE', opsCount: 0,
+        // NOVO: Sistema de repetição — 2x seguidas OK, bloqueia por 2 ops
+        lastSymbol: null,           // Última moeda comprada
+        consecutiveCount: 0,        // Quantas vezes seguidas essa moeda foi comprada
+        blockedSymbols: {},         // { symbol: opsRestantes } para desbloquear
         history: [], logs: [], balanceUSDT: 0,
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
         buyPercentage: 0.99, pauseUntil: null,
-        profitPoolUSDT: 0, realizedProfitBRL: 0 // NOVO: Controle de lucro em BRL
+        profitPoolUSDT: 0, realizedProfitBRL: 0
     };
 }
 
@@ -106,7 +109,9 @@ function loadUserState(username) {
             console.log(`[USER] Estado carregado para ${username}. Status: ${state.status} | Loop: ${state.isLoopActive}`);
         } catch (e) {}
     }
-    if (!Array.isArray(state.lastTradedCoins)) state.lastTradedCoins = [];
+    if (!state.blockedSymbols || typeof state.blockedSymbols !== 'object') state.blockedSymbols = {};
+    if (state.lastSymbol === undefined) state.lastSymbol = null;
+    if (state.consecutiveCount === undefined) state.consecutiveCount = 0;
     if (!Array.isArray(state.logs)) state.logs = [];
     
     if (isNew) userStates.set(username, state);
@@ -120,11 +125,12 @@ function saveUserState(username) {
     fs.writeFileSync(userFile, JSON.stringify({ 
         clientName: state.clientName, history: state.history, opsCount: state.opsCount, 
         apiKey: state.apiKey, apiSecret: state.apiSecret, 
-        buyPercentage: state.buyPercentage, lastTradedCoins: state.lastTradedCoins,
+        buyPercentage: state.buyPercentage,
+        lastSymbol: state.lastSymbol, consecutiveCount: state.consecutiveCount, blockedSymbols: state.blockedSymbols || {},
         status: state.status, isLoopActive: state.isLoopActive,
-        activeSymbol: state.activeSymbol, buyPrice: state.buyPrice, buyQty: state.buyQty, // NOVO: Persistir dados do trade ativo
+        activeSymbol: state.activeSymbol, buyPrice: state.buyPrice, buyQty: state.buyQty,
         targetPrice: state.targetPrice, currentPrice: state.currentPrice,
-        pauseUntil: state.pauseUntil, logs: state.logs.slice(0, 30), // Salva os últimos 30 logs
+        pauseUntil: state.pauseUntil, logs: state.logs.slice(0, 30),
         profitPoolUSDT: state.profitPoolUSDT, realizedProfitBRL: state.realizedProfitBRL
     }, null, 2));
 }
@@ -248,8 +254,8 @@ setInterval(async () => { // OTIMIZAÇÃO: intervalo reduzido de 3000ms → 1500
             }
             const jump = ((coin.price - globalMarket.priceHistory[coin.symbol].old) / globalMarket.priceHistory[coin.symbol].old) * 100;
             globalMarket.coinJumps[coin.symbol] = jump;
-            // OTIMIZAÇÃO: janela exata de 10s para cálculo preciso do salto
-            if (now - globalMarket.priceHistory[coin.symbol].time >= 10000) {
+            // PARÂMETRO OFICIAL: janela de 15s para cálculo preciso do gatilho
+            if (now - globalMarket.priceHistory[coin.symbol].time >= 15000) {
                 globalMarket.priceHistory[coin.symbol] = { old: coin.price, time: now };
             }
         }
@@ -315,8 +321,7 @@ async function runFluxoAlfaScanner(username) {
 
     // Verificação de Resumo de Pausa (Geral)
     if (state.status === 'PAUSED' && state.pauseUntil) {
-        if (Date.now() < state.pauseUntil) return; 
-        
+        if (Date.now() < state.pauseUntil) return;
         state.status = 'SCANNING';
         state.pauseUntil = null;
         if (state.opsCount >= 5) state.opsCount = 0;
@@ -324,50 +329,48 @@ async function runFluxoAlfaScanner(username) {
         saveUserState(username);
     }
 
+    // PARÂMETRO OFICIAL: Pivô = rank4 | Monitorados = rank2, rank3, rank5, rank6
     const rank2 = globalMarket.top10[1];
-    const rank3 = globalMarket.top10[2]; // ALVO 2
-    const rank4 = globalMarket.top10[3]; // PIVÔ (INDICADORA)
+    const rank3 = globalMarket.top10[2];
+    const rank4 = globalMarket.top10[3]; // PIVÔ
+    const rank5 = globalMarket.top10[4];
+    const rank6 = globalMarket.top10[5];
 
     const d2 = Math.abs(rank2.vol24h - rank4.vol24h);
     const d3 = Math.abs(rank3.vol24h - rank4.vol24h);
-
     state.dashboardData.pivotInfo = { pivot: rank4.symbol, d2: d2.toFixed(2), d6: d3.toFixed(2), t2: rank2.symbol, t6: rank3.symbol };
 
-    // Logs de Varredura
+    // Logs de Varredura a cada ~15s
     if (!state._lastLogTime || Date.now() - state._lastLogTime > 15000) {
         addLog(username, `🔍 VARREDURA: Pivô (4ª) ${rank4.symbol} [${rank4.vol24h.toFixed(2)}%]`, 'info');
-        addLog(username, `📏 DISTÂNCIAS: D2 (${rank2.symbol}): ${d2.toFixed(2)}% | D3 (${rank3.symbol}): ${d3.toFixed(2)}%`, 'info');
+        addLog(username, `📏 Radar: R2:${rank2.symbol} | R3:${rank3.symbol} | R5:${rank5.symbol} | R6:${rank6.symbol}`, 'info');
         state._lastLogTime = Date.now();
     }
 
+    // PARÂMETRO OFICIAL: primeiro dos 4 candidatos que atingir +0.3% em 15s é comprado
+    const candidates = [rank2, rank3, rank5, rank6];
     let target = null;
-    const jump2 = globalMarket.coinJumps[rank2.symbol] || 0;
-    const jump3 = globalMarket.coinJumps[rank3.symbol] || 0;
+    let triggerJump = 0;
+    let triggerRank = '';
 
-    if (jump2 >= 0.2) {
-        target = rank2;
-        addLog(username, `🎯 GATILHO RANK 2: ${target.symbol} (+${jump2.toFixed(2)}% em 10s)`, 'trigger');
-    } else if (jump3 >= 0.2) {
-        target = rank3;
-        addLog(username, `🎯 GATILHO RANK 3: ${target.symbol} (+${jump3.toFixed(2)}% em 10s)`, 'trigger');
+    for (let i = 0; i < candidates.length; i++) {
+        const coin = candidates[i];
+        const jump = globalMarket.coinJumps[coin.symbol] || 0;
+        if (jump >= 0.3) {
+            target = coin;
+            triggerJump = jump;
+            triggerRank = [2, 3, 5, 6][i];
+            break;
+        }
     }
 
     if (!target) return;
 
-    // Filtro de Repetição
-    if (state.lastTradedCoins.includes(target.symbol)) {
+    // PARÂMETRO OFICIAL: Filtro de Repetição — 2x seguidas OK, bloqueia por 2 ops
+    if (state.blockedSymbols[target.symbol] > 0) {
         if (!state._lastRepLog || state._lastRepLog !== target.symbol) {
-            addLog(username, `🛡️ Filtro: ${target.symbol} ignorado (Regra das 10 Operações).`, 'warn');
+            addLog(username, `🛡️ Filtro: ${target.symbol} bloqueada (${state.blockedSymbols[target.symbol]} op(s) restantes).`, 'warn');
             state._lastRepLog = target.symbol;
-        }
-        return;
-    }
-
-    const jump = globalMarket.coinJumps[target.symbol] || 0;
-    if (Math.abs(jump) < 0.2) {
-        if (!state._lastVolLog || state._lastVolLog !== target.symbol) {
-             addLog(username, `📉 Aguardando Volatilidade em ${target.symbol}: Atual ${jump.toFixed(2)}% (Mínimo 0.2%)`, 'info');
-             state._lastVolLog = target.symbol;
         }
         return;
     }
@@ -376,15 +379,17 @@ async function runFluxoAlfaScanner(username) {
     state._lastVolLog = null;
     state._lastRepLog = null;
 
-    // Acionamento de Pausa por Ciclo (5 ops)
+    addLog(username, `🎯 GATILHO RANK ${triggerRank}: ${target.symbol} (+${triggerJump.toFixed(2)}% em 15s)`, 'trigger');
+
+    // Acionamento de Pausa por Ciclo (5 ops / 10min)
     if (state.opsCount >= 5 && state.isLoopActive && !state.pauseUntil) {
-        state.pauseUntil = Date.now() + 20 * 60000;
+        state.pauseUntil = Date.now() + 10 * 60000;
         state.status = 'PAUSED';
-        addLog(username, "🛑 Ciclo de 5 concluído. Pausa de 20m ativada.", 'warn');
+        addLog(username, "🛑 Ciclo de 5 concluído. Pausa de 10min ativada.", 'warn');
         saveUserState(username);
         return;
     }
-    
+
     await executeRealBuy(username, target.symbol, target.price);
 }
 
@@ -436,8 +441,7 @@ async function executeRealBuy(username, symbol, price) {
     }
 
     state.buyPrice = realPrice;
-    state.buyQty = qty;
-    state.targetPrice = realPrice * 1.009; // META 0.9%
+    state.buyQty = qty;            state.targetPrice = realPrice * 1.006; // PARÂMETRO OFICIAL: META 0.6%
     addLog(username, `🚀 COMPRA EXECUTADA: ${symbol} @ $${realPrice.toFixed(6)}`, 'buy');
     
     startTradeMonitor(username, symbol);
@@ -458,7 +462,7 @@ function startTradeMonitor(username, symbol) {
                 await executeRealSell(username, symbol, 'LUCRO');
             } else {
                 const roi = ((current - state.buyPrice) / state.buyPrice) * 100;
-                if (roi <= -3.0) {
+                if (roi <= -4.0) { // PARÂMETRO OFICIAL: ANTI-RESTART -4%
                     clearInterval(interval);
                     addLog(username, `🛡️ ANTI-RESTART: ROI atingiu ${roi.toFixed(2)}%. Executando ajuste automático...`, 'warn');
                     await executeRealSell(username, symbol, 'ANTI-RESTART');
@@ -535,8 +539,26 @@ async function executeRealSell(username, symbol, reason) {
     const profit = ((realSellPrice - state.buyPrice) / state.buyPrice) * 100; // Porcentagem real
     const histType = reason === 'ANTI-RESTART' ? 'ANTI-RESTART (AUTO)' : (reason === 'LUCRO' ? 'LUCRO ELITE' : reason);
     state.history.unshift({ symbol, date: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }), profitPct: parseFloat(profit.toFixed(2)), type: histType });
-    state.lastTradedCoins.push(symbol);
-    if (state.lastTradedCoins.length > 10) state.lastTradedCoins.shift();
+
+    // PARÂMETRO OFICIAL: Atualizar controle de repetição de moeda
+    if (!state.blockedSymbols) state.blockedSymbols = {};
+    if (symbol === state.lastSymbol) {
+        state.consecutiveCount = (state.consecutiveCount || 0) + 1;
+        if (state.consecutiveCount >= 2) {
+            // Bloqueada por 2 operações após 2x seguidas
+            state.blockedSymbols[symbol] = 2;
+            state.consecutiveCount = 0;
+            addLog(username, `🔒 ${symbol} bloqueada por 2 operações (comprada 2x consecutivas).`, 'warn');
+        }
+    } else {
+        // Nova moeda: decrementar bloqueios e resetar consecutivos
+        state.consecutiveCount = 1;
+        Object.keys(state.blockedSymbols).forEach(s => {
+            state.blockedSymbols[s]--;
+            if (state.blockedSymbols[s] <= 0) delete state.blockedSymbols[s];
+        });
+    }
+    state.lastSymbol = symbol;
     state.opsCount++;
 
     // Lógica de Acúmulo para Realização em BRL (USANDO VALORES REAIS DA BINANCE)

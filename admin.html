@@ -140,6 +140,38 @@
             to { transform: rotate(360deg); }
         }
         .spin { animation: spin 1s linear infinite; }
+
+        /* Estilos Telemetria */
+        .telemetry-container {
+            width: 100%;
+            background: #222;
+            height: 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .telemetry-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease, background 0.5s ease;
+        }
+        .telemetry-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #666;
+            margin-top: 2px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .telemetry-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: rgba(255,255,255,0.2);
+        }
     </style>
 </head>
 <body>
@@ -206,7 +238,7 @@
 </div>
 
 <script>
-    const ACCESS_KEY = 'alfa777'; // Usando a chave global para autenticação simples
+    const ACCESS_KEY = 'alfa7772026@'; // PARÂMETRO OFICIAL: Senha do Admin Atualizada
 
     async function stopAll() {
         if (!confirm('⚠️ ALERTA: Deseja interromper TODOS os robôs operando agora? Isso parará inclusive robôs legítimos e órfãos.')) return;
@@ -349,14 +381,45 @@
             return;
         }
 
-        body.innerHTML = data.map(u => `
+        body.innerHTML = data.map(u => {
+            // Cálculo de ROI para Telemetria
+            let roi = 0;
+            let progressPercent = 0;
+            let barColor = '#ff3366'; // Red
+            
+            if (u.status === 'IN_TRADE' && u.buyPrice > 0 && u.currentPrice > 0) {
+                roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
+                // Mapeia de -4.0% (0%) até +0.6% (100%)
+                // Fórmula: (roi - min) / (max - min) * 100
+                progressPercent = ((roi - (-4.0)) / (0.6 - (-4.0))) * 100;
+                progressPercent = Math.max(0, Math.min(100, progressPercent));
+                
+                // Cor dinâmica
+                if (roi >= 0) barColor = '#ccff00'; // Cyber Green
+                else if (roi > -2) barColor = '#f3ba2f'; // Gold
+            }
+
+            return `
             <tr>
                 <td><strong><i class="ph ph-user"></i> ${u.username}</strong></td>
                 <td><span class="status-pill status-${u.status.toLowerCase()}">${u.status}</span></td>
-                <td><span class="step-text">${u.currentStep}</span></td>
+                <td>
+                    <span class="step-text">${u.currentStep}</span>
+                    ${u.status === 'IN_TRADE' ? `
+                        <div class="telemetry-container">
+                            <div class="telemetry-marker" style="left: 86.9%;"></div> <!-- Marcador do 0% (4/4.6) -->
+                            <div class="telemetry-bar" style="width: ${progressPercent}%; background: ${barColor}; shadow: 0 0 10px ${barColor}"></div>
+                        </div>
+                        <div class="telemetry-labels">
+                            <span>-4.0%</span>
+                            <span style="color:${roi >= 0 ? '#ccff00' : '#ff3366'}">${roi.toFixed(2)}%</span>
+                            <span>+0.6%</span>
+                        </div>
+                    ` : ''}
+                </td>
                 <td class="orbitron" style="color:var(--cyber-blue)">${u.activeSymbol || '---'}</td>
-                <td class="amount-text" title="Preço de Compra">$ ${u.buyPrice > 0 ? u.buyPrice.toFixed(9) : '---'}</td>
-                <td class="amount-text" title="Preço de Alvo" style="color:var(--cyber-gold)">$ ${u.targetPrice > 0 ? u.targetPrice.toFixed(9) : '---'}</td>
+                <td class="amount-text" title="Preço de Compra">$ ${u.buyPrice > 0 ? u.buyPrice.toFixed(6) : '---'}</td>
+                <td class="amount-text" title="Preço de Alvo" style="color:var(--cyber-gold)">$ ${u.targetPrice > 0 ? u.targetPrice.toFixed(6) : '---'}</td>
                 <td class="amount-text" title="Montante Alocado">$ ${u.buyAmountUSDT.toFixed(2)}</td>
                 <td class="amount-text" style="color:var(--cyber-blue)">$ ${u.balanceUSDT.toFixed(2)}</td>
                 <td class="${u.totalProfit >= 0 ? 'profit-up' : 'profit-down'}">
@@ -377,7 +440,7 @@
                     </div>
                 </td>
             </tr>
-        `).join('');
+        `; }).join('');
     }
 
     // Inicialização

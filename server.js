@@ -479,6 +479,17 @@ async function runFluxoAlfaScanner(username) {
         }
     }
 
+    if (!target) {
+        // NOVO: Regra da Quarta Moeda (Squeeze/Proximidade < 2%)
+        const dist3 = Math.abs(rank4.change - rank3.change);
+        const dist5 = Math.abs(rank4.change - rank5.change);
+        if (dist3 < 2.0 || dist5 < 2.0) {
+            target = rank4;
+            triggerJump = 0;
+            triggerRank = '4 (PROXIMIDADE < 2%)';
+        }
+    }
+
     if (!target) return;
 
     // PARÂMETRO OFICIAL: Filtro de Repetição — 2x seguidas OK, bloqueia por 2 ops

@@ -449,10 +449,17 @@ async function runFluxoAlfaScanner(username) {
         j6: (globalMarket.coinJumps[rank6.symbol] || 0).toFixed(2)
     };
 
-    // LOGS DE VARREDURA INTERATIVOS (A CADA ~20 SEGUNDOS)
+    // LOGS DE VARREDURA NARRADOS (MAIS DETALHADOS)
     if (!state._lastLogTime || Date.now() - state._lastLogTime > 20000) {
-        addLog(username, `🔎 BUSCANDO OPORTUNIDADE: Pivô (4ª) ${rank4.symbol} [${rank4.change.toFixed(2)}%]`, 'info');
-        addLog(username, `📏 Radar Monitorando: ${rank2.symbol}, ${rank3.symbol}, ${rank5.symbol}, ${rank6.symbol}`, 'info');
+        // Encontrar maior movimento na piscina de 50 moedas para "narração"
+        const movers = Object.keys(globalMarket.coinJumps)
+            .map(s => ({ s, j: globalMarket.coinJumps[s] }))
+            .sort((a,b) => b.j - a.j);
+        const topMover = movers[0] || { s: '---', j: 0 };
+        
+        addLog(username, `🌊 FLUXO ALFA: Mercado operando com Pivô em ${rank4.symbol}.`, 'info');
+        addLog(username, `💡 DESTAQUE RADAR: ${topMover.s} apresentando +${topMover.j.toFixed(2)}% de força imediata.`, 'info');
+        addLog(username, `📏 MONITORANDO: R2:${rank2.symbol}(${(globalMarket.coinJumps[rank2.symbol]||0).toFixed(2)}%) | R3:${rank3.symbol}(${(globalMarket.coinJumps[rank3.symbol]||0).toFixed(2)}%)`, 'info');
         state._lastLogTime = Date.now();
     }
 
@@ -499,7 +506,7 @@ async function runFluxoAlfaScanner(username) {
 
     if (state.blockedSymbols[target.symbol] > 0) {
         if (!state._lastRepLog || state._lastRepLog !== target.symbol) {
-            addLog(username, `🛡️ Filtro: ${target.symbol} bloqueada por repetição (${state.blockedSymbols[target.symbol]} op(s) restantes).`, 'warn');
+            addLog(username, `🛡️ BLOQUEIO DE REPETIÇÃO: ${target.symbol} atingiu +${triggerJump.toFixed(2)}%, mas está em quarentena (${state.blockedSymbols[target.symbol]} ops).`, 'warn');
             state._lastRepLog = target.symbol;
         }
         return;
@@ -590,8 +597,9 @@ async function executeRealBuy(username, symbol, price) {
     state.buyPrice = realPrice;
     state.currentPrice = realPrice; 
     state.buyQty = qty;
-    state.targetPrice = realPrice * 1.009; // PADRÃO DEFINITIVO: META 0.9%
+    state.targetPrice = realPrice * 1.006; // SINCRONIZADO: 0.6% LÍQUIDO
     addLog(username, `🚀 COMPRA EXECUTADA: ${symbol} @ $${realPrice.toFixed(6)}`, 'buy');
+    addLog(username, `🎯 ALVO DEFINIDO: Venda programada para $${state.targetPrice.toFixed(6)} (+0.6%)`, 'info');
     
     startTradeMonitor(username, symbol);
 }
@@ -620,15 +628,23 @@ function startTradeMonitor(username, symbol) {
 
             // 2. META ALVO: 0.6% LÍQUIDO
             if (roi >= 0.6) {
-                addLog(username, `🎯 ALVO ALCANÇADO: ${current.toFixed(6)}. Tentando venda...`, 'info');
+                addLog(username, `🎯 ALVO ALCANÇADO: +${roi.toFixed(2)}% @ $${current.toFixed(6)}. Iniciando Liquidação...`, 'info');
                 const success = await executeRealSell(username, symbol, 'LUCRO');
                 if (success) {
                     clearInterval(interval);
                     return;
                 }
             }
-        } catch (e) { console.error(`[MONITOR] ${username}:`, e.message); }
-    }, 1000); 
+
+            // NARRATIVA DE MONITORAMENTO (A cada ~30s)
+            if (!state._lastTradeLog || Date.now() - state._lastTradeLog > 30000) {
+                addLog(username, `🔄 MONITORANDO: ${symbol} @ $${current.toFixed(6)} (ROI: ${roi.toFixed(2)}%). Alvo: $${state.targetPrice.toFixed(6)}`, 'info');
+                state._lastTradeLog = Date.now();
+            }
+        } catch (e) {
+            console.error(`[MONITOR] ${username}:`, e.message);
+        }
+    }, 1500); // 1.5s entre verificações de preço trade
 }
 
 async function executeRealSell(username, symbol, reason) {

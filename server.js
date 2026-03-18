@@ -42,6 +42,39 @@ if (fs.existsSync(USERS_FILE)) {
 }
 function saveUsersDB() { fs.writeFileSync(USERS_FILE, JSON.stringify(usersDB, null, 2)); }
 
+// MIGRAÇÃO RADICAL: Garantir que tudo no DB e Arquivos seja MINÚSCULO
+function migrateToLowercase() {
+    let changed = false;
+    const newDB = {};
+    for (const k of Object.keys(usersDB)) {
+        if (k !== k.toLowerCase()) {
+            newDB[k.toLowerCase()] = usersDB[k];
+            changed = true;
+        } else {
+            newDB[k] = usersDB[k];
+        }
+    }
+    if (changed) {
+        usersDB = newDB;
+        saveUsersDB();
+        console.log("[SYSTEM] Database migrado para lowercase.");
+    }
+    
+    // Migrar Arquivos Físicos
+    if (fs.existsSync(DATA_DIR)) {
+        const files = fs.readdirSync(DATA_DIR);
+        files.forEach(f => {
+            if (f.startsWith('trade_') && f.endsWith('.json')) {
+                const lower = f.toLowerCase();
+                if (f !== lower) {
+                    try { fs.renameSync(path.join(DATA_DIR, f), path.join(DATA_DIR, lower)); } catch(e){}
+                }
+            }
+        });
+    }
+}
+migrateToLowercase();
+
 const activeTokens = new Map();
 // Carregar sessões persistentes
 if (fs.existsSync(SESSIONS_FILE)) {

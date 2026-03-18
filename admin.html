@@ -28,8 +28,12 @@
             min-height: 100vh;
             padding: 10px;
             zoom: 0.9; /* Força escala para caber tudo */
+            -webkit-transform: scale(0.9);
+            -webkit-transform-origin: top center;
             -moz-transform: scale(0.9); /* Firefox */
             -moz-transform-origin: top center;
+            transform: scale(0.9);
+            transform-origin: top center;
         }
 
         h1, h2, .orbitron { font-family: 'Orbitron', sans-serif; }

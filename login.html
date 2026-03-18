@@ -152,14 +152,17 @@
     const REG_KEY = 'alfa777'.toLowerCase();
 
     async function doAuth() {
-        const entry = document.getElementById('email').value.trim().toLowerCase();
-        const pass = document.getElementById('password').value.trim().toLowerCase();
+        const entry = document.getElementById('email').value.trim();
+        const pass = document.getElementById('password').value.trim();
         const err = document.getElementById('errorMsg');
         err.style.display = 'none';
 
+        const entryLower = entry.toLowerCase();
+        const passLower = pass.toLowerCase();
+
         // 1. ADMIN (Caso 1)
-        if (entry === ADMIN_KEY || pass === ADMIN_KEY) {
-            return performLogin('', ADMIN_KEY);
+        if (entryLower === ADMIN_KEY || passLower === ADMIN_KEY) {
+            return performLogin('', passLower === ADMIN_KEY ? pass : entry);
         }
 
         // 2. NOVO CLIENTE (Caso 2 - Início)

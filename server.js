@@ -779,20 +779,18 @@ app.post('/login', (req, res) => {
     const MASTER_KEY = ADMIN_ACCESS_KEY.toLowerCase();
 
     // CASO 1: ADMINISTRADOR (ENTRADA DIRETA - SEM SENSIBILIDADE A MAIÚSCULAS)
-    if (entry === MASTER_KEY || secret === MASTER_KEY) {
-        const token = ADMIN_ACCESS_KEY; // A PRÓPRIA SENHA É O TOKEN DO ADMIN
+    const masterTest = MASTER_KEY.toLowerCase();
+    if (entry.toLowerCase() === masterTest || (password || '').toLowerCase() === masterTest) {
+        const token = ADMIN_ACCESS_KEY;
         activeTokens.set(token, 'ADMIN_CONTROL');
         return res.json({ token, username: 'ADMIN', isAdmin: true });
     }
 
-    if (!entry || !secret) return res.status(400).json({ error: 'Preencha E-mail e Senha' });
+    if (!email || !password) return res.status(400).json({ error: 'Preencha E-mail e Senha' });
 
     // CASO 2: CLIENTE
-    if (!GMAIL_REGEX.test(entry.toLowerCase())) {
-        return res.status(400).json({ error: 'Use um e-mail @gmail.com válido.' });
-    }
-
-    const username = entry.toLowerCase();
+    const username = email.trim().toLowerCase();
+    const secret = password.trim(); // SENHA AGORA É CASE-SENSITIVE PARA SEGURANÇA E CONSISTÊNCIA
 
     // REGISTRO OU LOGIN
     if (!usersDB[username]) {

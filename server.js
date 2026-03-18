@@ -283,10 +283,16 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
 }
 
 // ------------------------------------------------------------
-// SINCRONIZAÇÃO MERCADO (1.5s)
+// SINCRONIZAÇÃO MERCADO (Recursivo p/ evitar sobreposição)
 // ------------------------------------------------------------
-setInterval(async () => {
+let isMarketLoopRunning = false;
+async function startMarketLoop() {
+    if (isMarketLoopRunning) return;
+    isMarketLoopRunning = true;
+    
     try {
+        const now = Date.now();
+        // 1. Atualizar Ticker Completo (50 moedas) para filtragem "Ocultas" (30s)
         const now = Date.now();
         
         // 1. Atualizar Ticker Completo (50 moedas) para filtragem "Ocultas" (30s)
@@ -357,17 +363,29 @@ setInterval(async () => {
 
             // ATUALIZAR SALDO PERIODICAMENTE (CADA 30 SEGUNDOS) PARA TODOS CONECTADOS
             if (!state._lastBalanceUpdate || now - state._lastBalanceUpdate > 30000) {
-                binanceFetchBalance(username).catch(e => console.error(`[BALANCE ERROR] ${username}:`, e.message));
+                binanceFetchBalance(username).catch(e => {}); 
                 state._lastBalanceUpdate = now;
             }
 
             if (state.pauseUntil && now < state.pauseUntil) continue;
 
-            // 4. Fluxo por Usuário - SCANNER OFICIAL 1.3
-            await runFluxoAlfaScanner(username);
+            // BLOQUEIO DE CONCORRÊNCIA POR USUÁRIO
+            if (state._isScanning) continue;
+            state._isScanning = true;
+            try {
+                await runFluxoAlfaScanner(username);
+            } finally {
+                state._isScanning = false;
+            }
         }
-    } catch (e) { console.error("[MARKET ERROR]:", e.message); }
-}, 1500);
+    } catch (e) { 
+        console.error("[MARKET ERROR]:", e.message); 
+    } finally {
+        isMarketLoopRunning = false;
+        setTimeout(startMarketLoop, 1500); // Agenda a próxima execução APÓS o término desta
+    }
+}
+startMarketLoop(); // Início oficial
 
 function shouldExcludeCoin(symbol) {
     if (EXCLUDED_KEYWORDS.some(kw => symbol.includes(kw))) return true;

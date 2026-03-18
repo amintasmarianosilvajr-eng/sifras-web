@@ -9,6 +9,14 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// GLOBAL ERROR HANDLERS (DEBUG RAILWAY)
+process.on('uncaughtException', (err) => {
+    console.error('[CRITICAL] Uncaught Exception:', err.message, err.stack);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 // Senhas de Acesso
 const GLOBAL_ACCESS_KEY = 'alfa777';
 const ADMIN_ACCESS_KEY = 'alfa7772026@';

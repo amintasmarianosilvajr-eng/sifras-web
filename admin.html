@@ -413,15 +413,15 @@
             if (u.status === 'IN_TRADE' && u.buyPrice > 0 && u.currentPrice > 0) {
                 roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
                 
-                // Mapeia de -4.0% (0%) até +0.9% (100%)
-                const minRange = -4.0;
-                const maxRange = 0.9; // PADRÃO DEFINITIVO 0.9%
+                // Mapeia de -6.0% (0%) até +0.6% (100%)
+                const minRange = -6.0;
+                const maxRange = 0.6;
                 progressPercent = ((roi - minRange) / (maxRange - minRange)) * 100;
                 progressPercent = Math.max(0, Math.min(100, progressPercent));
                 
                 // Cor dinâmica
-                if (roi >= 0) barColor = '#ccff00'; // Cyber Green
-                else if (roi > -2) barColor = '#f3ba2f'; // Gold
+                if (roi >= 0) barColor = '#ccff00'; // Green
+                else if (roi > -3) barColor = '#f3ba2f'; // Gold
                 else barColor = '#ff3366'; // Red
             }
 
@@ -438,18 +438,19 @@
                     <span class="step-text">${u.currentStep}</span>
                     ${u.status === 'IN_TRADE' ? `
                         <div class="telemetry-container">
-                            <div class="telemetry-marker" style="left: 81.6%;"></div> <!-- Marcador do 0% (4/4.9) -->
+                            <div class="telemetry-marker" style="left: 90.9%;"></div> <!-- Marcador do 0% (6/6.6) -->
                             <div class="telemetry-bar" style="width: ${progressPercent}%; background: ${barColor}; box-shadow: 0 0 10px ${barColor}"></div>
                         </div>
                         <div class="telemetry-labels">
-                            <span>-4.0%</span>
+                            <span>-6.0%</span>
                             <span style="color:${roi >= 0 ? '#ccff00' : '#ff3366'}">${roi.toFixed(2)}%</span>
-                            <span>+0.9%</span>
+                            <span>+0.6%</span>
                         </div>
                     ` : ''}
                 </td>
                 <td class="orbitron" style="color:var(--cyber-blue)">${u.activeSymbol || '---'}</td>
                 <td class="amount-text" title="Preço de Compra">$ ${u.buyPrice > 0 ? u.buyPrice.toFixed(6) : '---'}</td>
+                <td class="amount-text" title="Preço Atual">$ ${u.currentPrice > 0 ? u.currentPrice.toFixed(6) : '---'}</td>
                 <td class="amount-text" title="Preço de Alvo" style="color:var(--cyber-gold)">$ ${u.targetPrice > 0 ? u.targetPrice.toFixed(6) : '---'}</td>
                 <td class="amount-text" title="Montante Alocado">$ ${u.buyAmountUSDT.toFixed(2)}</td>
                 <td class="amount-text" style="color:var(--cyber-blue)">$ ${u.balanceUSDT.toFixed(2)}</td>

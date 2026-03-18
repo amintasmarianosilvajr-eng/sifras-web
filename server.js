@@ -313,7 +313,6 @@ function checkRepetition(username, symbol) {
     
     return false;
 }
-    }, 1500);
 
 // --- NOVO: FUNÇÃO DE BOOTSTRAP PARA AUTO-RESUME ---
 async function bootstrapRobots() {

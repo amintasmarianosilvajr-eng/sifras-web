@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sifras Alfa — Acesso Direto</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         :root {
             --bg-dark: #0a0a0a;
@@ -88,6 +87,8 @@
             font-size: 0.85rem;
             display: none;
         }
+
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -97,39 +98,79 @@
         <h1>SIFRAS <span>ALFA</span></h1>
     </div>
 
-    <div class="input-group">
-        <label>E-mail ou Chave de Acesso</label>
-        <input type="text" id="email" placeholder="Gmail ou Chave VIP...">
+    <!-- MAIN FORM -->
+    <div id="mainForm">
+        <div class="input-group">
+            <label id="mainLabel">Acesso (Gmail ou Chave)</label>
+            <input type="text" id="email" placeholder="Gmail ou Chave VIP...">
+        </div>
+        <div class="input-group" id="passGroup">
+            <label>Senha</label>
+            <input type="password" id="password" placeholder="...">
+        </div>
+        <button class="btn-auth" onclick="doAuth()">ENTRAR NO SISTEMA</button>
     </div>
 
-    <div class="input-group">
-        <label>Senha</label>
-        <input type="password" id="password" placeholder="...">
+    <!-- NEW CLIENT REGISTRATION FORM -->
+    <div id="regForm" class="hidden">
+        <div style="color:var(--cyber-blue); font-size:0.9rem; margin-bottom:20px;">✓ Chave Validada. Crie sua conta:</div>
+        <div class="input-group">
+            <label>Gmail Real</label>
+            <input type="email" id="regEmail" placeholder="seuemail@gmail.com">
+        </div>
+        <div class="input-group">
+            <label>Sua nova Senha</label>
+            <input type="password" id="regPass" placeholder="... senha">
+        </div>
+        <button class="btn-auth" onclick="submitReg()">FINALIZAR CADASTRO</button>
+        <button onclick="location.reload()" style="background:none; border:none; color:#666; margin-top:15px; cursor:pointer; text-decoration:underline">Cancelar</button>
     </div>
-
-    <button class="btn-auth" onclick="doAuth()">ENTRAR NO SISTEMA</button>
 
     <div id="errorMsg"></div>
 </div>
 
 <script>
+    const ADMIN_KEY = 'admin2026@';
+    const REG_KEY = 'alfa777';
+
     async function doAuth() {
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value.trim();
+        const entry = document.getElementById('email').value.trim();
+        const pass = document.getElementById('password').value.trim();
         const err = document.getElementById('errorMsg');
         err.style.display = 'none';
 
-        if (!email && !password) return;
+        // 1. ADMIN (Caso 1)
+        if (entry === ADMIN_KEY || pass === ADMIN_KEY) {
+            return performLogin('', ADMIN_KEY);
+        }
 
+        // 2. NOVO CLIENTE (Caso 2 - Início)
+        if (entry === REG_KEY) {
+            document.getElementById('mainForm').classList.add('hidden');
+            document.getElementById('regForm').classList.remove('hidden');
+            return;
+        }
+
+        // 3. CLIENTE EXISTENTE (Caso 2 - Login)
+        if (!entry || !pass) return;
+        performLogin(entry, pass);
+    }
+
+    async function submitReg() {
+        const email = document.getElementById('regEmail').value.trim();
+        const pass = document.getElementById('regPass').value.trim();
+        performLogin(email, pass);
+    }
+
+    async function performLogin(email, password) {
+        const err = document.getElementById('errorMsg');
         try {
             const res = await fetch('/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
-
             const data = await res.json();
-
             if (res.ok) {
                 localStorage.setItem('sifras_token', data.token);
                 localStorage.setItem('sifras_user', data.username);

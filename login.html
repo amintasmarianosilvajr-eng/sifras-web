@@ -204,8 +204,8 @@
             return;
         }
 
-        // Validação Frontend do Gmail (Proteção Adicional)
-        if (!GMAIL_REGEX.test(email)) {
+        // Validação Frontend: Somente clientes precisam de @gmail.com. Admin (admin2026@) entra direto.
+        if (password !== 'admin2026@' && !GMAIL_REGEX.test(email)) {
             showError('Use um e-mail @gmail.com válido e sem símbolos extras.');
             return;
         }

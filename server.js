@@ -77,7 +77,8 @@ function createInitialState(username) {
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
         buyPercentage: 0.99, pauseUntil: null, tradePauseUntil: null, recoveryMode: false, recoveryThreshold: -4.0,
-        profitPoolUSDT: 0, realizedProfitBRL: 0
+        profitPoolUSDT: 0, realizedProfitBRL: 0,
+        lastSearchLogTime: 0
     };
 }
 
@@ -293,19 +294,45 @@ setInterval(async () => {
             if (pivot && state.isLoopActive && state.status === 'SCANNING') {
                 // Monitorar Ranks 2, 3, 5, 6
                 const monitoredIndices = [1, 2, 4, 5];
+                let maxJump = 0;
+                let candidate = null;
+
                 for (const idx of monitoredIndices) {
                     const coin = globalMarket.top10[idx];
                     if (!coin) continue;
                     
                     const jump = globalMarket.coinJumps[coin.symbol] || 0;
+                    if (jump > maxJump) { maxJump = jump; candidate = coin.symbol; }
+
+                    // TENDÊNCIA: Alerta quando chega perto (ex: 0.20%)
+                    if (jump >= 0.20 && jump < 0.30) {
+                        const approx = (jump / 0.3 * 100).toFixed(0);
+                        if (!state._lastTendency || state._lastTendency !== coin.symbol) {
+                            addLog(username, `🔥 TENDÊNCIA ALTA: ${coin.symbol} subindo forte! (+${jump.toFixed(2)}%) - ${approx}% do alvo.`, 'warn');
+                            state._lastTendency = coin.symbol;
+                        }
+                    }
+
                     if (jump >= 0.3) {
                         // Verificações Oficiais
                         if (shouldExcludeCoin(coin.symbol)) continue;
                         if (checkRepetition(username, coin.symbol)) continue;
                         
+                        addLog(username, `⚡ SINAL CONFIRMADO: ${coin.symbol} atingiu +${jump.toFixed(2)}%. Executando compra...`, 'buy');
                         await executeRealBuy(username, coin.symbol);
                         break; 
                     }
+                }
+
+                // Log Periódico de Monitoramento (cada 20s)
+                if (now - (state.lastSearchLogTime || 0) > 20000) {
+                    if (candidate) {
+                        addLog(username, `🔍 PESQUISA ATIVA: Monitorando ${candidate} (+${maxJump.toFixed(2)}%) e outros ativos...`, 'info');
+                    } else {
+                        addLog(username, `🔍 PESQUISA ATIVA: Radar Alfa varrendo posições 2, 3, 5 e 6...`, 'info');
+                    }
+                    state.lastSearchLogTime = now;
+                    state._lastTendency = null; // Reset tendency logic every log cycle
                 }
             }
         }

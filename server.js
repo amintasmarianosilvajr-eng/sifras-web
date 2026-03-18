@@ -292,8 +292,6 @@ async function startMarketLoop() {
     
     try {
         const now = Date.now();
-        // 1. Atualizar Ticker Completo (50 moedas) para filtragem "Ocultas" (30s)
-        const now = Date.now();
         
         // 1. Atualizar Ticker Completo (50 moedas) para filtragem "Ocultas" (30s)
         if (!globalMarket.lastTickerFetch || now - globalMarket.lastTickerFetch > 30000) {

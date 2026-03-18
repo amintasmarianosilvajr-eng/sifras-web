@@ -758,58 +758,47 @@ app.post('/gateway', (req, res) => {
     return res.status(401).json({ error: 'Incorreta' });
 });
 
-// --- SISTEMA DE LOGIN INTELIGENTE (CASOS 1 E 2) ---
+// --- SISTEMA DE LOGIN SIMPLIFICADO ---
 app.post('/login', (req, res) => {
     let { email, password } = req.body;
-    if (!email && !password) return res.status(400).json({ error: 'Insira sua Chave ou E-mail' });
-
     const entry = (email || '').trim();
     const secret = (password || '').trim();
 
-    // CASO 1: ADMINISTRADOR (Pode digitar em qualquer campo)
+    // CASO 1: ADMINISTRADOR (ENTRADA DIRETA)
     if (entry === ADMIN_ACCESS_KEY || secret === ADMIN_ACCESS_KEY) {
         const token = crypto.randomBytes(32).toString('hex');
         activeTokens.set(token, 'ADMIN_CONTROL');
         return res.json({ token, username: 'ADMIN', isAdmin: true });
     }
 
-    // CASO 2: CLIENTE (Cadastro ou Login)
-    // Para clientes, o email deve ser um @gmail.com válido
-    if (!GMAIL_REGEX.test(entry)) {
+    if (!entry || !secret) return res.status(400).json({ error: 'Preencha E-mail e Senha' });
+
+    // CASO 2: CLIENTE
+    if (!GMAIL_REGEX.test(entry.toLowerCase())) {
         return res.status(400).json({ error: 'Use um e-mail @gmail.com válido.' });
     }
 
     const username = entry.toLowerCase();
 
-    // REGISTRO NOVO (Via Chave alfa777 informada anteriormente no flow)
+    // REGISTRO OU LOGIN
     if (!usersDB[username]) {
-        // Se for novo, cadastramos com a senha enviada
-        usersDB[username] = { 
-            password: secret, 
-            registeredAt: new Date().toISOString(),
-            isApproved: false // Novo precisa de ativação
-        };
+        usersDB[username] = { password: secret, registeredAt: new Date().toISOString(), isApproved: false };
         saveUsersDB();
-        return res.status(403).json({ error: 'Cadastro realizado! Aguardando ativação pelo administrador.' });
+        return res.status(403).json({ error: 'Cadastro realizado! Aguarde ativação do suporte.' });
     }
 
-    // LOGIN EXISTENTE
     if (usersDB[username].password !== secret) {
-        return res.status(401).json({ error: 'Senha incorreta para este Gmail.' });
+        return res.status(401).json({ error: 'Senha incorreta.' });
     }
 
-    // Checar Aprovação (exceto se for conta antiga sem o flag)
     if (usersDB[username].isApproved === false) {
-        return res.status(403).json({ error: 'Aguardando ativação pelo administrador. Contate o suporte.' });
+        return res.status(403).json({ error: 'Aguardando ativação pelo administrador.' });
     }
 
     loadUserState(username);
-    for (const [t, u] of activeTokens.entries()) { if (u === username) activeTokens.delete(t); }
-
     const token = crypto.randomBytes(32).toString('hex');
     activeTokens.set(token, username);
     saveSessions();
-    
     return res.json({ token, username });
 });
 

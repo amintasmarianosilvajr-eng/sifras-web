@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa — Acesso Inteligente</title>
+    <title>Sifras Alfa — Acesso Direto</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
@@ -11,8 +11,7 @@
             --bg-dark: #0a0a0a;
             --cyber-blue: #ccff00;
             --text-main: #ffffff;
-            --glass: rgba(18, 18, 18, 0.95);
-            --neon-shadow: 0 0 15px rgba(204, 255, 0, 0.3);
+            --glass: rgba(20, 20, 20, 0.98);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,43 +20,29 @@
             background-color: var(--bg-dark);
             color: var(--text-main);
             font-family: 'Outfit', sans-serif;
-            background: radial-gradient(circle at 50% 50%, #151515 0%, #050505 100%);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            overflow: hidden;
         }
 
         .login-card {
             background: var(--glass);
-            border: 1px solid rgba(204, 255, 0, 0.1);
-            padding: 40px;
+            border: 1px solid rgba(204, 255, 0, 0.15);
+            padding: 45px;
             border-radius: 20px;
             width: 100%;
-            max-width: 420px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            max-width: 400px;
             text-align: center;
-            position: relative;
-            transition: 0.5s;
         }
 
         .logo-box h1 {
             font-family: 'Orbitron', sans-serif;
-            font-size: 2.2rem;
-            letter-spacing: 2px;
-            margin-bottom: 5px;
+            font-size: 2rem;
+            margin-bottom: 30px;
         }
 
         .logo-box span { color: var(--cyber-blue); }
-
-        .subtitle {
-            font-size: 0.8rem;
-            color: #888;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-            margin-bottom: 40px;
-        }
 
         .input-group {
             margin-bottom: 20px;
@@ -66,95 +51,43 @@
 
         .input-group label {
             display: block;
-            font-size: 0.85rem;
-            color: #ccc;
+            font-size: 0.8rem;
+            color: #888;
             margin-bottom: 8px;
-            margin-left: 5px;
-        }
-
-        .input-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-wrapper i {
-            position: absolute;
-            left: 15px;
-            color: var(--cyber-blue);
         }
 
         input {
             width: 100%;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 15px 15px 15px 45px;
-            border-radius: 12px;
+            padding: 15px;
+            border-radius: 10px;
             color: #fff;
             font-size: 1rem;
-            transition: 0.3s;
-        }
-
-        input:focus {
             outline: none;
-            border-color: var(--cyber-blue);
-            background: rgba(204, 255, 0, 0.05);
         }
 
-        .btn-action {
+        input:focus { border-color: var(--cyber-blue); }
+
+        .btn-auth {
             width: 100%;
             background: var(--cyber-blue);
             color: #000;
             border: none;
             padding: 18px;
-            border-radius: 12px;
+            border-radius: 10px;
             font-family: 'Orbitron', sans-serif;
             font-weight: 800;
             cursor: pointer;
-            transition: 0.3s;
             margin-top: 10px;
-            box-shadow: var(--neon-shadow);
-        }
-
-        .btn-action:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 25px var(--cyber-blue);
-        }
-
-        .btn-back {
-            background: transparent;
-            color: #666;
-            border: none;
-            margin-top: 15px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            text-decoration: underline;
         }
 
         #errorMsg {
             margin-top: 20px;
-            padding: 12px;
-            border-radius: 8px;
-            background: rgba(255, 51, 102, 0.1);
             color: #ff3366;
             font-size: 0.85rem;
             display: none;
-            border: 1px solid rgba(255, 51, 102, 0.2);
         }
-
-        #successMsg {
-            margin-top: 20px;
-            padding: 12px;
-            border-radius: 8px;
-            background: rgba(204, 255, 0, 0.1);
-            color: var(--cyber-blue);
-            font-size: 0.85rem;
-            display: none;
-            border: 1px solid rgba(204, 255, 0, 0.2);
-        }
-
-        /* Hidden Classes */
-        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -162,119 +95,31 @@
 <div class="login-card">
     <div class="logo-box">
         <h1>SIFRAS <span>ALFA</span></h1>
-        <div class="subtitle">Nexus System</div>
     </div>
 
-    <!-- STEP 1: KEY OR EMAIL -->
-    <div id="step1">
-        <div class="input-group">
-            <label>E-mail ou Chave de Acesso</label>
-            <div class="input-wrapper">
-                <i class="ph ph-key"></i>
-                <input type="text" id="entry" placeholder="E-mail ou Chave VIP..." required>
-            </div>
-        </div>
-        <button class="btn-action" onclick="handleStep1()">CONTINUAR</button>
+    <div class="input-group">
+        <label>E-mail ou Chave de Acesso</label>
+        <input type="text" id="email" placeholder="Gmail ou Chave VIP...">
     </div>
 
-    <!-- STEP 2: PASSWORD (LOGIN) -->
-    <div id="stepLogin" class="hidden">
-        <label id="loginLabel" style="display:block; margin-bottom:10px; font-size:0.9rem; color:var(--cyber-blue)"></label>
-        <div class="input-group">
-            <label>Sua Senha</label>
-            <div class="input-wrapper">
-                <i class="ph ph-lock"></i>
-                <input type="password" id="loginPass" placeholder="digite sua senha..." required>
-            </div>
-        </div>
-        <button class="btn-action" onclick="submitAuth('login')">ENTRAR NO PAINEL</button>
-        <button class="btn-back" onclick="goBack()">Voltar</button>
+    <div class="input-group">
+        <label>Senha</label>
+        <input type="password" id="password" placeholder="...">
     </div>
 
-    <!-- STEP 2: REGISTRATION (NEW CLIENT) -->
-    <div id="stepRegister" class="hidden">
-        <div style="color:var(--cyber-blue); font-size:0.9rem; margin-bottom:20px;">
-            <i class="ph ph-shield-check"></i> Chave Validada. Crie sua conta:
-        </div>
-        <div class="input-group">
-            <label>E-mail Gmail (Obrigatório)</label>
-            <div class="input-wrapper">
-                <i class="ph ph-envelope"></i>
-                <input type="email" id="regEmail" placeholder="seuemail@gmail.com" required>
-            </div>
-        </div>
-        <div class="input-group">
-            <label>Crie uma Senha</label>
-            <div class="input-wrapper">
-                <i class="ph ph-lock"></i>
-                <input type="password" id="regPass" placeholder="senha forte..." required>
-            </div>
-        </div>
-        <button class="btn-action" onclick="submitAuth('register')">FINALIZAR CADASTRO</button>
-        <button class="btn-back" onclick="goBack()">Cancelar</button>
-    </div>
+    <button class="btn-auth" onclick="doAuth()">ENTRAR NO SISTEMA</button>
 
     <div id="errorMsg"></div>
-    <div id="successMsg"></div>
-
-    <footer style="margin-top:30px; font-size:0.7rem; color:#333">
-        Monitoramento Sifras Invest © 2025
-    </footer>
 </div>
 
 <script>
-    const ADMIN_KEY = 'admin2026@';
-    const REG_KEY = 'alfa777';
-    const GMAIL_REGEX = /^[a-z0-9._%+-]+@gmail\.com$/;
-
-    let currentEmail = "";
-
-    function handleStep1() {
-        const entry = document.getElementById('entry').value.trim();
-        hideMsgs();
-
-        if (!entry) return;
-
-        // CASO 1: ADMINISTRADOR DIRETO
-        if (entry === ADMIN_KEY) {
-            submitAuth('admin', entry);
-            return;
-        }
-
-        // CASO 2: NOVO CLIENTE (CHAVE ALFA777)
-        if (entry === REG_KEY) {
-            transitionTo('stepRegister');
-            return;
-        }
-
-        // CASO 3: CLIENTE EXISTENTE (EMAIL GMAIL)
-        if (GMAIL_REGEX.test(entry.toLowerCase())) {
-            currentEmail = entry.toLowerCase();
-            document.getElementById('loginLabel').innerText = currentEmail;
-            transitionTo('stepLogin');
-            return;
-        }
-
-        showError('Chave ou E-mail inválido.');
-    }
-
-    async function submitAuth(type, key = '') {
+    async function doAuth() {
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
         const err = document.getElementById('errorMsg');
-        let email = "";
-        let password = "";
+        err.style.display = 'none';
 
-        if (type === 'admin') {
-            password = key;
-        } else if (type === 'login') {
-            email = currentEmail;
-            password = document.getElementById('loginPass').value;
-        } else if (type === 'register') {
-            email = document.getElementById('regEmail').value.trim();
-            password = document.getElementById('regPass').value;
-            
-            if (!GMAIL_REGEX.test(email)) return showError('Use um e-mail @gmail.com válido.');
-            if (!password) return showError('Senha necessária.');
-        }
+        if (!email && !password) return;
 
         try {
             const res = await fetch('/login', {
@@ -288,42 +133,15 @@
             if (res.ok) {
                 localStorage.setItem('sifras_token', data.token);
                 localStorage.setItem('sifras_user', data.username);
-                
-                if (data.isAdmin) window.location.href = 'admin.html';
-                else window.location.href = 'dashboard.html';
+                window.location.href = data.isAdmin ? 'admin.html' : 'dashboard.html';
             } else {
-                showError(data.error);
-                if (res.status === 403 && type === 'register') {
-                    document.getElementById('stepRegister').classList.add('hidden');
-                    document.getElementById('step1').classList.remove('hidden');
-                }
+                err.innerText = data.error;
+                err.style.display = 'block';
             }
         } catch (e) {
-            showError('Erro de conexão com o servidor.');
+            err.innerText = 'Erro ao conectar.';
+            err.style.display = 'block';
         }
-    }
-
-    function transitionTo(stepId) {
-        document.getElementById('step1').classList.add('hidden');
-        document.getElementById('stepLogin').classList.add('hidden');
-        document.getElementById('stepRegister').classList.add('hidden');
-        document.getElementById(stepId).classList.remove('hidden');
-    }
-
-    function goBack() {
-        transitionTo('step1');
-        hideMsgs();
-    }
-
-    function showError(msg) {
-        const err = document.getElementById('errorMsg');
-        err.innerText = msg;
-        err.style.display = 'block';
-    }
-
-    function hideMsgs() {
-        document.getElementById('errorMsg').style.display = 'none';
-        document.getElementById('successMsg').style.display = 'none';
     }
 </script>
 

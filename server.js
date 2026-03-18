@@ -290,8 +290,8 @@ setInterval(async () => {
                 globalMarket.pivot = r4.symbol; // Guardar para Admin Global
             }
 
-            // ATUALIZAR SALDO PERIODICAMENTE (CADA 30 SEGUNDOS)
-            if (state.isLoopActive && (!state._lastBalanceUpdate || now - state._lastBalanceUpdate > 30000)) {
+            // ATUALIZAR SALDO PERIODICAMENTE (CADA 30 SEGUNDOS) PARA TODOS CONECTADOS
+            if (!state._lastBalanceUpdate || now - state._lastBalanceUpdate > 30000) {
                 binanceFetchBalance(username).catch(e => console.error(`[BALANCE ERROR] ${username}:`, e.message));
                 state._lastBalanceUpdate = now;
             }

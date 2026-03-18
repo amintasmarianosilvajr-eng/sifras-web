@@ -87,62 +87,125 @@
         </div>
 
         <div class="panel">
-            <div class="panel-title"><i class="ph ph-user"></i> Login Individual</div>
-            <div class="input-group">
-                <label>E-mail de Acesso</label>
-                <input type="email" id="inputEmail" placeholder="seu@email.com" autofocus>
+            <div id="stepEmail">
+                <div class="panel-title"><i class="ph ph-user"></i> Acesso Individual</div>
+                <div class="input-group">
+                    <label>E-mail (Apenas @gmail.com)</label>
+                    <input type="email" id="inputEmail" placeholder="seu.nome@gmail.com" autofocus>
+                </div>
+                <button class="btn-login" id="btnSendOtp" onclick="requestOtp()">
+                    <i class="ph ph-paper-plane-tilt"></i> ENVIAR CÓDIGO
+                </button>
             </div>
-            <div class="input-group">
-                <label>Senha Pessoal</label>
-                <input type="password" id="inputPassword" placeholder="••••••••••">
+
+            <div id="stepOtp" style="display: none;">
+                <div class="panel-title"><i class="ph ph-shield-check"></i> Verificação</div>
+                <div class="input-group">
+                    <label>Código de 6 dígitos enviado ao e-mail</label>
+                    <input type="text" id="inputOtp" placeholder="000000" maxlength="6" style="text-align: center; font-size: 1.5rem; letter-spacing: 10px;">
+                </div>
+                <button class="btn-login" id="btnLogin" onclick="doLogin()">
+                    <i class="ph-fill ph-sign-in"></i> VERIFICAR E ENTRAR
+                </button>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="javascript:void(0)" onclick="resetFlow()" style="color: #666; font-size: 0.8rem; text-decoration: none;">&larr; Alterar E-mail</a>
+                </div>
             </div>
-            <button class="btn-login" id="btnLogin" onclick="doLogin()">
-                <i class="ph-fill ph-sign-in"></i> ENTRAR OU CADASTRAR
-            </button>
-            <div style="text-align: center; margin-top: 10px; color: #555; font-size: 0.8rem;">
-                <i class="ph ph-info"></i> Seu perfil será criado automaticamente no primeiro acesso.
-            </div>
+
             <div class="error-msg" id="errorLogin">
                 <i class="ph ph-warning"></i> Credenciais incorretas ou erro no acesso.
             </div>
-            <div style="text-align: center; margin-top: 15px;">
-                <a href="gateway.html" style="color: #666; font-size: 0.8rem; text-decoration: none;">&larr; Voltar para Segurança</a>
+            
+            <div id="devInfo" style="display:none; margin-top:15px; padding:10px; background:rgba(204,255,0,0.1); border:1px dashed var(--cyber-blue); color:var(--cyber-blue); font-size:0.8rem; border-radius:8px;"></div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="index.html" style="color: #444; font-size: 0.8rem; text-decoration: none;">Monitoramento Sifras Invest &copy; 2025</a>
             </div>
         </div>
 
-        <div class="footer-note">Sifras Invest &copy; 2025 — Operações Algorítmicas</div>
+        <div class="footer-note">Segurança Alfa: Seu perfil é vinculado ao seu Google ID.</div>
     </div>
     <script>
-        document.getElementById('inputPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-        document.getElementById('inputEmail').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('inputPassword').focus(); });
+        const API_URL = '';
 
-        window.onload = async () => {
-            // ... (mesmo código anterior)
-        };
+        function resetFlow() {
+            document.getElementById('stepEmail').style.display = 'block';
+            document.getElementById('stepOtp').style.display = 'none';
+            document.getElementById('inputOtp').value = '';
+            document.getElementById('errorLogin').classList.remove('show');
+            document.getElementById('devInfo').style.display = 'none';
+        }
 
-        async function doLogin() {
-            const email = document.getElementById('inputEmail').value;
-            const password = document.getElementById('inputPassword').value;
-            const btn = document.getElementById('btnLogin');
+        async function requestOtp() {
+            const email = document.getElementById('inputEmail').value.trim().toLowerCase();
+            const btn = document.getElementById('btnSendOtp');
             const errorMsg = document.getElementById('errorLogin');
-            if (!email || !password) return;
+            const devInfo = document.getElementById('devInfo');
+
+            if (!email.endsWith('@gmail.com')) {
+                errorMsg.innerHTML = '<i class="ph ph-warning"></i> Por favor, use um e-mail @gmail.com válido.';
+                errorMsg.classList.add('show');
+                return;
+            }
 
             btn.disabled = true;
-            btn.innerHTML = '<i class="ph ph-circle-notch"></i> Verificando...';
+            btn.innerHTML = '<i class="ph ph-circle-notch spin"></i> Enviando...';
             errorMsg.classList.remove('show');
 
             try {
-                const res = await fetch('/login', {
+                const res = await fetch(`${API_URL}/request-otp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    document.getElementById('stepEmail').style.display = 'none';
+                    document.getElementById('stepOtp').style.display = 'block';
+                    document.getElementById('inputOtp').focus();
+                    
+                    if (data.devMode) {
+                        devInfo.innerHTML = `<strong>MODO DESENVOLVEDOR:</strong><br>${data.localMsg}`;
+                        devInfo.style.display = 'block';
+                    }
+                } else {
+                    errorMsg.innerHTML = `<i class="ph ph-warning"></i> ${data.error || 'Erro ao enviar e-mail.'}`;
+                    errorMsg.classList.add('show');
+                }
+            } catch (e) {
+                errorMsg.innerHTML = 'Erro de conexão com o servidor local.';
+                errorMsg.classList.add('show');
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> ENVIAR CÓDIGO';
+        }
+
+        async function doLogin() {
+            const email = document.getElementById('inputEmail').value.trim().toLowerCase();
+            const otp = document.getElementById('inputOtp').value.trim();
+            const btn = document.getElementById('btnLogin');
+            const errorMsg = document.getElementById('errorLogin');
+
+            if (!otp || otp.length < 6) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-circle-notch spin"></i> Verificando...';
+            errorMsg.classList.remove('show');
+
+            try {
+                const res = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp })
                 });
                 const data = await res.json();
                 if (res.ok && data.token) {
                     localStorage.setItem('sifrasToken', data.token);
                     localStorage.setItem('sifrasUser', data.username);
-                    window.location.href = '/dashboard.html';
+                    window.location.href = 'dashboard.html';
                 } else {
+                    errorMsg.innerHTML = `<i class="ph ph-warning"></i> ${data.error || 'Código incorreto.'}`;
                     errorMsg.classList.add('show');
                 }
             } catch (e) {
@@ -150,8 +213,12 @@
                 errorMsg.classList.add('show');
             }
             btn.disabled = false;
-            btn.innerHTML = '<i class="ph-fill ph-sign-in"></i> ENTRAR NO PAINEL';
+            btn.innerHTML = '<i class="ph-fill ph-sign-in"></i> VERIFICAR E ENTRAR';
         }
+
+        // Enter support
+        document.getElementById('inputEmail').addEventListener('keypress', (e) => { if(e.key === 'Enter') requestOtp(); });
+        document.getElementById('inputOtp').addEventListener('keypress', (e) => { if(e.key === 'Enter') doLogin(); });
     </script>
 </body>
 </html>

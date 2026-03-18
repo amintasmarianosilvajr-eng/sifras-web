@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const nodemailer = require('nodemailer');
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -747,29 +748,64 @@ app.post('/gateway', (req, res) => {
     return res.status(401).json({ error: 'Incorreta' });
 });
 
+const otpStore = {};
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'fluxosifrasoficial@gmail.com',
+        pass: 'kxaz gyvs odws hepx'
+    }
+});
+
+app.post('/request-otp', async (req, res) => {
+    let { email } = req.body;
+    if (!email || !email.endsWith('@gmail.com')) return res.status(400).json({ error: 'Use um e-mail @gmail.com' });
+    const username = email.trim().toLowerCase();
+    
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    otpStore[username] = { code, expires: Date.now() + 5 * 60000 };
+
+    try {
+        await transporter.sendMail({
+            from: '"Sifras Alfa" <fluxosifrasoficial@gmail.com>',
+            to: email,
+            subject: 'Seu Código de Acesso - Sifras Alfa',
+            text: `Seu código exclusivo de login é: ${code}\nEle é válido por 5 minutos.`
+        });
+        return res.json({ success: true });
+    } catch (e) {
+        console.error("[SMTP ERROR] Falha no envio:", e.message);
+        return res.status(500).json({ error: 'Erro ao enviar o código de verificação.' });
+    }
+});
+
 app.post('/login', (req, res) => {
-    let { email, password } = req.body;
+    let { email, otp } = req.body;
     if (!email) return res.status(400).json({ error: 'E-mail necessário' });
-    const username = email.trim().toLowerCase(); // Usamos o e-mail como ID único (username) interna
+    const username = email.trim().toLowerCase();
 
-    // 1. Verificar Credenciais
-    if (!usersDB[username]) { usersDB[username] = { password }; saveUsersDB(); }
-    else if (usersDB[username].password !== password) return res.status(401).json({ error: 'Incorreta' });
+    // 1. Validar OTP
+    if (!otpStore[username] || otpStore[username].code !== otp || Date.now() > otpStore[username].expires) {
+        return res.status(401).json({ error: 'Código inválido ou expirado.' });
+    }
+    delete otpStore[username]; // Marcar como usado
 
-    // 2. Trava de Unicidade: Se já existe um robô na memória, não criar outro!
-    // Puxar o estado existente ou carregar um novo (loadUserState já cuida do reuse)
+    // 2. Registrar no DB se for Novo
+    if (!usersDB[username]) { usersDB[username] = { registeredAt: new Date().toISOString() }; saveUsersDB(); }
+
+    // 3. Trava de Unicidade: Se já existe um robô na memória, não criar outro!
     loadUserState(username); 
 
-    // 3. Gerir Tokens (derrubar logins antigos se houver)
+    // 4. Gerir Tokens (derrubar logins antigos se houver)
     for (const [t, u] of activeTokens.entries()) {
         if (u === username) activeTokens.delete(t);
     }
 
     const token = crypto.randomBytes(32).toString('hex');
     activeTokens.set(token, username);
-    saveSessions(); // NOVO: Salvar token no disco
+    saveSessions(); // Salvar token no disco
     
-    console.log(`[AUTH] Login bem-sucedido: ${username}. Session unificada.`);
+    console.log(`[AUTH] Login OTP concluído: ${username}`);
     return res.json({ token, username });
 });
 

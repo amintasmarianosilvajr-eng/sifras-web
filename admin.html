@@ -26,12 +26,16 @@
             font-family: 'Outfit', sans-serif;
             background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.05) 0%, transparent 70%), #111111;
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px; /* Reduzido para ganhar espaço */
         }
 
         h1, h2, .orbitron { font-family: 'Orbitron', sans-serif; }
 
-        .container { max-width: 1400px; margin: 0 auto; }
+        .container { 
+            width: 100%; 
+            max-width: 98%; /* Fluididez Total */
+            margin: 0 auto; 
+        }
 
         header {
             display: flex;
@@ -78,7 +82,7 @@
             background: var(--glass-panel);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 15px;
-            overflow: hidden;
+            overflow-x: auto; /* Permite scroll horizontal se a tabela for larga */
         }
 
         table {

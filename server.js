@@ -1056,7 +1056,8 @@ app.get('/admin/overview', async (req, res) => {
     const allUsernames = new Set([...Object.keys(usersDB), ...userStates.keys()]);
     
     for (const username of allUsernames) {
-        const state = loadUserState(username);
+        // PRIORIDADES: Memória (Live) -> Disco (Cache)
+        const state = userStates.get(username) || loadUserState(username);
         const dbUser = usersDB[username] || {};
         
         overview.push({
@@ -1065,14 +1066,14 @@ app.get('/admin/overview', async (req, res) => {
             isApproved: dbUser.isApproved !== false,
             activeSymbol: state.activeSymbol || '---',
             balanceUSDT: state.balanceUSDT || 0,
-            buyAmountUSDT: state.buyQty * state.buyPrice || 0,
+            buyAmountUSDT: (state.buyQty || 0) * (state.buyPrice || 0),
             buyPrice: state.buyPrice || 0,
             targetPrice: state.targetPrice || 0,
             currentPrice: state.currentPrice || 0,
-            totalProfit: state.history.reduce((sum, h) => sum + (h.profitPct || 0), 0),
-            profit24h: sum24hProfit(state.history),
+            totalProfit: (state.history || []).reduce((sum, h) => sum + (h.profitPct || 0), 0),
+            profit24h: sum24hProfit(state.history || []),
             realizedProfitBRL: state.realizedProfitBRL || 0,
-            currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? `Em Trade (Alvo 0.6%)` : 'Aguardando Start')
+            currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? `Em Trade (Alvo 0.6%)` : (state.status === 'PAUSED' ? 'Pausa Técnica' : 'Aguardando Start'))
         });
     }
     res.json({ users: overview, globalPivot: globalMarket.pivot || '---' });

@@ -346,7 +346,7 @@
                         <div class="stat-label">Lucro Realizado (BRL)</div>
                         <div class="stat-value" id="valRealizedBRL" style="font-size: 1.5rem; margin:5px 0; color: var(--cyber-gold);">R$ 0,00</div>
                         <div style="color: #a0aab5; font-size: 0.85rem;" id="valProfitPool">
-                            Next BRL: $0.00 / $15.00
+                            Next BRL: $0.00 / $20.00
                         </div>
                     </div>
 
@@ -520,7 +520,7 @@
 
             document.getElementById('valBalanceUSDT').innerText = `$ ${state.balanceUSDT ? state.balanceUSDT.toFixed(2) : '0.00'}`;
             document.getElementById('valRealizedBRL').innerText = `R$ ${(state.realizedProfitBRL || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            document.getElementById('valProfitPool').innerText = `Próximo Alvo: $${(state.profitPoolUSDT || 0).toFixed(2)} / $15.00`;
+            document.getElementById('valProfitPool').innerText = `Próximo Alvo: $${(state.profitPoolUSDT || 0).toFixed(2)} / $20.00`;
 
             document.getElementById('valOpsCount').innerText = `${state.opsCount || 0} / 5`;
             document.getElementById('valCooldown').innerText = state.status === 'PAUSED' ? 'Em Pausa de Ciclo' : `${(state.lastTradedCoins || []).length} Moedas Bloqueadas`;

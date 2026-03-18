@@ -413,13 +413,15 @@
             if (u.status === 'IN_TRADE' && u.buyPrice > 0 && u.currentPrice > 0) {
                 roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
                 
-                // Novo Cálculo: 0% na Compra, 100% no Alvo (0.6%)
-                const targetPct = 0.6;
-                progressPercent = (roi / targetPct) * 100;
+                // Mapeia de -4.0% (0%) até +0.6% (100%)
+                const minRange = -4.0;
+                const maxRange = 0.6;
+                progressPercent = ((roi - minRange) / (maxRange - minRange)) * 100;
                 progressPercent = Math.max(0, Math.min(100, progressPercent));
                 
                 // Cor dinâmica
                 if (roi >= 0) barColor = '#ccff00'; // Cyber Green
+                else if (roi > -2) barColor = '#f3ba2f'; // Gold
                 else barColor = '#ff3366'; // Red
             }
 
@@ -436,12 +438,13 @@
                     <span class="step-text">${u.currentStep}</span>
                     ${u.status === 'IN_TRADE' ? `
                         <div class="telemetry-container">
+                            <div class="telemetry-marker" style="left: 86.9%;"></div> <!-- Marcador do 0% (4/4.6) -->
                             <div class="telemetry-bar" style="width: ${progressPercent}%; background: ${barColor}; box-shadow: 0 0 10px ${barColor}"></div>
                         </div>
                         <div class="telemetry-labels">
-                            <span>0%</span>
-                            <span style="color:${roi >= 0 ? '#ccff00' : '#ff3366'}">${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%</span>
-                            <span>+${targetPct}%</span>
+                            <span>-4.0%</span>
+                            <span style="color:${roi >= 0 ? '#ccff00' : '#ff3366'}">${roi.toFixed(2)}%</span>
+                            <span>+0.6%</span>
                         </div>
                     ` : ''}
                 </td>

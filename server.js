@@ -760,20 +760,21 @@ app.post('/gateway', (req, res) => {
 
 // --- SISTEMA DE LOGIN BLINDADO (SEM OTP) ---
 app.post('/login', (req, res) => {
-    let { email, password } = req.body; // Voltamos ao Password
-    if (!email || !password) return res.status(400).json({ error: 'E-mail e Senha necessários' });
-    
-    // 1. Validar Formato Gmail Rígido (Proteção contra "lixo")
-    const username = email.trim().toLowerCase();
-    if (!GMAIL_REGEX.test(username)) {
-        return res.status(400).json({ error: 'Use um e-mail @gmail.com válido e sem caracteres especiais.' });
-    }
+    let { email, password } = req.body;
 
-    // 2. Login de Admin direto
+    // 1. LOGIN DE ADMIN PRIORITÁRIO (SEM VALIDAÇÃO DE EMAIL)
     if (password === ADMIN_ACCESS_KEY) {
         const token = crypto.randomBytes(32).toString('hex');
         activeTokens.set(token, 'ADMIN_CONTROL');
         return res.json({ token, username: 'ADMIN', isAdmin: true });
+    }
+
+    if (!email || !password) return res.status(400).json({ error: 'E-mail e Senha necessários' });
+    
+    // 2. Validar Formato Gmail Rígido (Proteção contra "lixo")
+    const username = email.trim().toLowerCase();
+    if (!GMAIL_REGEX.test(username)) {
+        return res.status(400).json({ error: 'Use um e-mail @gmail.com válido.' });
     }
 
     // 3. Registrar se for Novo

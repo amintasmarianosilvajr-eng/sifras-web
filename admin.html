@@ -239,7 +239,7 @@
 </div>
 
 <script>
-    const ACCESS_KEY = 'admin2026@'; // ATUALIZADO: Mesma senha do servidor
+    const ACCESS_KEY = localStorage.getItem('sifras_token'); // TOKEN DINÂMICO DO STORAGE
 
     async function stopAll() {
         if (!confirm('⚠️ ALERTA: Deseja interromper TODOS os robôs operando agora? Isso parará inclusive robôs legítimos e órfãos.')) return;

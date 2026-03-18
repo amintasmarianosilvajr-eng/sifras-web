@@ -767,7 +767,7 @@ app.post('/login', (req, res) => {
 
     // CASO 1: ADMINISTRADOR (ENTRADA DIRETA - SEM SENSIBILIDADE A MAIÚSCULAS)
     if (entry === MASTER_KEY || secret === MASTER_KEY) {
-        const token = crypto.randomBytes(32).toString('hex');
+        const token = ADMIN_ACCESS_KEY; // A PRÓPRIA SENHA É O TOKEN DO ADMIN
         activeTokens.set(token, 'ADMIN_CONTROL');
         return res.json({ token, username: 'ADMIN', isAdmin: true });
     }

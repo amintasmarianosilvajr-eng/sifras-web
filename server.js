@@ -7,6 +7,13 @@ const path = require('path');
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// Forçar limpeza de cache em todas as requisições
+app.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    next();
+});
+
 app.use(express.static(__dirname)); // Serve arquivos estáticos da raiz (logo, etc)
 
 // GLOBAL ERROR HANDLERS (DEBUG RAILWAY)
@@ -479,13 +486,27 @@ async function executeRealBuy(username, symbol, price) {
     let usdt = state.balanceUSDT || 0;
     if (usdt < 11) {
         addLog(username, `⏳ Cache de saldo baixo ($${usdt.toFixed(2)}). Buscando saldo atualizado...`, 'info');
-        const account = await binanceRequest(username, '/api/v3/account');
-        if (account.error) {
-            addLog(username, `Erro Saldo: ${account.msg}`, 'error');
-            return resetTradeState(username);
+        try {
+            if (state.apiKey && state.apiSecret) {
+                const account = await binanceRequest(username, '/api/v3/account');
+                if (account.error) {
+                    addLog(username, `Erro Saldo: ${account.msg}`, 'error');
+                    return resetTradeState(username);
+                }
+                usdt = parseFloat(account.balances.find(b => b.asset === 'USDT')?.free || 0);
+                state.balanceUSDT = usdt; // Atualizar cache
+                if (!state._lastBalanceLog || Date.now() - state._lastBalanceLog > 300000) {
+                    addLog(username, `✅ Saldo Atualizado: $${usdt.toFixed(2)} USDT`, 'info');
+                    state._lastBalanceLog = Date.now();
+                }
+            }
+        } catch (e) {
+            console.error(`[BALANCE ERROR] ${username}:`, e.message);
+            if (e.response?.status === 401 || e.response?.status === 403) {
+                addLog(username, "⚠️ Erro de Autenticação na Binance. Verifique API Key/Secret.", 'error');
+            }
+            return resetTradeState(username); // Reset if there's an error fetching balance
         }
-        usdt = parseFloat(account.balances.find(b => b.asset === 'USDT')?.free || 0);
-        state.balanceUSDT = usdt; // Atualizar cache
     }
 
     addLog(username, `🎯 GATILHO: ${symbol}. Saldo: $${usdt.toFixed(2)} (cache)`, 'trigger');

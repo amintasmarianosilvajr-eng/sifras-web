@@ -493,8 +493,11 @@
     }
 
     // Inicialização
-    setInterval(updateOverview, 3000);
-    updateOverview();
+    window.onload = async () => {
+        console.log("🚀 Elite Fluxo Alfa Admin V1.2 Loaded - Anti-Cache Active");
+        updateOverview();
+        setInterval(updateOverview, 5000);
+    };
 </script>
 
 </body>

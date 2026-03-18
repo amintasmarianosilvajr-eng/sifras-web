@@ -297,6 +297,11 @@ setInterval(async () => {
             }
         }
 
+        // NOVO: Cálculo de Sentimento de Mercado (para narração detalhada)
+        const avgGlobalChange = globalMarket.top10.reduce((s, c) => s + c.change, 0) / (globalMarket.top10.length || 1);
+        globalMarket.sentiment = avgGlobalChange > 0 ? "ALTA" : "BAIXA";
+        globalMarket.marketStrength = Math.abs(avgGlobalChange).toFixed(2);
+
         // 4. Fluxo por Usuário
         for (const [username, state] of userStates) {
             // Sincronizar Pivô e Telemetria para o Dashboard (mesmo em trade)
@@ -450,16 +455,16 @@ async function runFluxoAlfaScanner(username) {
     };
 
     // LOGS DE VARREDURA NARRADOS (MAIS DETALHADOS)
-    if (!state._lastLogTime || Date.now() - state._lastLogTime > 20000) {
+    if (!state._lastLogTime || Date.now() - state._lastLogTime > 25000) {
         // Encontrar maior movimento na piscina de 50 moedas para "narração"
         const movers = Object.keys(globalMarket.coinJumps)
             .map(s => ({ s, j: globalMarket.coinJumps[s] }))
             .sort((a,b) => b.j - a.j);
         const topMover = movers[0] || { s: '---', j: 0 };
         
-        addLog(username, `🌊 FLUXO ALFA: Mercado operando com Pivô em ${rank4.symbol}.`, 'info');
-        addLog(username, `💡 DESTAQUE RADAR: ${topMover.s} apresentando +${topMover.j.toFixed(2)}% de força imediata.`, 'info');
-        addLog(username, `📏 MONITORANDO: R2:${rank2.symbol}(${(globalMarket.coinJumps[rank2.symbol]||0).toFixed(2)}%) | R3:${rank3.symbol}(${(globalMarket.coinJumps[rank3.symbol]||0).toFixed(2)}%)`, 'info');
+        addLog(username, `🌊 FLUXO ALFA: Mercado em tendência de ${globalMarket.sentiment} (${globalMarket.marketStrength}%).`, 'info');
+        addLog(username, `💡 DESTAQUE RADAR: ${topMover.s} é a moeda mais agressiva (+${topMover.j.toFixed(2)}% jump).`, 'info');
+        addLog(username, `📏 BUSCANDO EM: R2:${rank2.symbol} | R3:${rank3.symbol} | R5:${rank5.symbol} | R6:${rank6.symbol}`, 'info');
         state._lastLogTime = Date.now();
     }
 

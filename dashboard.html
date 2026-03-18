@@ -562,6 +562,8 @@
                 }
 
             } else {
+                state.activeSymbol = null; // Forçar limpeza local
+                document.getElementById('telemetryCard').classList.remove('active');
                 document.getElementById('valActiveTrade').innerText = 'Nenhum';
                 document.getElementById('valTradeTarget').innerHTML = `
                     <span style="color:#a0aab5">📥 Compra:</span> ---<br>

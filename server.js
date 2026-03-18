@@ -516,7 +516,11 @@ function startTradeMonitor(username, symbol) {
 
 async function executeRealSell(username, symbol, reason) {
     const state = userStates.get(username);
-    const coinBase = symbol.replace('USDT', '');
+    if (state._isSelling) return; // BLOQUEIO DE CONCORRÊNCIA
+    state._isSelling = true;
+
+    try {
+        const coinBase = symbol.replace('USDT', '');
     
     addLog(username, `💰 VENDENDO: ${symbol} (${reason})`, 'info');
 
@@ -550,7 +554,10 @@ async function executeRealSell(username, symbol, reason) {
     }
     
     if (truncatedBalance <= 0) {
-        addLog(username, `Erro Venda: Saldo insuficiente após truncamento (${balance})`, 'error');
+        if (balance > 0) {
+            addLog(username, `Sobra de poeira ignorada (${balance} ${coinBase})`, 'info');
+        }
+        state._isSelling = false;
         return resetTradeState(username);
     }
     
@@ -562,6 +569,7 @@ async function executeRealSell(username, symbol, reason) {
 
     if (order.error) {
         addLog(username, `Erro Venda: ${order.msg}`, 'error');
+        state._isSelling = false;
         return; 
     }
 
@@ -617,14 +625,19 @@ async function executeRealSell(username, symbol, reason) {
         if (s) s.dashboardData.triggerProfitAnim = false;
     }, 5000);
 
-        addLog(username, `💰✅ SUCESSO ABSOLUTO: ${symbol} Vendido com +${profit}% de Lucro!`, 'card-sell');
-    saveUserState(username);
+    addLog(username, `💰✅ SUCESSO ABSOLUTO: ${symbol} Vendido com +${profit.toFixed(2)}% de Lucro!`, 'card-sell');
+    state._isSelling = false;
     resetTradeState(username);
+    saveUserState(username);
 
     // Verificar se atingiu a meta de $20 para converter BRL
     if (state.profitPoolUSDT >= 20) {
         realizeProfitToBRL(username);
     }
+} catch (e) {
+    console.error("Erro Crítico na Venda:", e);
+    state._isSelling = false;
+}
 }
 
 async function realizeProfitToBRL(username) {

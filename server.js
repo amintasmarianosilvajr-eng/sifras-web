@@ -4,7 +4,6 @@ const crypto = require('crypto');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const nodemailer = require('nodemailer');
 const app = express();
 app.use(express.json());
 app.use(cors());

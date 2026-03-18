@@ -498,14 +498,26 @@ function startTradeMonitor(username, symbol) {
 
                 // Recuperou os 5% (voltou ao zero a zero original)
                 if (roi >= 0) {
-                    clearInterval(interval);
-                    state.recoveryMode = false;
-                    state.tradePauseUntil = null;
                     addLog(username, `✅ RECUPERAÇÃO CONCLUÍDA: Vendendo no 0 a 0 e retomando radar normal.`, 'buy');
-                    await executeRealSell(username, symbol, 'RECUPERACAO');
-                    return;
+                    const done = await executeRealSell(username, symbol, 'RECUPERACAO');
+                    if (done) {
+                        clearInterval(interval);
+                        state.recoveryMode = false;
+                        state.tradePauseUntil = null;
+                        return;
+                    }
                 }
             } else {
+                // ANTI-RESTART: Stop Loss em -3.0%
+                if (roi <= -3.0) {
+                    addLog(username, `📉 ANTI-RESTART: Stop Loss em ${roi.toFixed(2)}%. Tentando venda...`, 'error');
+                    const done = await executeRealSell(username, symbol, 'ANTI-RESTART');
+                    if (done) {
+                        clearInterval(interval);
+                        return;
+                    }
+                }
+
                 // OPERAÇÃO NORMAL SE NÃO ESTIVER EM RECUPERAÇÃO
                 if (current >= state.targetPrice) {
                     addLog(username, `🎯 ALVO ALCANÇADO: ${current.toFixed(6)} >= ${state.targetPrice.toFixed(6)}. Tentando venda...`, 'info');

@@ -433,6 +433,9 @@ async function runFluxoAlfaScanner(username) {
     const state = userStates.get(username);
     if (!state || globalMarket.top10.length < 6) return;
 
+    // BLOQUEIO TOTAL: O scanner só age se estiver em modo SCANNING ou se precisar sair de PAUSA
+    if (state.status !== 'SCANNING' && state.status !== 'PAUSED') return;
+
     // Verificação de Resumo de Pausa (Geral)
     if (state.status === 'PAUSED' && state.pauseUntil) {
         if (Date.now() < state.pauseUntil) return;
@@ -936,7 +939,11 @@ function resetTradeState(username) {
     const state = userStates.get(username);
     if (!state) return;
     state.activeSymbol = null;
-    state.status = state.isLoopActive ? 'SCANNING' : 'OFFLINE';
+    state.buyPrice = 0;
+    state.targetPrice = 0;
+    state.currentPrice = 0;
+    state.buyQty = 0;
+    state.status = (state.isLoopActive && state.status !== 'OFFLINE') ? 'SCANNING' : 'OFFLINE';
 }
 
 // ------------------------------------------------------------

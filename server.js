@@ -65,7 +65,7 @@ function createInitialState(username) {
         history: [], logs: [], balanceUSDT: 0,
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
-        buyPercentage: 0.99, pauseUntil: null,
+        buyPercentage: 0.99, pauseUntil: null, tradePauseUntil: null, recoveryMode: false, recoveryThreshold: -4.0,
         profitPoolUSDT: 0, realizedProfitBRL: 0
     };
 }
@@ -452,20 +452,51 @@ function startTradeMonitor(username, symbol) {
     const interval = setInterval(async () => {
         if (state.status !== 'IN_TRADE') return clearInterval(interval);
         
+        // Se estiver num período de congelamento da operação (Recovery), não consulta preço
+        if (state.tradePauseUntil && Date.now() < state.tradePauseUntil) return;
+
         try {
             const res = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const current = parseFloat(res.data.price);
             state.currentPrice = current;
 
-            if (current >= state.targetPrice) {
-                clearInterval(interval);
-                await executeRealSell(username, symbol, 'LUCRO');
-            } else {
-                const roi = ((current - state.buyPrice) / state.buyPrice) * 100;
-                if (roi <= -4.0) { // PARÂMETRO OFICIAL: ANTI-RESTART -4%
+            const roi = ((current - state.buyPrice) / state.buyPrice) * 100;
+
+            // RECUPERAÇÃO INICIAL: Bateu -5%
+            if (roi <= -5.0 && !state.recoveryMode) {
+                state.recoveryMode = true;
+                state.recoveryThreshold = -4.0; // Próximo degrau de avanço
+                state.tradePauseUntil = Date.now() + 10 * 60000;
+                addLog(username, `🧊 OP CONGELADA: -5% atingido na operação. Congelando por 10min.`, 'warn');
+                saveUserState(username);
+                return;
+            }
+
+            // DURANTE A RECUPERAÇÃO
+            if (state.recoveryMode) {
+                // Avançou um degrau (ex: voltou pra -4%)
+                if (roi >= state.recoveryThreshold && roi < 0) {
+                    state.tradePauseUntil = Date.now() + 2 * 60000;
+                    addLog(username, `🧊 RECUPERAÇÃO: Avançou para ${roi.toFixed(2)}%. Congelando operação por +2min.`, 'warn');
+                    state.recoveryThreshold += 1.0; 
+                    saveUserState(username);
+                    return;
+                }
+
+                // Recuperou os 5% (voltou ao zero a zero original)
+                if (roi >= 0) {
                     clearInterval(interval);
-                    addLog(username, `🛡️ ANTI-RESTART: ROI atingiu ${roi.toFixed(2)}%. Executando ajuste automático...`, 'warn');
-                    await executeRealSell(username, symbol, 'ANTI-RESTART');
+                    state.recoveryMode = false;
+                    state.tradePauseUntil = null;
+                    addLog(username, `✅ RECUPERAÇÃO CONCLUÍDA: Vendendo no 0 a 0 e retomando radar normal.`, 'buy');
+                    await executeRealSell(username, symbol, 'RECUPERACAO');
+                    return;
+                }
+            } else {
+                // OPERAÇÃO NORMAL SE NÃO ESTIVER EM RECUPERAÇÃO
+                if (current >= state.targetPrice) {
+                    clearInterval(interval);
+                    await executeRealSell(username, symbol, 'LUCRO');
                 }
             }
         } catch (e) {}
@@ -565,7 +596,7 @@ async function executeRealSell(username, symbol, reason) {
     const tradeProfitUSDT = (truncatedBalance * realSellPrice) - (truncatedBalance * state.buyPrice);
     if (tradeProfitUSDT > 0) {
         state.profitPoolUSDT += tradeProfitUSDT;
-        addLog(username, `💵 Lucro Real (sobre ${truncatedBalance} moedas): +$${tradeProfitUSDT.toFixed(2)}. Acumulado BRL: $${state.profitPoolUSDT.toFixed(2)} / $15.00`, 'info');
+        addLog(username, `💵 Lucro Real (sobre ${truncatedBalance} moedas): +$${tradeProfitUSDT.toFixed(2)}. Acumulado BRL: $${state.profitPoolUSDT.toFixed(2)} / $20.00`, 'info');
     }
 
     // ATIVAR SUPER CARD NO MEIO DA TELA
@@ -579,8 +610,8 @@ async function executeRealSell(username, symbol, reason) {
     saveUserState(username);
     resetTradeState(username);
 
-    // Verificar se atingiu a meta de $15 para converter BRL
-    if (state.profitPoolUSDT >= 15) {
+    // Verificar se atingiu a meta de $20 para converter BRL
+    if (state.profitPoolUSDT >= 20) {
         realizeProfitToBRL(username);
     }
 }
@@ -589,15 +620,15 @@ async function realizeProfitToBRL(username) {
     const state = userStates.get(username);
     if (!state) return;
 
-    addLog(username, `🇧🇷 ALVO ATINGIDO: Convertendo $15.00 de lucro para BRL...`, 'warn');
+    addLog(username, `🇧🇷 ALVO ATINGIDO: Convertendo $20.00 de lucro para BRL...`, 'warn');
 
     try {
-        // Vender 15 USDT pelo par USDTBRL (Compra BRL a mercado)
+        // Vender 20 USDT pelo par USDTBRL (Compra BRL a mercado)
         const order = await binanceRequest(username, '/api/v3/order', 'POST', {
             symbol: 'USDTBRL',
             side: 'SELL',
             type: 'MARKET',
-            quoteOrderQty: "15.00"
+            quantity: "20.00"
         });
 
         if (order.error) {
@@ -611,7 +642,7 @@ async function realizeProfitToBRL(username) {
         }
 
         state.realizedProfitBRL += brlReceived;
-        state.profitPoolUSDT -= 15;
+        state.profitPoolUSDT -= 20;
         
         // Pausa de 10 minutos conforme solicitado
         state.pauseUntil = Date.now() + 10 * 60000;

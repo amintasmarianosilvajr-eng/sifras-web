@@ -26,14 +26,17 @@
             font-family: 'Outfit', sans-serif;
             background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.05) 0%, transparent 70%), #111111;
             min-height: 100vh;
-            padding: 10px; /* Reduzido para ganhar espaço */
+            padding: 10px;
+            zoom: 0.9; /* Força escala para caber tudo */
+            -moz-transform: scale(0.9); /* Firefox */
+            -moz-transform-origin: top center;
         }
 
         h1, h2, .orbitron { font-family: 'Orbitron', sans-serif; }
 
         .container { 
-            width: 100%; 
-            max-width: 98%; /* Fluididez Total */
+            width: 100% !important; 
+            max-width: 98% !important; 
             margin: 0 auto; 
         }
 

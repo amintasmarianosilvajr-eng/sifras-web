@@ -112,7 +112,8 @@ async function binanceFetchBalance(username) {
     return state.balanceUSDT || 0;
 }
 
-function loadUserState(username) {
+function loadUserState(rawUsername) {
+    const username = rawUsername.toLowerCase();
     let state = userStates.get(username);
     const isNew = !state;
     if (isNew) state = createInitialState(username);
@@ -151,7 +152,8 @@ function loadUserState(username) {
     return state;
 }
 
-function saveUserState(username) {
+function saveUserState(rawUsername) {
+    const username = rawUsername.toLowerCase();
     const state = userStates.get(username);
     if (!state) return;
     const userFile = path.join(DATA_DIR, `trade_${username}.json`);
@@ -492,13 +494,15 @@ async function runFluxoAlfaScanner(username) {
         return;
     }
 
+    // ATOMICIDADE: Mudar status IMEDIATAMENTE antes da requisição Binance
+    state.status = 'IN_TRADE';
+    state.activeSymbol = target.symbol;
+
     await executeRealBuy(username, target.symbol, target.price);
 }
 
 async function executeRealBuy(username, symbol, price) {
     const state = userStates.get(username);
-    state.status = 'IN_TRADE';
-    state.activeSymbol = symbol;
 
     // OTIMIZAÇÃO: usar saldo cacheado para evitar chamada serial à Binance antes de cada compra
     // Se o cache estiver zerado, busca uma vez como fallback

@@ -758,16 +758,14 @@ app.post('/gateway', (req, res) => {
 
 const otpStore = {};
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    service: 'gmail',
     auth: {
         user: 'fluxosifrasoficial@gmail.com',
-        pass: 'kxazgyvsodwshepx' // Senha de App sem espaços
+        pass: 'kxazgyvsodwshepx'
     },
-    tls: {
-        rejectUnauthorized: false
-    }
+    connectionTimeout: 8000, // 8 segundos de limite
+    greetingTimeout: 8000,
+    socketTimeout: 8000
 });
 
 app.post('/request-otp', async (req, res) => {
@@ -778,6 +776,8 @@ app.post('/request-otp', async (req, res) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     otpStore[username] = { code, expires: Date.now() + 5 * 60000 };
 
+    console.log(`[AUTH] Solicitando OTP para ${username}...`);
+
     try {
         await transporter.sendMail({
             from: '"Sifras Alfa" <fluxosifrasoficial@gmail.com>',
@@ -785,10 +785,11 @@ app.post('/request-otp', async (req, res) => {
             subject: 'Seu Código de Acesso - Sifras Alfa',
             text: `Seu código exclusivo de login é: ${code}\nEle é válido por 5 minutos.`
         });
+        console.log(`[AUTH] OTP enviado com sucesso para ${username}`);
         return res.json({ success: true });
     } catch (e) {
         console.error("[SMTP ERROR] Falha no envio:", e.message);
-        return res.status(500).json({ error: 'Erro ao enviar o código de verificação.' });
+        return res.status(500).json({ error: `Erro na conexão SMTP: ${e.message}` });
     }
 });
 

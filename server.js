@@ -635,7 +635,7 @@ async function executeRealSell(username, symbol, reason) {
     setTimeout(() => {
         const s = userStates.get(username);
         if (s) s.dashboardData.triggerProfitAnim = false;
-    }, 5000);
+    }, 8000);
 
     addLog(username, `💰✅ SUCESSO ABSOLUTO: ${symbol} Vendido com +${profit.toFixed(2)}% de Lucro!`, 'card-sell');
     

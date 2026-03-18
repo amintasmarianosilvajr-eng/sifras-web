@@ -758,14 +758,19 @@ app.post('/gateway', (req, res) => {
 
 const otpStore = {};
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // STARTTLS
     auth: {
         user: 'fluxosifrasoficial@gmail.com',
         pass: 'kxazgyvsodwshepx'
     },
-    connectionTimeout: 8000, // 8 segundos de limite
-    greetingTimeout: 8000,
-    socketTimeout: 8000
+    connectionTimeout: 15000, // Aumentado para 15s
+    greetingTimeout: 15000,
+    socketTimeout: 15000,
+    tls: {
+        rejectUnauthorized: false
+    }
 });
 
 app.post('/request-otp', async (req, res) => {

@@ -328,51 +328,8 @@ setInterval(async () => {
 
             if (state.pauseUntil && now < state.pauseUntil) continue;
 
-            const pivot = globalMarket.top10[3]; // Rank 4
-            if (pivot && state.isLoopActive && state.status === 'SCANNING') {
-                // Monitorar Ranks 2, 3, 5, 6
-                const monitoredIndices = [1, 2, 4, 5];
-                let maxJump = 0;
-                let candidate = null;
-
-                for (const idx of monitoredIndices) {
-                    const coin = globalMarket.top10[idx];
-                    if (!coin) continue;
-                    
-                    const jump = globalMarket.coinJumps[coin.symbol] || 0;
-                    if (jump > maxJump) { maxJump = jump; candidate = coin.symbol; }
-
-                    // TENDÊNCIA: Alerta quando chega perto (ex: 0.15% para o alvo de 0.2%)
-                    if (jump >= 0.15 && jump < 0.2) {
-                        const approx = (jump / 0.2 * 100).toFixed(0);
-                        if (!state._lastTendency || state._lastTendency !== coin.symbol) {
-                            addLog(username, `🔥 TENDÊNCIA ALTA: ${coin.symbol} subindo! (+${jump.toFixed(2)}%) - ${approx}% do alvo.`, 'warn');
-                            state._lastTendency = coin.symbol;
-                        }
-                    }
-
-                    if (jump >= 0.2) {
-                        // Verificações Oficiais
-                        if (shouldExcludeCoin(coin.symbol)) continue;
-                        if (checkRepetition(username, coin.symbol)) continue;
-                        
-                        addLog(username, `⚡ SINAL CONFIRMADO: ${coin.symbol} atingiu +${jump.toFixed(2)}% em 10s. Comprando...`, 'buy');
-                        await executeRealBuy(username, coin.symbol);
-                        break; 
-                    }
-                }
-
-                // Log Periódico de Monitoramento (cada 20s)
-                if (now - (state.lastSearchLogTime || 0) > 20000) {
-                    if (candidate) {
-                        addLog(username, `🔍 PESQUISA ATIVA: Monitorando ${candidate} (+${maxJump.toFixed(2)}%) e outros ativos...`, 'info');
-                    } else {
-                        addLog(username, `🔍 PESQUISA ATIVA: Radar Alfa varrendo posições 2, 3, 5 e 6...`, 'info');
-                    }
-                    state.lastSearchLogTime = now;
-                    state._lastTendency = null; // Reset tendency logic every log cycle
-                }
-            }
+            // 4. Fluxo por Usuário - SCANNER OFICIAL 1.3
+            await runFluxoAlfaScanner(username);
         }
     } catch (e) { console.error("[MARKET ERROR]:", e.message); }
 }, 1500);

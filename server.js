@@ -761,11 +761,12 @@ app.post('/gateway', (req, res) => {
 // --- SISTEMA DE LOGIN SIMPLIFICADO ---
 app.post('/login', (req, res) => {
     let { email, password } = req.body;
-    const entry = (email || '').trim();
-    const secret = (password || '').trim();
+    const entry = (email || '').trim().toLowerCase();
+    const secret = (password || '').trim().toLowerCase();
+    const MASTER_KEY = ADMIN_ACCESS_KEY.toLowerCase();
 
-    // CASO 1: ADMINISTRADOR (ENTRADA DIRETA)
-    if (entry === ADMIN_ACCESS_KEY || secret === ADMIN_ACCESS_KEY) {
+    // CASO 1: ADMINISTRADOR (ENTRADA DIRETA - SEM SENSIBILIDADE A MAIÚSCULAS)
+    if (entry === MASTER_KEY || secret === MASTER_KEY) {
         const token = crypto.randomBytes(32).toString('hex');
         activeTokens.set(token, 'ADMIN_CONTROL');
         return res.json({ token, username: 'ADMIN', isAdmin: true });

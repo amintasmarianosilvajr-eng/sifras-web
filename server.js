@@ -287,6 +287,13 @@ setInterval(async () => {
                     j2: (globalMarket.coinJumps[r2.symbol] || 0).toFixed(2),
                     j6: (globalMarket.coinJumps[r6.symbol] || 0).toFixed(2)
                 };
+                globalMarket.pivot = r4.symbol; // Guardar para Admin Global
+            }
+
+            // ATUALIZAR SALDO PERIODICAMENTE (CADA 30 SEGUNDOS)
+            if (state.isLoopActive && (!state._lastBalanceUpdate || now - state._lastBalanceUpdate > 30000)) {
+                binanceFetchBalance(username).catch(e => console.error(`[BALANCE ERROR] ${username}:`, e.message));
+                state._lastBalanceUpdate = now;
             }
 
             if (state.pauseUntil && now < state.pauseUntil) continue;
@@ -1006,7 +1013,7 @@ app.get('/admin/overview', async (req, res) => {
         overview.push({
             username,
             status: state.status,
-            isApproved: dbUser.isApproved !== false, // Antigos são true por padrão
+            isApproved: dbUser.isApproved !== false,
             activeSymbol: state.activeSymbol || '---',
             balanceUSDT: state.balanceUSDT || 0,
             buyAmountUSDT: state.buyQty * state.buyPrice || 0,
@@ -1016,10 +1023,10 @@ app.get('/admin/overview', async (req, res) => {
             totalProfit: state.history.reduce((sum, h) => sum + (h.profitPct || 0), 0),
             profit24h: sum24hProfit(state.history),
             realizedProfitBRL: state.realizedProfitBRL || 0,
-            currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? 'Em Trade (Alvo 0.9%)' : 'Aguardando Start')
+            currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? `Em Trade (Alvo 0.6%)` : 'Aguardando Start')
         });
     }
-    res.json(overview);
+    res.json({ users: overview, globalPivot: globalMarket.pivot || '---' });
 });
 
 app.post('/admin/stop-all', async (req, res) => {

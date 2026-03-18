@@ -205,7 +205,7 @@
         </div>
         <div class="stat-card">
             <div class="stat-label">Fator Pixel Alfa</div>
-            <div class="stat-value" id="riskValue">$ 0.00</div>
+            <div class="stat-value" id="globalPivot">Aguardando...</div>
         </div>
         <div class="stat-card">
             <div class="stat-label">Performance Total</div>
@@ -373,8 +373,15 @@
             if (!res.ok) throw new Error('Falha no acesso admin');
             
             const data = await res.json();
-            renderTable(data);
-            renderStats(data);
+            
+            // Assuming data now has a structure like { users: [...], globalPivot: "value" }
+            if (!Array.isArray(data.users)) {
+                console.error("Formato de dados inválido: 'users' não é um array.");
+                return;
+            }
+
+            renderTable(data.users); // Pass only the users array to renderTable
+            renderStats(data);      // Pass the full data object to renderStats
             document.getElementById('lastUpdateTime').innerText = `Atualizado em: ${new Date().toLocaleTimeString()}`;
         } catch (e) {
             console.error(e);
@@ -387,18 +394,21 @@
     }
 
     function renderStats(data) {
-        document.getElementById('totalClients').innerText = data.length;
-        document.getElementById('tradingCount').innerText = data.filter(u => u.status === 'IN_TRADE').length;
+        const users = data.users || []; // Ensure users is an array
+        document.getElementById('totalClients').innerText = users.length;
+        document.getElementById('tradingCount').innerText = users.filter(u => u.status === 'IN_TRADE').length;
         
-        const totalRisk = data.reduce((sum, u) => sum + (u.buyAmountUSDT || 0), 0);
-        document.getElementById('riskValue').innerText = `$ ${totalRisk.toFixed(2)}`;
+        document.getElementById('globalPivot').innerText = data.globalPivot || '---'; // Update globalPivot
 
-        const totalProfit = data.reduce((sum, u) => sum + (u.totalProfit || 0), 0);
-        const avg = data.length > 0 ? (totalProfit / data.length) : 0;
+        const totalRisk = users.reduce((sum, u) => sum + (u.buyAmountUSDT || 0), 0);
+        // document.getElementById('riskValue').innerText = `$ ${totalRisk.toFixed(2)}`; // This ID does not exist in the HTML
+
+        const totalProfit = users.reduce((sum, u) => sum + (u.totalProfit || 0), 0);
+        const avg = users.length > 0 ? (totalProfit / users.length) : 0;
         document.getElementById('avgProfit').innerText = `${avg.toFixed(2)}%`;
     }
 
-    function renderTable(data) {
+    function renderTable(data) { // data here is now the array of users
         const body = document.getElementById('adminTableBody');
         if (data.length === 0) {
             body.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666; padding: 40px;">Nenhum cliente conectado no momento.</td></tr>';

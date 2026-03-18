@@ -19,7 +19,8 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Senhas de Acesso
 const GLOBAL_ACCESS_KEY = 'alfa777';
-const ADMIN_ACCESS_KEY = 'alfa7772026@';
+const ADMIN_ACCESS_KEY = 'admin2026@'; // ATUALIZADO CONFORME SOLICITAÇÃO
+const GMAIL_REGEX = /^[a-z0-9._%+-]+@gmail\.com$/;
 
 // CONFIGURAÇÃO E PERSISTÊNCIA
 const DATA_DIR = path.join(__dirname, 'data');
@@ -67,6 +68,7 @@ let globalMarket = {
 function createInitialState(username) {
     return {
         username, clientName: '', apiKey: '', apiSecret: '', status: 'OFFLINE', opsCount: 0,
+        isApproved: false, // BLOQUEIO INICIAL: Requer ativação do administrador
         // NOVO: Sistema de repetição — 2x seguidas OK, bloqueia por 2 ops
         lastSymbol: null,           // Última moeda comprada
         consecutiveCount: 0,        // Quantas vezes seguidas essa moeda foi comprada
@@ -140,7 +142,8 @@ function saveUserState(username) {
         activeSymbol: state.activeSymbol, buyPrice: state.buyPrice, buyQty: state.buyQty,
         targetPrice: state.targetPrice, currentPrice: state.currentPrice,
         pauseUntil: state.pauseUntil, logs: state.logs.slice(0, 30),
-        profitPoolUSDT: state.profitPoolUSDT, realizedProfitBRL: state.realizedProfitBRL
+        profitPoolUSDT: state.profitPoolUSDT, realizedProfitBRL: state.realizedProfitBRL,
+        isApproved: state.isApproved // Persistir status de aprovação
     }, null, 2));
 }
 
@@ -756,76 +759,79 @@ app.post('/gateway', (req, res) => {
     return res.status(401).json({ error: 'Incorreta' });
 });
 
-const otpStore = {};
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // STARTTLS
-    auth: {
-        user: 'fluxosifrasoficial@gmail.com',
-        pass: 'kxazgyvsodwshepx'
-    },
-    connectionTimeout: 15000, // Aumentado para 15s
-    greetingTimeout: 15000,
-    socketTimeout: 15000,
-    tls: {
-        rejectUnauthorized: false
-    }
-});
-
-app.post('/request-otp', async (req, res) => {
-    let { email } = req.body;
-    if (!email || !email.endsWith('@gmail.com')) return res.status(400).json({ error: 'Use um e-mail @gmail.com' });
-    const username = email.trim().toLowerCase();
-    
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    otpStore[username] = { code, expires: Date.now() + 5 * 60000 };
-
-    console.log(`[AUTH] Solicitando OTP para ${username}...`);
-
-    try {
-        await transporter.sendMail({
-            from: '"Sifras Alfa" <fluxosifrasoficial@gmail.com>',
-            to: email,
-            subject: 'Seu Código de Acesso - Sifras Alfa',
-            text: `Seu código exclusivo de login é: ${code}\nEle é válido por 5 minutos.`
-        });
-        console.log(`[AUTH] OTP enviado com sucesso para ${username}`);
-        return res.json({ success: true });
-    } catch (e) {
-        console.error("[SMTP ERROR] Falha no envio:", e.message);
-        return res.status(500).json({ error: `Erro na conexão SMTP: ${e.message}` });
-    }
-});
-
+// --- SISTEMA DE LOGIN BLINDADO (SEM OTP) ---
 app.post('/login', (req, res) => {
-    let { email, otp } = req.body;
-    if (!email) return res.status(400).json({ error: 'E-mail necessário' });
+    let { email, password } = req.body; // Voltamos ao Password
+    if (!email || !password) return res.status(400).json({ error: 'E-mail e Senha necessários' });
+    
+    // 1. Validar Formato Gmail Rígido (Proteção contra "lixo")
     const username = email.trim().toLowerCase();
-
-    // 1. Validar OTP
-    if (!otpStore[username] || otpStore[username].code !== otp || Date.now() > otpStore[username].expires) {
-        return res.status(401).json({ error: 'Código inválido ou expirado.' });
+    if (!GMAIL_REGEX.test(username)) {
+        return res.status(400).json({ error: 'Use um e-mail @gmail.com válido e sem caracteres especiais.' });
     }
-    delete otpStore[username]; // Marcar como usado
 
-    // 2. Registrar no DB se for Novo
-    if (!usersDB[username]) { usersDB[username] = { registeredAt: new Date().toISOString() }; saveUsersDB(); }
+    // 2. Login de Admin direto
+    if (password === ADMIN_ACCESS_KEY) {
+        const token = crypto.randomBytes(32).toString('hex');
+        activeTokens.set(token, 'ADMIN_CONTROL');
+        return res.json({ token, username: 'ADMIN', isAdmin: true });
+    }
 
-    // 3. Trava de Unicidade: Se já existe um robô na memória, não criar outro!
-    loadUserState(username); 
+    // 3. Registrar se for Novo
+    if (!usersDB[username]) { 
+        usersDB[username] = { 
+            password, // No modelo simples, a primeira senha vira a oficial
+            registeredAt: new Date().toISOString(),
+            isApproved: false // NOVOS USUÁRIOS: Começam bloqueados
+        }; 
+        saveUsersDB(); 
+    } else {
+        // Validar senha para usuários existentes
+        if (usersDB[username].password !== password) {
+            return res.status(401).json({ error: 'Senha incorreta para este Gmail.' });
+        }
+    }
 
-    // 4. Gerir Tokens (derrubar logins antigos se houver)
+    // 4. Checar Aprovação Admin (Apenas para NOVOS ou se explicitamente bloqueado)
+    const state = loadUserState(username);
+    // Se o usuário já existia antes desta atualização, ele não terá o campo isApproved no DB.
+    // Consideramos aprovado por padrão se for usuário antigo, a menos que isApproved seja explicitamente false.
+    const isPending = (usersDB[username].isApproved === false);
+    
+    if (isPending) {
+        return res.status(403).json({ error: 'Aguardando ativação pelo administrador. Contate o suporte.' });
+    }
+
+    // 5. Gerir Tokens (derrubar logins antigos)
     for (const [t, u] of activeTokens.entries()) {
         if (u === username) activeTokens.delete(t);
     }
 
     const token = crypto.randomBytes(32).toString('hex');
     activeTokens.set(token, username);
-    saveSessions(); // Salvar token no disco
+    saveSessions();
     
-    console.log(`[AUTH] Login OTP concluído: ${username}`);
+    console.log(`[AUTH] Login concluído: ${username}`);
     return res.json({ token, username });
+});
+
+// Admin endpoint: Aprovar usuário
+app.post('/admin/approve-user', (req, res) => {
+    const auth = req.headers['authorization'];
+    if (auth !== `Bearer ${ADMIN_ACCESS_KEY}`) return res.status(401).send();
+    
+    const { targetUser } = req.body;
+    if (!usersDB[targetUser]) return res.status(404).json({ error: 'Não encontrado' });
+    
+    usersDB[targetUser].isApproved = true;
+    saveUsersDB();
+    
+    const state = loadUserState(targetUser);
+    state.isApproved = true;
+    saveUserState(targetUser);
+
+    console.log(`[ADMIN] Usuário ${targetUser} APROVADO.`);
+    res.json({ success: true });
 });
 
 function requireAuth(req, res, next) {
@@ -922,10 +928,17 @@ app.get('/admin/overview', async (req, res) => {
     }
 
     const overview = [];
-    for (const [username, state] of userStates.entries()) {
+    // 1. Unificar todos os usuários (DB e Memória)
+    const allUsernames = new Set([...Object.keys(usersDB), ...userStates.keys()]);
+    
+    for (const username of allUsernames) {
+        const state = loadUserState(username);
+        const dbUser = usersDB[username] || {};
+        
         overview.push({
             username,
             status: state.status,
+            isApproved: dbUser.isApproved !== false, // Antigos são true por padrão
             activeSymbol: state.activeSymbol || '---',
             balanceUSDT: state.balanceUSDT || 0,
             buyAmountUSDT: state.buyQty * state.buyPrice || 0,

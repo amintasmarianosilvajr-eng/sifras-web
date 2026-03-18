@@ -114,6 +114,7 @@
         .status-in_trade { background: rgba(243, 186, 47, 0.1); color: var(--cyber-gold); }
         .status-offline { background: rgba(102, 102, 102, 0.1); color: #888; }
         .status-paused { background: rgba(255, 153, 0, 0.1); color: #ff9900; }
+        .status-pending { background: rgba(255, 51, 102, 0.2); color: #ff3366; border: 1px solid #ff3366; }
 
         .step-text { color: #aaa; font-size: 0.85rem; font-style: italic; }
         .amount-text { color: #fff; font-weight: bold; }
@@ -335,6 +336,28 @@
         }
     }
 
+    async function approveUser(targetUser) {
+        if (!confirm(`🚀 Deseja ATIVAR o acesso do usuário ${targetUser}?`)) return;
+        try {
+            const res = await fetch('/admin/approve-user', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${ACCESS_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ targetUser })
+            });
+            if (res.ok) {
+                alert(`Usuário ${targetUser} ATIVADO com sucesso.`);
+                updateOverview();
+            } else {
+                alert('Erro ao ativar usuário.');
+            }
+        } catch (e) {
+            alert('Falha na comunicação.');
+        }
+    }
+
     async function updateOverview(isManual = false) {
         const btn = document.querySelector('.btn-refresh');
         try {
@@ -402,7 +425,12 @@
             return `
             <tr>
                 <td><strong><i class="ph ph-user"></i> ${u.username}</strong></td>
-                <td><span class="status-pill status-${u.status.toLowerCase()}">${u.status}</span></td>
+                <td>
+                    ${!u.isApproved ? 
+                        '<span class="status-pill status-pending">PENDENTE</span>' : 
+                        `<span class="status-pill status-${u.status.toLowerCase()}">${u.status}</span>`
+                    }
+                </td>
                 <td>
                     <span class="step-text">${u.currentStep}</span>
                     ${u.status === 'IN_TRADE' ? `
@@ -428,12 +456,18 @@
                 <td style="color: var(--cyber-gold); font-weight: bold;">R$ ${(u.realizedProfitBRL || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 <td>
                     <div style="display: flex; gap: 5px;">
-                        <button onclick="antiRestartUser('${u.username}')" style="background:rgba(204,255,0,0.1); border:1px solid var(--cyber-blue); color:var(--cyber-blue); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
-                            ANTI-RESTART
-                        </button>
-                        <button onclick="stopUser('${u.username}')" style="background:rgba(255,153,0,0.1); border:1px solid #ff9900; color:#ff9900; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
-                            STOP
-                        </button>
+                        ${!u.isApproved ? `
+                            <button onclick="approveUser('${u.username}')" style="background:#ccff00; color:#000; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                                ATIVAR ACESSO
+                            </button>
+                        ` : `
+                            <button onclick="antiRestartUser('${u.username}')" style="background:rgba(204,255,0,0.1); border:1px solid var(--cyber-blue); color:var(--cyber-blue); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                                ANTI-RESTART
+                            </button>
+                            <button onclick="stopUser('${u.username}')" style="background:rgba(255,153,0,0.1); border:1px solid #ff9900; color:#ff9900; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                                STOP
+                            </button>
+                        `}
                         <button onclick="deleteUser('${u.username}')" style="background:rgba(255,51,102,0.1); border:1px solid var(--alert-red); color:var(--alert-red); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
                             EXCLUIR
                         </button>

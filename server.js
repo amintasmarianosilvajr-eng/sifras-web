@@ -484,9 +484,10 @@ async function runFluxoAlfaScanner(username) {
         const dist3 = Math.abs(rank4.change - rank3.change);
         const dist5 = Math.abs(rank4.change - rank5.change);
         if (dist3 < 2.0 || dist5 < 2.0) {
+            addLog(username, `💡 INSIGHT PIVÔ: ${rank4.symbol} em zona de compressão (< 2% de R3/R5).`, 'info');
             target = rank4;
             triggerJump = 0;
-            triggerRank = '4 (PROXIMIDADE < 2%)';
+            triggerRank = '4 (SQUEEZE < 2%)';
         }
     }
 

@@ -758,10 +758,15 @@ app.post('/gateway', (req, res) => {
 
 const otpStore = {};
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
         user: 'fluxosifrasoficial@gmail.com',
-        pass: 'kxaz gyvs odws hepx'
+        pass: 'kxazgyvsodwshepx' // Senha de App sem espaços
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 

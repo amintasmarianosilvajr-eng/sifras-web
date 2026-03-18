@@ -775,7 +775,6 @@ app.post('/gateway', (req, res) => {
 app.post('/login', (req, res) => {
     let { email, password } = req.body;
     const entry = (email || '').trim().toLowerCase();
-    const secret = (password || '').trim().toLowerCase();
     const MASTER_KEY = ADMIN_ACCESS_KEY.toLowerCase();
 
     // CASO 1: ADMINISTRADOR (ENTRADA DIRETA - SEM SENSIBILIDADE A MAIÚSCULAS)

@@ -587,6 +587,12 @@ async function executeRealBuy(username, symbol, price) {
     addLog(username, `🎯 GATILHO: ${symbol}. Saldo: $${usdt.toFixed(2)} (cache)`, 'trigger');
 
     if (usdt < 11) {
+        addLog(username, `⏳ Saldo insuficiente ($${usdt.toFixed(2)}). Tentando RESGATE de trade órfão...`, 'warn');
+        const rescued = await rescueTradeState(username);
+        if (rescued) {
+            addLog(username, `✅ SUCESSO! Trade órfão identificado e monitoramento retomado.`, 'buy');
+            return;
+        }
         addLog(username, `Saldo insuficiente: $${usdt.toFixed(2)}`, 'error');
         return resetTradeState(username);
     }

@@ -758,49 +758,60 @@ app.post('/gateway', (req, res) => {
     return res.status(401).json({ error: 'Incorreta' });
 });
 
-// --- SISTEMA DE LOGIN BLINDADO (SEM OTP) ---
+// --- SISTEMA DE LOGIN INTELIGENTE (CASOS 1 E 2) ---
 app.post('/login', (req, res) => {
     let { email, password } = req.body;
+    if (!email && !password) return res.status(400).json({ error: 'Insira sua Chave ou E-mail' });
 
-    // 1. LOGIN DE ADMIN PRIORITÁRIO (SEM VALIDAÇÃO DE EMAIL)
-    if (password === ADMIN_ACCESS_KEY) {
+    const entry = (email || '').trim();
+    const secret = (password || '').trim();
+
+    // CASO 1: ADMINISTRADOR (Pode digitar em qualquer campo)
+    if (entry === ADMIN_ACCESS_KEY || secret === ADMIN_ACCESS_KEY) {
         const token = crypto.randomBytes(32).toString('hex');
         activeTokens.set(token, 'ADMIN_CONTROL');
         return res.json({ token, username: 'ADMIN', isAdmin: true });
     }
 
-    if (!email || !password) return res.status(400).json({ error: 'E-mail e Senha necessários' });
-    
-    // 2. Validar Formato Gmail Rígido (Proteção contra "lixo")
-    const username = email.trim().toLowerCase();
-    if (!GMAIL_REGEX.test(username)) {
+    // CASO 2: CLIENTE (Cadastro ou Login)
+    // Para clientes, o email deve ser um @gmail.com válido
+    if (!GMAIL_REGEX.test(entry)) {
         return res.status(400).json({ error: 'Use um e-mail @gmail.com válido.' });
     }
 
-    // 3. Registrar se for Novo
-    if (!usersDB[username]) { 
+    const username = entry.toLowerCase();
+
+    // REGISTRO NOVO (Via Chave alfa777 informada anteriormente no flow)
+    if (!usersDB[username]) {
+        // Se for novo, cadastramos com a senha enviada
         usersDB[username] = { 
-            password, // No modelo simples, a primeira senha vira a oficial
+            password: secret, 
             registeredAt: new Date().toISOString(),
-            isApproved: false // NOVOS USUÁRIOS: Começam bloqueados
-        }; 
-        saveUsersDB(); 
-    } else {
-        // Validar senha para usuários existentes
-        if (usersDB[username].password !== password) {
-            return res.status(401).json({ error: 'Senha incorreta para este Gmail.' });
-        }
+            isApproved: false // Novo precisa de ativação
+        };
+        saveUsersDB();
+        return res.status(403).json({ error: 'Cadastro realizado! Aguardando ativação pelo administrador.' });
     }
 
-    // 4. Checar Aprovação Admin (Apenas para NOVOS ou se explicitamente bloqueado)
-    const state = loadUserState(username);
-    // Se o usuário já existia antes desta atualização, ele não terá o campo isApproved no DB.
-    // Consideramos aprovado por padrão se for usuário antigo, a menos que isApproved seja explicitamente false.
-    const isPending = (usersDB[username].isApproved === false);
-    
-    if (isPending) {
+    // LOGIN EXISTENTE
+    if (usersDB[username].password !== secret) {
+        return res.status(401).json({ error: 'Senha incorreta para este Gmail.' });
+    }
+
+    // Checar Aprovação (exceto se for conta antiga sem o flag)
+    if (usersDB[username].isApproved === false) {
         return res.status(403).json({ error: 'Aguardando ativação pelo administrador. Contate o suporte.' });
     }
+
+    loadUserState(username);
+    for (const [t, u] of activeTokens.entries()) { if (u === username) activeTokens.delete(t); }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    activeTokens.set(token, username);
+    saveSessions();
+    
+    return res.json({ token, username });
+});
 
     // 5. Gerir Tokens (derrubar logins antigos)
     for (const [t, u] of activeTokens.entries()) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa — Acesso Exclusivo</title>
+    <title>Sifras Alfa — Acesso Inteligente</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
@@ -11,7 +11,7 @@
             --bg-dark: #0a0a0a;
             --cyber-blue: #ccff00;
             --text-main: #ffffff;
-            --glass: rgba(18, 18, 18, 0.9);
+            --glass: rgba(18, 18, 18, 0.95);
             --neon-shadow: 0 0 15px rgba(204, 255, 0, 0.3);
         }
 
@@ -39,6 +39,7 @@
             box-shadow: 0 20px 50px rgba(0,0,0,0.5);
             text-align: center;
             position: relative;
+            transition: 0.5s;
         }
 
         .logo-box h1 {
@@ -100,7 +101,7 @@
             background: rgba(204, 255, 0, 0.05);
         }
 
-        .btn-login {
+        .btn-action {
             width: 100%;
             background: var(--cyber-blue);
             color: #000;
@@ -115,9 +116,19 @@
             box-shadow: var(--neon-shadow);
         }
 
-        .btn-login:hover {
+        .btn-action:hover {
             transform: translateY(-2px);
             box-shadow: 0 0 25px var(--cyber-blue);
+        }
+
+        .btn-back {
+            background: transparent;
+            color: #666;
+            border: none;
+            margin-top: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: underline;
         }
 
         #errorMsg {
@@ -142,11 +153,8 @@
             border: 1px solid rgba(204, 255, 0, 0.2);
         }
 
-        .footer-info {
-            margin-top: 30px;
-            font-size: 0.75rem;
-            color: #444;
-        }
+        /* Hidden Classes */
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -154,64 +162,119 @@
 <div class="login-card">
     <div class="logo-box">
         <h1>SIFRAS <span>ALFA</span></h1>
-        <div class="subtitle">Acesso do Cliente</div>
+        <div class="subtitle">Nexus System</div>
     </div>
 
-    <!-- Login Form -->
-    <div id="loginStep">
+    <!-- STEP 1: KEY OR EMAIL -->
+    <div id="step1">
         <div class="input-group">
-            <label>E-mail (Apenas @gmail.com)</label>
+            <label>E-mail ou Chave de Acesso</label>
             <div class="input-wrapper">
-                <i class="ph ph-user"></i>
-                <input type="email" id="email" placeholder="digite seu gmail..." required>
+                <i class="ph ph-key"></i>
+                <input type="text" id="entry" placeholder="E-mail ou Chave VIP..." required>
             </div>
         </div>
+        <button class="btn-action" onclick="handleStep1()">CONTINUAR</button>
+    </div>
 
+    <!-- STEP 2: PASSWORD (LOGIN) -->
+    <div id="stepLogin" class="hidden">
+        <label id="loginLabel" style="display:block; margin-bottom:10px; font-size:0.9rem; color:var(--cyber-blue)"></label>
         <div class="input-group">
-            <label>Senha de Acesso</label>
+            <label>Sua Senha</label>
             <div class="input-wrapper">
                 <i class="ph ph-lock"></i>
-                <input type="password" id="password" placeholder="sua senha..." required>
+                <input type="password" id="loginPass" placeholder="digite sua senha..." required>
             </div>
         </div>
+        <button class="btn-action" onclick="submitAuth('login')">ENTRAR NO PAINEL</button>
+        <button class="btn-back" onclick="goBack()">Voltar</button>
+    </div>
 
-        <button class="btn-login" id="btnLogin" onclick="doLogin()">ACESSAR PAINEL</button>
+    <!-- STEP 2: REGISTRATION (NEW CLIENT) -->
+    <div id="stepRegister" class="hidden">
+        <div style="color:var(--cyber-blue); font-size:0.9rem; margin-bottom:20px;">
+            <i class="ph ph-shield-check"></i> Chave Validada. Crie sua conta:
+        </div>
+        <div class="input-group">
+            <label>E-mail Gmail (Obrigatório)</label>
+            <div class="input-wrapper">
+                <i class="ph ph-envelope"></i>
+                <input type="email" id="regEmail" placeholder="seuemail@gmail.com" required>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>Crie uma Senha</label>
+            <div class="input-wrapper">
+                <i class="ph ph-lock"></i>
+                <input type="password" id="regPass" placeholder="senha forte..." required>
+            </div>
+        </div>
+        <button class="btn-action" onclick="submitAuth('register')">FINALIZAR CADASTRO</button>
+        <button class="btn-back" onclick="goBack()">Cancelar</button>
     </div>
 
     <div id="errorMsg"></div>
     <div id="successMsg"></div>
 
-    <div class="footer-info">
+    <footer style="margin-top:30px; font-size:0.7rem; color:#333">
         Monitoramento Sifras Invest © 2025
-    </div>
+    </footer>
 </div>
 
 <script>
+    const ADMIN_KEY = 'admin2026@';
+    const REG_KEY = 'alfa777';
     const GMAIL_REGEX = /^[a-z0-9._%+-]+@gmail\.com$/;
 
-    async function doLogin() {
-        const email = document.getElementById('email').value.trim().toLowerCase();
-        const password = document.getElementById('password').value;
-        const btn = document.getElementById('btnLogin');
+    let currentEmail = "";
+
+    function handleStep1() {
+        const entry = document.getElementById('entry').value.trim();
+        hideMsgs();
+
+        if (!entry) return;
+
+        // CASO 1: ADMINISTRADOR DIRETO
+        if (entry === ADMIN_KEY) {
+            submitAuth('admin', entry);
+            return;
+        }
+
+        // CASO 2: NOVO CLIENTE (CHAVE ALFA777)
+        if (entry === REG_KEY) {
+            transitionTo('stepRegister');
+            return;
+        }
+
+        // CASO 3: CLIENTE EXISTENTE (EMAIL GMAIL)
+        if (GMAIL_REGEX.test(entry.toLowerCase())) {
+            currentEmail = entry.toLowerCase();
+            document.getElementById('loginLabel').innerText = currentEmail;
+            transitionTo('stepLogin');
+            return;
+        }
+
+        showError('Chave ou E-mail inválido.');
+    }
+
+    async function submitAuth(type, key = '') {
         const err = document.getElementById('errorMsg');
-        const succ = document.getElementById('successMsg');
+        let email = "";
+        let password = "";
 
-        err.style.display = 'none';
-        succ.style.display = 'none';
-
-        if (!email || !password) {
-            showError('Preencha todos os campos.');
-            return;
+        if (type === 'admin') {
+            password = key;
+        } else if (type === 'login') {
+            email = currentEmail;
+            password = document.getElementById('loginPass').value;
+        } else if (type === 'register') {
+            email = document.getElementById('regEmail').value.trim();
+            password = document.getElementById('regPass').value;
+            
+            if (!GMAIL_REGEX.test(email)) return showError('Use um e-mail @gmail.com válido.');
+            if (!password) return showError('Senha necessária.');
         }
-
-        // Validação Frontend: Somente clientes precisam de @gmail.com. Admin (admin2026@) entra direto.
-        if (password !== 'admin2026@' && !GMAIL_REGEX.test(email)) {
-            showError('Use um e-mail @gmail.com válido e sem símbolos extras.');
-            return;
-        }
-
-        btn.disabled = true;
-        btn.innerText = 'AUTENTICANDO...';
 
         try {
             const res = await fetch('/login', {
@@ -226,26 +289,41 @@
                 localStorage.setItem('sifras_token', data.token);
                 localStorage.setItem('sifras_user', data.username);
                 
-                if (data.isAdmin) {
-                    window.location.href = 'admin.html';
-                } else {
-                    window.location.href = 'dashboard.html';
-                }
+                if (data.isAdmin) window.location.href = 'admin.html';
+                else window.location.href = 'dashboard.html';
             } else {
-                showError(data.error || 'Erro ao entrar.');
+                showError(data.error);
+                if (res.status === 403 && type === 'register') {
+                    document.getElementById('stepRegister').classList.add('hidden');
+                    document.getElementById('step1').classList.remove('hidden');
+                }
             }
         } catch (e) {
-            showError('Sem conexão com o servidor.');
-        } finally {
-            btn.disabled = false;
-            btn.innerText = 'ACESSAR PAINEL';
+            showError('Erro de conexão com o servidor.');
         }
+    }
+
+    function transitionTo(stepId) {
+        document.getElementById('step1').classList.add('hidden');
+        document.getElementById('stepLogin').classList.add('hidden');
+        document.getElementById('stepRegister').classList.add('hidden');
+        document.getElementById(stepId).classList.remove('hidden');
+    }
+
+    function goBack() {
+        transitionTo('step1');
+        hideMsgs();
     }
 
     function showError(msg) {
         const err = document.getElementById('errorMsg');
         err.innerText = msg;
         err.style.display = 'block';
+    }
+
+    function hideMsgs() {
+        document.getElementById('errorMsg').style.display = 'none';
+        document.getElementById('successMsg').style.display = 'none';
     }
 </script>
 

@@ -281,7 +281,9 @@ setInterval(async () => {
                     pivot: r4.symbol, 
                     d2: Math.abs(r2.change - r4.change).toFixed(2), 
                     d6: Math.abs(r6.change - r4.change).toFixed(2), 
-                    t2: r2.symbol, t6: r6.symbol 
+                    t2: r2.symbol, t6: r6.symbol,
+                    j2: (globalMarket.coinJumps[r2.symbol] || 0).toFixed(2),
+                    j6: (globalMarket.coinJumps[r6.symbol] || 0).toFixed(2)
                 };
             }
 

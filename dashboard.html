@@ -509,9 +509,11 @@
             const pivotInfo = state.dashboardData?.pivotInfo;
             if (pivotInfo && pivotInfo.t2) {
                 document.getElementById('valPivot').innerText = pivotInfo.pivot || 'Aguardando...';
+                const j2 = pivotInfo.j2 ? ` [⚡${pivotInfo.j2}%]` : '';
+                const j6 = pivotInfo.j6 ? ` [⚡${pivotInfo.j6}%]` : '';
                 document.getElementById('valDistances').innerHTML = `
-                    <span style="color:var(--cyber-blue)">${pivotInfo.t2}:</span> ${pivotInfo.d2}% | 
-                    <span style="color:var(--alert-red)">${pivotInfo.t6}:</span> ${pivotInfo.d6}%
+                    <span style="color:var(--cyber-blue)">${pivotInfo.t2}:</span> ${pivotInfo.d2}%${j2} | 
+                    <span style="color:var(--alert-red)">${pivotInfo.t6}:</span> ${pivotInfo.d6}%${j6}
                 `;
             } else {
                 document.getElementById('valPivot').innerText = 'Aguardando...';
@@ -534,7 +536,7 @@
                 document.getElementById('valTradeTarget').innerHTML = `
                     <span style="color:#a0aab5">📥 Compra:</span> $${buyP}<br>
                     <span style="color:#fff">🔄 Atual:</span> $${currP}<br>
-                    <span style="color:var(--cyber-gold)">🎯 Alvo:</span> $${tgtP} (+0.9%)
+                    <span style="color:var(--cyber-gold)">🎯 Alvo:</span> $${tgtP} (+0.6%)
                 `;
 
                 document.getElementById('telemetryCard').classList.add('active');
@@ -549,14 +551,14 @@
 
                 document.getElementById('telemetryPct').innerText = `${currentProfitPct >= 0 ? '+' : ''}${currentProfitPct.toFixed(2)}%`;
 
-                let barWidth = (currentProfitPct / 0.9) * 100;
+                let barWidth = (currentProfitPct / 0.6) * 100;
                 if (barWidth < 0) barWidth = 0;
                 if (barWidth > 100) barWidth = 100;
                 document.getElementById('telemetryBar').style.width = `${barWidth}%`;
 
                 if (currentProfitPct < 0) {
                     document.getElementById('telemetryPct').style.color = 'var(--alert-red)';
-                } else if (currentProfitPct >= 0.9) {
+                } else if (currentProfitPct >= 0.6) {
                     document.getElementById('telemetryPct').style.color = 'var(--cyber-blue)';
                 } else {
                     document.getElementById('telemetryPct').style.color = 'var(--cyber-gold)';

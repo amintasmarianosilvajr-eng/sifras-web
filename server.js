@@ -508,20 +508,23 @@ function startTradeMonitor(username, symbol) {
             } else {
                 // OPERAÇÃO NORMAL SE NÃO ESTIVER EM RECUPERAÇÃO
                 if (current >= state.targetPrice) {
-                    clearInterval(interval);
-                    addLog(username, `🎯 ALVO ALCANÇADO: ${current.toFixed(6)} >= ${state.targetPrice.toFixed(6)}. Iniciando venda...`, 'info');
-                    await executeRealSell(username, symbol, 'LUCRO');
+                    addLog(username, `🎯 ALVO ALCANÇADO: ${current.toFixed(6)} >= ${state.targetPrice.toFixed(6)}. Tentando venda...`, 'info');
+                    const success = await executeRealSell(username, symbol, 'LUCRO');
+                    if (success) {
+                        clearInterval(interval);
+                        return;
+                    }
                 }
             }
         } catch (e) {
             console.error(`[MONITOR ERROR] ${username} ${symbol}:`, e.message);
         }
-    }, 1000); // OPERAÇÃO DEFINITIVA: Verificação a cada 1 segundo (era 2s)
+    }, 1000); // Verificação a cada 1 segundo para precisão máxima
 }
 
 async function executeRealSell(username, symbol, reason) {
     const state = userStates.get(username);
-    if (state._isSelling) return; // BLOQUEIO DE CONCORRÊNCIA
+    if (!state || state._isSelling) return false; 
     state._isSelling = true;
 
     try {
@@ -563,7 +566,8 @@ async function executeRealSell(username, symbol, reason) {
             addLog(username, `Sobra de poeira ignorada (${balance} ${coinBase})`, 'info');
         }
         state._isSelling = false;
-        return resetTradeState(username);
+        resetTradeState(username);
+        return true; // Consideramos sucesso se não há nada para vender
     }
     
     const quantityString = stepPrecision > 0 ? truncatedBalance.toFixed(stepPrecision) : truncatedBalance.toString();
@@ -573,9 +577,9 @@ async function executeRealSell(username, symbol, reason) {
     });
 
     if (order.error) {
-        addLog(username, `Erro Venda: ${order.msg}`, 'error');
+        addLog(username, `Erro Venda: ${order.msg}. Tentando novamente em breve...`, 'error');
         state._isSelling = false;
-        return; 
+        return false; 
     }
 
     let realSellPrice = state.currentPrice;
@@ -639,9 +643,11 @@ async function executeRealSell(username, symbol, reason) {
     if (state.profitPoolUSDT >= 20) {
         realizeProfitToBRL(username);
     }
+    return true;
 } catch (e) {
     console.error("Erro Crítico na Venda:", e);
     state._isSelling = false;
+    return false;
 }
 }
 

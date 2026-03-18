@@ -813,19 +813,6 @@ app.post('/login', (req, res) => {
     return res.json({ token, username });
 });
 
-    // 5. Gerir Tokens (derrubar logins antigos)
-    for (const [t, u] of activeTokens.entries()) {
-        if (u === username) activeTokens.delete(t);
-    }
-
-    const token = crypto.randomBytes(32).toString('hex');
-    activeTokens.set(token, username);
-    saveSessions();
-    
-    console.log(`[AUTH] Login concluído: ${username}`);
-    return res.json({ token, username });
-});
-
 // Admin endpoint: Aprovar usuário
 app.post('/admin/approve-user', (req, res) => {
     const auth = req.headers['authorization'];

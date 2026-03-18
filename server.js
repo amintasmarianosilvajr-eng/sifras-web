@@ -264,7 +264,8 @@ setInterval(async () => {
                 globalMarket.priceHistory[coin.symbol] = { old: coin.price, time: now };
                 continue;
             }
-            if (now - globalMarket.priceHistory[coin.symbol].time >= 15000) {
+            // 3. Monitorar Jumps (10 segundos conforme nova regra)
+            if (now - globalMarket.priceHistory[coin.symbol].time >= 10000) {
                 const jump = ((coin.price - globalMarket.priceHistory[coin.symbol].old) / globalMarket.priceHistory[coin.symbol].old) * 100;
                 globalMarket.coinJumps[coin.symbol] = jump;
                 globalMarket.priceHistory[coin.symbol] = { old: coin.price, time: now };
@@ -304,21 +305,21 @@ setInterval(async () => {
                     const jump = globalMarket.coinJumps[coin.symbol] || 0;
                     if (jump > maxJump) { maxJump = jump; candidate = coin.symbol; }
 
-                    // TENDÊNCIA: Alerta quando chega perto (ex: 0.20%)
-                    if (jump >= 0.20 && jump < 0.30) {
-                        const approx = (jump / 0.3 * 100).toFixed(0);
+                    // TENDÊNCIA: Alerta quando chega perto (ex: 0.15% para o alvo de 0.2%)
+                    if (jump >= 0.15 && jump < 0.2) {
+                        const approx = (jump / 0.2 * 100).toFixed(0);
                         if (!state._lastTendency || state._lastTendency !== coin.symbol) {
-                            addLog(username, `🔥 TENDÊNCIA ALTA: ${coin.symbol} subindo forte! (+${jump.toFixed(2)}%) - ${approx}% do alvo.`, 'warn');
+                            addLog(username, `🔥 TENDÊNCIA ALTA: ${coin.symbol} subindo! (+${jump.toFixed(2)}%) - ${approx}% do alvo.`, 'warn');
                             state._lastTendency = coin.symbol;
                         }
                     }
 
-                    if (jump >= 0.3) {
+                    if (jump >= 0.2) {
                         // Verificações Oficiais
                         if (shouldExcludeCoin(coin.symbol)) continue;
                         if (checkRepetition(username, coin.symbol)) continue;
                         
-                        addLog(username, `⚡ SINAL CONFIRMADO: ${coin.symbol} atingiu +${jump.toFixed(2)}%. Executando compra...`, 'buy');
+                        addLog(username, `⚡ SINAL CONFIRMADO: ${coin.symbol} atingiu +${jump.toFixed(2)}% em 10s. Comprando...`, 'buy');
                         await executeRealBuy(username, coin.symbol);
                         break; 
                     }

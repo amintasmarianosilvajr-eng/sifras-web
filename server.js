@@ -452,7 +452,9 @@ async function executeRealBuy(username, symbol, price) {
     }
 
     state.buyPrice = realPrice;
-    state.buyQty = qty;            state.targetPrice = realPrice * 1.006; // PARÂMETRO OFICIAL: META 0.6%
+    state.currentPrice = realPrice; // Inicializar para evitar -100% na UI
+    state.buyQty = qty;
+    state.targetPrice = realPrice * 1.006; // PARÂMETRO OFICIAL: META 0.6%
     addLog(username, `🚀 COMPRA EXECUTADA: ${symbol} @ $${realPrice.toFixed(6)}`, 'buy');
     
     startTradeMonitor(username, symbol);

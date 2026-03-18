@@ -542,8 +542,10 @@
                 document.getElementById('telemetrySymbol').innerText = state.activeSymbol;
 
                 let currentProfitPct = 0;
-                if (state.buyPrice > 0) {
+                if (state.buyPrice > 0 && state.currentPrice > 0) {
                     currentProfitPct = ((state.currentPrice - state.buyPrice) / state.buyPrice) * 100;
+                } else if (state.buyPrice > 0) {
+                    currentProfitPct = 0; // Se o servidor retornar 0, mostramos 0%, não -100%
                 }
 
                 document.getElementById('telemetryPct').innerText = `${currentProfitPct >= 0 ? '+' : ''}${currentProfitPct.toFixed(2)}%`;

@@ -413,9 +413,9 @@
             if (u.status === 'IN_TRADE' && u.buyPrice > 0 && u.currentPrice > 0) {
                 roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
                 
-                // Mapeia de -4.0% (0%) até +0.6% (100%)
+                // Mapeia de -4.0% (0%) até +0.9% (100%)
                 const minRange = -4.0;
-                const maxRange = 0.6;
+                const maxRange = 0.9; // PADRÃO DEFINITIVO 0.9%
                 progressPercent = ((roi - minRange) / (maxRange - minRange)) * 100;
                 progressPercent = Math.max(0, Math.min(100, progressPercent));
                 
@@ -438,13 +438,13 @@
                     <span class="step-text">${u.currentStep}</span>
                     ${u.status === 'IN_TRADE' ? `
                         <div class="telemetry-container">
-                            <div class="telemetry-marker" style="left: 86.9%;"></div> <!-- Marcador do 0% (4/4.6) -->
+                            <div class="telemetry-marker" style="left: 81.6%;"></div> <!-- Marcador do 0% (4/4.9) -->
                             <div class="telemetry-bar" style="width: ${progressPercent}%; background: ${barColor}; box-shadow: 0 0 10px ${barColor}"></div>
                         </div>
                         <div class="telemetry-labels">
                             <span>-4.0%</span>
                             <span style="color:${roi >= 0 ? '#ccff00' : '#ff3366'}">${roi.toFixed(2)}%</span>
-                            <span>+0.6%</span>
+                            <span>+0.9%</span>
                         </div>
                     ` : ''}
                 </td>

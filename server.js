@@ -452,9 +452,9 @@ async function executeRealBuy(username, symbol, price) {
     }
 
     state.buyPrice = realPrice;
-    state.currentPrice = realPrice; // Inicializar para evitar -100% na UI
+    state.currentPrice = realPrice; 
     state.buyQty = qty;
-    state.targetPrice = realPrice * 1.006; // PARÂMETRO OFICIAL: META 0.6%
+    state.targetPrice = realPrice * 1.009; // PADRÃO DEFINITIVO: META 0.9%
     addLog(username, `🚀 COMPRA EXECUTADA: ${symbol} @ $${realPrice.toFixed(6)}`, 'buy');
     
     startTradeMonitor(username, symbol);
@@ -509,11 +509,14 @@ function startTradeMonitor(username, symbol) {
                 // OPERAÇÃO NORMAL SE NÃO ESTIVER EM RECUPERAÇÃO
                 if (current >= state.targetPrice) {
                     clearInterval(interval);
+                    addLog(username, `🎯 ALVO ALCANÇADO: ${current.toFixed(6)} >= ${state.targetPrice.toFixed(6)}. Iniciando venda...`, 'info');
                     await executeRealSell(username, symbol, 'LUCRO');
                 }
             }
-        } catch (e) {}
-    }, 2000);
+        } catch (e) {
+            console.error(`[MONITOR ERROR] ${username} ${symbol}:`, e.message);
+        }
+    }, 1000); // OPERAÇÃO DEFINITIVA: Verificação a cada 1 segundo (era 2s)
 }
 
 async function executeRealSell(username, symbol, reason) {

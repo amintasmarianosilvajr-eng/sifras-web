@@ -191,23 +191,39 @@
         .profit-positive { color: var(--cyber-blue); }
         .profit-negative { color: var(--alert-red); }
 
+        @keyframes logoPulse {
+            0% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(204,255,0,0.4)); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 60px rgba(204,255,0,0.8)); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(204,255,0,0.4)); }
+        }
+        .logo-pulse {
+            animation: logoPulse 1.5s ease-in-out infinite;
+            width: 300px;
+            border-radius: 40px;
+        }
+
         .profit-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(204, 255, 0, 0.1);
-            backdrop-filter: blur(5px);
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
             z-index: 9999; display: flex; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none; transition: 0.5s;
+            opacity: 0; pointer-events: none; transition: 0.8s;
         }
         .profit-overlay.show { opacity: 1; pointer-events: all; }
+        
         .profit-box {
-            background: #000; border: 2px solid var(--cyber-blue);
-            padding: 50px 100px; border-radius: 30px; text-align: center;
-            box-shadow: 0 0 100px rgba(204, 255, 0, 0.5);
-            transform: scale(0.8); transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+            transform: scale(0.5); transition: 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .profit-overlay.show .profit-box { transform: scale(1); }
-        .profit-box h2 { font-size: 4rem; color: var(--cyber-blue); margin-bottom: 10px; }
-        .profit-box p { font-size: 1.5rem; color: #fff; }
+        
+        .profit-box h2 { 
+            font-size: 2.5rem; 
+            color: var(--cyber-blue); 
+            margin-top: 30px; 
+            text-shadow: 0 0 20px rgba(204,255,0,0.5);
+        }
+        .profit-box p { font-size: 1.2rem; color: #fff; opacity: 0.8; }
 
         @keyframes blinker { 50% { opacity: 0.2; } }
         .blink { animation: blinker 1s linear infinite; }
@@ -244,8 +260,9 @@
 
     <div class="profit-overlay" id="profitOverlay">
         <div class="profit-box">
-            <h2 class="orbitron">LUCRO ATINGIDO!</h2>
-            <p>Operação Encerrada com Sucesso</p>
+            <img src="logo.png" alt="Fluxo Alfa" class="logo-pulse">
+            <h2 class="orbitron">ALVO ALCANÇADO!</h2>
+            <p>Sifras Alfa Operando com Sucesso</p>
         </div>
     </div>
 

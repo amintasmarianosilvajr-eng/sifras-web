@@ -764,20 +764,13 @@
 
         // ── Init ─────────────────────────────────────────────
         window.onload = async () => {
-            console.log("🚀 Elite Fluxo Alfa Dashboard V1.2 - Anti-Cache Active");
-            // Assuming initDashboard() is a new function or a refactoring of existing logic.
-            // If initDashboard() is not defined, this will cause an error.
-            // For now, I'll place it here as requested, but it might need to be defined elsewhere.
-            // If initDashboard() is meant to replace the existing onload logic, then the rest of the code below should be moved into it.
-            // Given the instruction, I'm inserting it without removing existing logic.
-            // If initDashboard() is not defined, this will be a runtime error.
-            // initDashboard(); // Commenting out as it's not defined in the provided context and would cause an error.
-
+            console.log("🚀 Elite Fluxo Alfa Dashboard V1.3 - Anti-Cache Active");
+            
             const token = getToken();
             const gatewayOk = sessionStorage.getItem('gatewayOk');
 
             if (!token || !gatewayOk) {
-                window.location.href = '/index.html';
+                window.location.href = '/login.html';
                 return;
             }
 

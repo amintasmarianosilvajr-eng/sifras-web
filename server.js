@@ -90,12 +90,26 @@ function createInitialState(username) {
 }
 
 async function binanceFetchBalance(username) {
-    const account = await binanceRequest(username, '/api/v3/account');
-    if (account && account.balances) {
-        const usdt = account.balances.find(b => b.asset === 'USDT');
-        if (usdt) return parseFloat(usdt.free);
+    const state = userStates.get(username);
+    if (!state) return 0;
+    
+    // Se não tem chaves, não consegue buscar
+    if (!state.apiKey || !state.apiSecret) return state.balanceUSDT || 0;
+
+    try {
+        const account = await binanceRequest(username, '/api/v3/account');
+        if (account && account.balances) {
+            const usdt = account.balances.find(b => b.asset === 'USDT');
+            if (usdt) {
+                const balance = parseFloat(usdt.free);
+                state.balanceUSDT = balance;
+                return balance;
+            }
+        }
+    } catch (e) {
+        console.error(`[BALANCE ERROR] ${username}:`, e.message);
     }
-    return 0;
+    return state.balanceUSDT || 0;
 }
 
 function loadUserState(username) {

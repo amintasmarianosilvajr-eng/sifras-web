@@ -279,16 +279,20 @@ setInterval(async () => {
             .sort((a, b) => b.change - a.change)
             .slice(0, 10);
 
-        // 3. Monitorar Jumps
+        // 3. Monitorar Histórico de Preços (Janela de 10s)
         for (const coin of globalMarket.top10) {
             if (!globalMarket.priceHistory[coin.symbol]) {
                 globalMarket.priceHistory[coin.symbol] = { old: coin.price, time: now };
+                globalMarket.coinJumps[coin.symbol] = 0;
                 continue;
             }
-            // 3. Monitorar Jumps (10 segundos conforme nova regra)
+            // Atualizar salto atual em TEMPO REAL contra a base de 10s atrás
+            const oldPrice = globalMarket.priceHistory[coin.symbol].old;
+            const currentJump = ((coin.price - oldPrice) / oldPrice) * 100;
+            globalMarket.coinJumps[coin.symbol] = currentJump;
+
+            // Rotacionar a base de preço a cada 10 segundos
             if (now - globalMarket.priceHistory[coin.symbol].time >= 10000) {
-                const jump = ((coin.price - globalMarket.priceHistory[coin.symbol].old) / globalMarket.priceHistory[coin.symbol].old) * 100;
-                globalMarket.coinJumps[coin.symbol] = jump;
                 globalMarket.priceHistory[coin.symbol] = { old: coin.price, time: now };
             }
         }
@@ -493,20 +497,22 @@ async function runFluxoAlfaScanner(username) {
 
     if (!target) return;
 
-    // PARÂMETRO OFICIAL: Filtro de Repetição — 2x seguidas OK, bloqueia por 2 ops
     if (state.blockedSymbols[target.symbol] > 0) {
         if (!state._lastRepLog || state._lastRepLog !== target.symbol) {
-            addLog(username, `🛡️ Filtro: ${target.symbol} bloqueada (${state.blockedSymbols[target.symbol]} op(s) restantes).`, 'warn');
+            addLog(username, `🛡️ Filtro: ${target.symbol} bloqueada por repetição (${state.blockedSymbols[target.symbol]} op(s) restantes).`, 'warn');
             state._lastRepLog = target.symbol;
         }
         return;
     }
 
+    // DIAGNÓSTICO: Se chegou aqui, VAI COMPRAR. Logar imediatamente.
+    console.log(`[TRIGGER SUCCESS] ${username} buying ${target.symbol} at ${triggerJump.toFixed(3)}% jump`);
+    
     // Reset logs repetitivos ao encontrar gatilho real
     state._lastVolLog = null;
     state._lastRepLog = null;
 
-    addLog(username, `🎯 GATILHO RANK ${triggerRank}: ${target.symbol} (+${triggerJump.toFixed(2)}% em 15s)`, 'trigger');
+    addLog(username, `🎯 GATILHO RANK ${triggerRank}: ${target.symbol} (+${triggerJump.toFixed(2)}% REAL-TIME)`, 'trigger');
 
     // Acionamento de Pausa por Ciclo (5 ops / 10min)
     if (state.opsCount >= 5 && state.isLoopActive && !state.pauseUntil) {

@@ -272,6 +272,19 @@ setInterval(async () => {
 
         // 4. Fluxo por Usuário
         for (const [username, state] of userStates) {
+            // Sincronizar Pivô e Telemetria para o Dashboard (mesmo em trade)
+            if (globalMarket.top10.length >= 6) {
+                const r2 = globalMarket.top10[1];
+                const r4 = globalMarket.top10[3];
+                const r6 = globalMarket.top10[5];
+                state.dashboardData.pivotInfo = { 
+                    pivot: r4.symbol, 
+                    d2: Math.abs(r2.change - r4.change).toFixed(2), 
+                    d6: Math.abs(r6.change - r4.change).toFixed(2), 
+                    t2: r2.symbol, t6: r6.symbol 
+                };
+            }
+
             if (state.pauseUntil && now < state.pauseUntil) continue;
 
             const pivot = globalMarket.top10[3]; // Rank 4

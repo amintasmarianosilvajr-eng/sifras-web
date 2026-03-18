@@ -433,18 +433,26 @@ async function runFluxoAlfaScanner(username) {
     const rank5 = globalMarket.top10[4];
     const rank6 = globalMarket.top10[5];
 
-    const d2 = Math.abs(rank2.vol24h - rank4.vol24h);
-    const d3 = Math.abs(rank3.vol24h - rank4.vol24h);
-    state.dashboardData.pivotInfo = { pivot: rank4.symbol, d2: d2.toFixed(2), d6: d3.toFixed(2), t2: rank2.symbol, t6: rank3.symbol };
+    // ATUALIZAR PIXEL INFO NO DASHBOARD
+    const d2 = Math.abs(rank2.change - rank4.change);
+    const d6 = Math.abs(rank6.change - rank4.change);
+    state.dashboardData.pivotInfo = { 
+        pivot: rank4.symbol, 
+        d2: d2.toFixed(2), 
+        d6: d6.toFixed(2), 
+        t2: rank2.symbol, t6: rank6.symbol,
+        j2: (globalMarket.coinJumps[rank2.symbol] || 0).toFixed(2),
+        j6: (globalMarket.coinJumps[rank6.symbol] || 0).toFixed(2)
+    };
 
-    // Logs de Varredura a cada ~15s
-    if (!state._lastLogTime || Date.now() - state._lastLogTime > 15000) {
-        addLog(username, `🔍 VARREDURA: Pivô (4ª) ${rank4.symbol} [${rank4.vol24h.toFixed(2)}%]`, 'info');
-        addLog(username, `📏 Radar: R2:${rank2.symbol} | R3:${rank3.symbol} | R5:${rank5.symbol} | R6:${rank6.symbol}`, 'info');
+    // LOGS DE VARREDURA INTERATIVOS (A CADA ~20 SEGUNDOS)
+    if (!state._lastLogTime || Date.now() - state._lastLogTime > 20000) {
+        addLog(username, `🔎 BUSCANDO OPORTUNIDADE: Pivô (4ª) ${rank4.symbol} [${rank4.change.toFixed(2)}%]`, 'info');
+        addLog(username, `📏 Radar Monitorando: ${rank2.symbol}, ${rank3.symbol}, ${rank5.symbol}, ${rank6.symbol}`, 'info');
         state._lastLogTime = Date.now();
     }
 
-    // PARÂMETRO OFICIAL: primeiro dos 4 candidatos que atingir +0.3% em 15s é comprado
+    // MONITORAR TENDÊNCIA E GATILHO
     const candidates = [rank2, rank3, rank5, rank6];
     let target = null;
     let triggerJump = 0;
@@ -453,7 +461,17 @@ async function runFluxoAlfaScanner(username) {
     for (let i = 0; i < candidates.length; i++) {
         const coin = candidates[i];
         const jump = globalMarket.coinJumps[coin.symbol] || 0;
-        if (jump >= 0.3) {
+        
+        // Log de Aproximação (Interativo)
+        if (jump >= 0.05 && jump < 0.1) {
+            if (!state._lastTendency || state._lastTendency.symbol !== coin.symbol || Date.now() - state._lastTendency.time > 10000) {
+                const approx = (jump / 0.1) * 100;
+                addLog(username, `⚡ TENDÊNCIA PARA ${coin.symbol}: ${approx.toFixed(0)}% de aproximação do gatilho 0.1%`, 'info');
+                state._lastTendency = { symbol: coin.symbol, time: Date.now() };
+            }
+        }
+
+        if (jump >= 0.1) {
             target = coin;
             triggerJump = jump;
             triggerRank = [2, 3, 5, 6][i];

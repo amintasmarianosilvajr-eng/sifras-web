@@ -225,79 +225,94 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
 }
 
 // ------------------------------------------------------------
-// SINCRONIZAÇÃO MERCADO (3s)
+// SINCRONIZAÇÃO MERCADO (1.5s)
 // ------------------------------------------------------------
-setInterval(async () => { // OTIMIZAÇÃO: intervalo reduzido de 3000ms → 1500ms para menor latência no gatilho
+setInterval(async () => {
     try {
         const now = Date.now();
         
-        // Atualizar ExchangeInfo (30min)
-        if (!globalMarket.exchangeInfo || now - globalMarket.lastExchangeFetch > 1800000) {
-            const exres = await axios.get('https://api.binance.com/api/v3/exchangeInfo');
-            globalMarket.exchangeInfo = exres.data;
-            globalMarket.lastExchangeFetch = now;
+        // 1. Atualizar Ticker Completo (50 moedas) para filtragem "Ocultas" (30s)
+        if (!globalMarket.lastTickerFetch || now - globalMarket.lastTickerFetch > 30000) {
+            const tRes = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
+            globalMarket.tickerCache = tRes.data
+                .filter(i => i.symbol.endsWith('USDT'))
+                .sort((a,b) => b.quoteVolume - a.quoteVolume)
+                .slice(0, 50)
+                .map(i => i.symbol);
+            globalMarket.lastTickerFetch = now;
         }
 
-        const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr', { timeout: 5000 });
+        // 2. Buscar Ranks do Ticker (Volatilidade/Mudança)
+        const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
         const data = res.data;
         
         globalMarket.top10 = data
-            .filter(i => {
-                if (!i.symbol.endsWith('USDT')) return false;
-                const symbolBase = i.symbol.replace('USDT', '');
-                if (BLACKLIST.includes(symbolBase)) return false;
-                if (globalMarket.exchangeInfo) {
-                    const info = globalMarket.exchangeInfo.symbols.find(s => s.symbol === i.symbol);
-                    if (!info || info.status !== 'TRADING') return false;
-                    if (info.tags && info.tags.includes('monitoring')) return false;
-                }
-                return true;
-            })
-            .map(i => ({ symbol: i.symbol, price: parseFloat(i.lastPrice), vol24h: parseFloat(i.priceChangePercent) }))
-            .filter(i => i.vol24h > 0)
-            .sort((a, b) => b.vol24h - a.vol24h)
+            .filter(i => i.symbol.endsWith('USDT'))
+            .map(i => ({ 
+                symbol: i.symbol, 
+                price: parseFloat(i.lastPrice), 
+                change: parseFloat(i.priceChangePercent) 
+            }))
+            .sort((a, b) => b.change - a.change)
             .slice(0, 10);
 
+        // 3. Monitorar Jumps
         for (const coin of globalMarket.top10) {
             if (!globalMarket.priceHistory[coin.symbol]) {
                 globalMarket.priceHistory[coin.symbol] = { old: coin.price, time: now };
                 continue;
             }
-            const jump = ((coin.price - globalMarket.priceHistory[coin.symbol].old) / globalMarket.priceHistory[coin.symbol].old) * 100;
-            globalMarket.coinJumps[coin.symbol] = jump;
-            // PARÂMETRO OFICIAL: janela de 15s para cálculo preciso do gatilho
             if (now - globalMarket.priceHistory[coin.symbol].time >= 15000) {
+                const jump = ((coin.price - globalMarket.priceHistory[coin.symbol].old) / globalMarket.priceHistory[coin.symbol].old) * 100;
+                globalMarket.coinJumps[coin.symbol] = jump;
                 globalMarket.priceHistory[coin.symbol] = { old: coin.price, time: now };
             }
         }
-        globalMarket.lastUpdate = now;
 
+        // 4. Fluxo por Usuário
         for (const [username, state] of userStates) {
-            // Sincronizar Pivô para todos (mesmo em trade)
-            if (globalMarket.top10.length >= 6) {
-                const r2 = globalMarket.top10[1];
-                const r4 = globalMarket.top10[3];
-                const r6 = globalMarket.top10[5];
-                state.dashboardData.pivotInfo = { 
-                    pivot: r4.symbol, 
-                    d2: Math.abs(r2.vol24h - r4.vol24h).toFixed(2), 
-                    d6: Math.abs(r6.vol24h - r4.vol24h).toFixed(2), 
-                    t2: r2.symbol, t6: r6.symbol 
-                };
-            }
+            if (state.pauseUntil && now < state.pauseUntil) continue;
 
-            // Atualizar Saldo USDT a cada ~30s
-            if (now % 30000 < 3000) {
-                binanceFetchBalance(username).then(bal => state.balanceUSDT = bal);
-            }
-            
-            if (state.isLoopActive && (state.status === 'SCANNING' || state.status === 'PAUSED')) {
-                await runFluxoAlfaScanner(username);
+            const pivot = globalMarket.top10[3]; // Rank 4
+            if (pivot && state.isLoopActive && state.status === 'SCANNING') {
+                // Monitorar Ranks 2, 3, 5, 6
+                const monitoredIndices = [1, 2, 4, 5];
+                for (const idx of monitoredIndices) {
+                    const coin = globalMarket.top10[idx];
+                    if (!coin) continue;
+                    
+                    const jump = globalMarket.coinJumps[coin.symbol] || 0;
+                    if (jump >= 0.3) {
+                        // Verificações Oficiais
+                        if (shouldExcludeCoin(coin.symbol)) continue;
+                        if (checkRepetition(username, coin.symbol)) continue;
+                        
+                        await executeRealBuy(username, coin.symbol);
+                        break; 
+                    }
+                }
             }
         }
-        } catch (e) {
-            console.error("[MARKET ERROR] Falha ao buscar ranking Binance:", e.message);
-        }
+    } catch (e) { console.error("[MARKET ERROR]:", e.message); }
+}, 1500);
+
+function shouldExcludeCoin(symbol) {
+    if (EXCLUDED_KEYWORDS.some(kw => symbol.includes(kw))) return true;
+    if (globalMarket.tickerCache && !globalMarket.tickerCache.includes(symbol)) return true;
+    return false;
+}
+
+function checkRepetition(username, symbol) {
+    const state = userStates.get(username);
+    // Quarentena de 2 ciclos
+    if (state.quarantine[symbol] > 0) return true;
+    
+    // Máximo 2 vezes sequenciais
+    const len = state.lastCoins.length;
+    if (len >= 2 && state.lastCoins[len-1] === symbol && state.lastCoins[len-2] === symbol) return true;
+    
+    return false;
+}
     }, 1500);
 
 // --- NOVO: FUNÇÃO DE BOOTSTRAP PARA AUTO-RESUME ---
@@ -465,73 +480,34 @@ function startTradeMonitor(username, symbol) {
     const interval = setInterval(async () => {
         if (state.status !== 'IN_TRADE') return clearInterval(interval);
         
-        // Se estiver num período de congelamento da operação (Recovery), não consulta preço
-        if (state.tradePauseUntil && Date.now() < state.tradePauseUntil) return;
-
         try {
             const res = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const current = parseFloat(res.data.price);
             state.currentPrice = current;
-
             const roi = ((current - state.buyPrice) / state.buyPrice) * 100;
 
-            // RECUPERAÇÃO INICIAL: Bateu -5%
-            if (roi <= -5.0 && !state.recoveryMode) {
-                state.recoveryMode = true;
-                state.recoveryThreshold = -4.0; // Próximo degrau de avanço
-                state.tradePauseUntil = Date.now() + 10 * 60000;
-                addLog(username, `🧊 OP CONGELADA: -5% atingido na operação. Congelando por 10min.`, 'warn');
-                saveUserState(username);
-                return;
-            }
-
-            // DURANTE A RECUPERAÇÃO
-            if (state.recoveryMode) {
-                // Avançou um degrau (ex: voltou pra -4%)
-                if (roi >= state.recoveryThreshold && roi < 0) {
-                    state.tradePauseUntil = Date.now() + 2 * 60000;
-                    addLog(username, `🧊 RECUPERAÇÃO: Avançou para ${roi.toFixed(2)}%. Congelando operação por +2min.`, 'warn');
-                    state.recoveryThreshold += 1.0; 
-                    saveUserState(username);
+            // 1. ANTI-RESTART: -6.0% (Automático)
+            if (roi <= -6.0) {
+                addLog(username, `📉 ANTI-RESTART: Stop Loss em ${roi.toFixed(2)}%. Vendendo e pausando 1 hora.`, 'error');
+                const done = await executeRealSell(username, symbol, 'ANTI-RESTART');
+                if (done) {
+                    state.pauseUntil = Date.now() + 60 * 60 * 1000; // 1 Hora de pausa
+                    clearInterval(interval);
                     return;
                 }
+            }
 
-                // Recuperou os 5% (voltou ao zero a zero original)
-                if (roi >= 0) {
-                    addLog(username, `✅ RECUPERAÇÃO CONCLUÍDA: Vendendo no 0 a 0 e retomando radar normal.`, 'buy');
-                    const done = await executeRealSell(username, symbol, 'RECUPERACAO');
-                    if (done) {
-                        clearInterval(interval);
-                        state.recoveryMode = false;
-                        state.tradePauseUntil = null;
-                        return;
-                    }
-                }
-            } else {
-                // ANTI-RESTART: Stop Loss em -3.0%
-                if (roi <= -3.0) {
-                    addLog(username, `📉 ANTI-RESTART: Stop Loss em ${roi.toFixed(2)}%. Tentando venda...`, 'error');
-                    const done = await executeRealSell(username, symbol, 'ANTI-RESTART');
-                    if (done) {
-                        clearInterval(interval);
-                        return;
-                    }
-                }
-
-                // OPERAÇÃO NORMAL SE NÃO ESTIVER EM RECUPERAÇÃO
-                if (current >= state.targetPrice) {
-                    addLog(username, `🎯 ALVO ALCANÇADO: ${current.toFixed(6)} >= ${state.targetPrice.toFixed(6)}. Tentando venda...`, 'info');
-                    const success = await executeRealSell(username, symbol, 'LUCRO');
-                    if (success) {
-                        clearInterval(interval);
-                        return;
-                    }
+            // 2. META ALVO: 0.6% LÍQUIDO
+            if (roi >= 0.6) {
+                addLog(username, `🎯 ALVO ALCANÇADO: ${current.toFixed(6)}. Tentando venda...`, 'info');
+                const success = await executeRealSell(username, symbol, 'LUCRO');
+                if (success) {
+                    clearInterval(interval);
+                    return;
                 }
             }
-        } catch (e) {
-            console.error(`[MONITOR ERROR] ${username} ${symbol}:`, e.message);
-        }
-    }, 1000); // Verificação a cada 1 segundo para precisão máxima
+        } catch (e) { console.error(`[MONITOR] ${username}:`, e.message); }
+    }, 1000); 
 }
 
 async function executeRealSell(username, symbol, reason) {
@@ -647,11 +623,39 @@ async function executeRealSell(username, symbol, reason) {
     }, 5000);
 
     addLog(username, `💰✅ SUCESSO ABSOLUTO: ${symbol} Vendido com +${profit.toFixed(2)}% de Lucro!`, 'card-sell');
+    
+    // Gestão de Histórico e Repetição
+    state.lastCoins.push(symbol);
+    if (state.lastCoins.length > 10) state.lastCoins.shift();
+
+    // Reduzir Quarentena de outras moedas
+    for (let c in state.quarantine) {
+        if (c !== symbol) {
+            state.quarantine[c]--;
+            if (state.quarantine[c] <= 0) delete state.quarantine[c];
+        }
+    }
+
+    // Se é a 2ª vez seguida desta moeda, quarentena de 2 trades
+    const len = state.lastCoins.length;
+    if (len >= 2 && state.lastCoins[len-1] === symbol && state.lastCoins[len-2] === symbol) {
+        state.quarantine[symbol] = 2; // Bloqueia por 2 operações de outras moedas
+        addLog(username, `⏳ QUARENTENA: ${symbol} suspensa por 2 ciclos de outras moedas.`, 'warn');
+    }
+
+    // Ciclo de 5 Trades -> 5 Min
+    state.tradeCount++;
+    if (state.tradeCount >= 5) {
+        state.tradeCount = 0;
+        state.pauseUntil = Date.now() + 5 * 60 * 1000;
+        addLog(username, `🧊 CICLO: 5 trades atingidos. Pausa de 5 minutos.`, 'info');
+    }
+
     state._isSelling = false;
     resetTradeState(username);
     saveUserState(username);
 
-    // Verificar se atingiu a meta de $20 para converter BRL
+    // Gestão de BRL ($20 -> 10 Min)
     if (state.profitPoolUSDT >= 20) {
         realizeProfitToBRL(username);
     }

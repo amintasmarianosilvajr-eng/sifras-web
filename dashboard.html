@@ -419,7 +419,7 @@
 
         // ── Auth ─────────────────────────────────────────────
         function getToken() {
-            return localStorage.getItem('sifrasToken') || '';
+            return localStorage.getItem('sifras_token') || localStorage.getItem('sifrasToken') || '';
         }
 
         async function authFetch(url, options = {}) {
@@ -436,9 +436,10 @@
 
         async function doLogout() {
             try { await authFetch(`${API_URL}/logout`, { method: 'POST' }); } catch (e) {}
+            localStorage.removeItem('sifras_token');
             localStorage.removeItem('sifrasToken');
-            sessionStorage.removeItem('gatewayOk'); // Também limpa o gateway no logout
-            window.location.href = '/index.html';
+            sessionStorage.removeItem('gatewayOk'); 
+            window.location.href = '/login.html'; // Redirecionar para login
         }
 
         // ── UI ───────────────────────────────────────────────

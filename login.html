@@ -68,6 +68,18 @@
 
         input:focus { border-color: var(--cyber-blue); }
 
+        .input-wrapper { position: relative; }
+        .toggle-pass {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+            cursor: pointer;
+            z-index: 5;
+        }
+        .toggle-pass:hover { color: var(--cyber-blue); }
+
         .btn-auth {
             width: 100%;
             background: var(--cyber-blue);
@@ -106,7 +118,10 @@
         </div>
         <div class="input-group" id="passGroup">
             <label>Senha</label>
-            <input type="password" id="password" placeholder="...">
+            <div class="input-wrapper">
+                <input type="password" id="password" placeholder="...">
+                <i class="ph ph-eye toggle-pass" onclick="togglePass('password', this)"></i>
+            </div>
         </div>
         <button class="btn-auth" onclick="doAuth()">ENTRAR NO SISTEMA</button>
     </div>
@@ -120,7 +135,10 @@
         </div>
         <div class="input-group">
             <label>Sua nova Senha</label>
-            <input type="password" id="regPass" placeholder="... senha">
+            <div class="input-wrapper">
+                <input type="password" id="regPass" placeholder="... senha">
+                <i class="ph ph-eye toggle-pass" onclick="togglePass('regPass', this)"></i>
+            </div>
         </div>
         <button class="btn-auth" onclick="submitReg()">FINALIZAR CADASTRO</button>
         <button onclick="location.reload()" style="background:none; border:none; color:#666; margin-top:15px; cursor:pointer; text-decoration:underline">Cancelar</button>
@@ -156,6 +174,17 @@
         performLogin(entry, pass);
     }
 
+    function togglePass(inputId, icon) {
+        const input = document.getElementById(inputId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.replace('ph-eye', 'ph-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.replace('ph-eye-slash', 'ph-eye');
+        }
+    }
+
     async function submitReg() {
         const email = document.getElementById('regEmail').value.trim();
         const pass = document.getElementById('regPass').value.trim();
@@ -172,8 +201,13 @@
             });
             const data = await res.json();
             if (res.ok) {
+                // Sincronizar todos os possíveis formatos de token para evitar redirects
                 localStorage.setItem('sifras_token', data.token);
+                localStorage.setItem('sifrasToken', data.token);
                 localStorage.setItem('sifras_user', data.username);
+                localStorage.setItem('sifrasUser', data.username);
+                sessionStorage.setItem('gatewayOk', 'true');
+                
                 window.location.href = data.isAdmin ? 'admin.html' : 'dashboard.html';
             } else {
                 err.innerText = data.error;

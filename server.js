@@ -78,12 +78,25 @@ function migrateToLowercase() {
 migrateToLowercase();
 
 const activeTokens = new Map();
-// Carregar sessões persistentes
+// Carregar sessões persistentes — purgar tokens de usuários não aprovados
 if (fs.existsSync(SESSIONS_FILE)) {
     try {
         const savedSessions = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
-        Object.keys(savedSessions).forEach(t => activeTokens.set(t, savedSessions[t]));
-        console.log(`[SYSTEM] ${activeTokens.size} sessões recuperadas do disco.`);
+        let loaded = 0;
+        let purged = 0;
+        Object.keys(savedSessions).forEach(t => {
+            const uname = savedSessions[t];
+            // Admin tokens sempre mantidos
+            if (uname === 'ADMIN_CONTROL') { activeTokens.set(t, uname); loaded++; return; }
+            // Só carregar token se usuário existir e estiver aprovado
+            if (usersDB[uname] && usersDB[uname].isApproved === true) {
+                activeTokens.set(t, uname);
+                loaded++;
+            } else {
+                purged++;
+            }
+        });
+        console.log(`[SYSTEM] Sessões: ${loaded} carregadas, ${purged} purgadas (não aprovadas).`);
     } catch (e) {}
 }
 
@@ -1121,16 +1134,30 @@ function requireAuth(req, res, next) {
         if (usernameValue) {
             if (usernameValue === 'ADMIN_CONTROL') return next();
             
-            const state = userStates.get(usernameValue);
-            // BLOQUEIO GLOBAL: Se não estiver aprovado, barra o acesso imediatamente.
-            if (state && state.isApproved) {
+            // FONTE DA VERDADE: Checar usersDB diretamente
+            if (!usersDB[usernameValue] || usersDB[usernameValue].isApproved !== true) {
+                activeTokens.delete(token);
+                saveSessions();
+                return res.status(403).json({ error: 'Acesso bloqueado. Aguarde aprovação do Suporte.' });
+            }
+            
+            // AUTO-RECUPERAÇÃO: Se o estado foi perdido por reinício do servidor,
+            // recarregar do disco automaticamente em vez de retornar 401
+            let state = userStates.get(usernameValue);
+            if (!state) {
+                console.log(`[AUTH] Auto-recuperando estado de ${usernameValue} após reinício...`);
+                state = loadUserState(usernameValue);
+            }
+            
+            if (state) {
+                state.isApproved = true;
                 req.username = usernameValue;
                 req.state = state;
                 return next();
             }
         }
     }
-    return res.status(401).json({ error: 'Acesso negado. Aguarde aprovação do Suporte.' });
+    return res.status(401).json({ error: 'Token inválido ou expirado. Faça login novamente.' });
 }
 
 app.get('/status', requireAuth, async (req, res) => {

@@ -509,10 +509,13 @@
             const token = getToken();
             const headers = { ...(options.headers || {}), 'Authorization': `Bearer ${token}` };
             const res = await fetch(url, { ...options, headers });
-            if (res.status === 401) {
+            // 401 = token inválido/expirado | 403 = não aprovado pelo admin
+            if (res.status === 401 || res.status === 403) {
                 localStorage.removeItem('sifrasToken');
-                window.location.href = '/index.html';
-                throw new Error('Não autorizado');
+                localStorage.removeItem('sifras_token');
+                sessionStorage.removeItem('gatewayOk');
+                window.location.href = '/login.html';
+                throw new Error('Acesso negado');
             }
             return res;
         }
@@ -540,7 +543,8 @@
                 errorCount = 0;
                 updateUI(data);
             } catch (e) {
-                if (e.message !== 'Não autorizado') {
+                // Ignorar erros de autenticação (redirecionamento já ocorreu)
+                if (e.message !== 'Não autorizado' && e.message !== 'Acesso negado') {
                     errorCount++;
                     if (errorCount > 3) {
                         document.getElementById('sysStatusBadge').innerHTML = `<i class="ph-fill ph-circle" style="color: var(--alert-red);"></i> ERRO API`;
@@ -844,9 +848,30 @@
             console.log("🚀 Elite Fluxo Alfa Dashboard V1.3 - Anti-Cache Active");
             
             const token = getToken();
-            const gatewayOk = sessionStorage.getItem('gatewayOk');
 
-            if (!token || !gatewayOk) {
+            // PORTÃO DE SEGURANÇA: sem token, vai para login imediatamente
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            // VALIDAÇÃO REAL NO SERVIDOR: verifica token E aprovação antes de mostrar qualquer dado
+            try {
+                const checkRes = await fetch(`${API_URL}/status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (checkRes.status === 401 || checkRes.status === 403) {
+                    // Token inválido ou usuário não aprovado — limpar e redirecionar
+                    localStorage.removeItem('sifrasToken');
+                    localStorage.removeItem('sifras_token');
+                    sessionStorage.removeItem('gatewayOk');
+                    window.location.href = '/login.html';
+                    return;
+                }
+                const data = await checkRes.json();
+                updateUI(data);
+            } catch (e) {
+                // Erro de rede — redirecionar por segurança
                 window.location.href = '/login.html';
                 return;
             }
@@ -862,7 +887,6 @@
 
             // Iniciar loop de atualização
             refreshInterval = setInterval(fetchStatus, 1500);
-            fetchStatus();
         };
     </script>
 </body>

@@ -1122,7 +1122,8 @@ app.get('/admin/overview', async (req, res) => {
             profit24h: sum24hProfit(state.history),
             totalProfitPct: (state.history || []).reduce((s, h) => s + (h.profitPct || 0), 0),
             dailyGain: state.profitPoolUSDT || 0,
-            salesCount: state.salesCount || 0
+            salesCount: state.salesCount || 0,
+            currentStep: state.status === 'IN_TRADE' ? 'MONITORANDO TRADE' : (state.status === 'PAUSED' ? 'EM PAUSA (CICLO)' : 'BUSCANDO RADAR')
         });
     }
     res.json({ users: overview, globalPivot: globalMarket.pivot || '---' });

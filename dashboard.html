@@ -379,7 +379,7 @@
                         <div style="font-size: 0.9rem; margin-top:5px; text-align:left; display:inline-block; margin-left:auto; margin-right:auto;" id="valTradeTarget">
                             <span style="color:#a0aab5">📥 Compra:</span> ---<br>
                             <span style="color:#fff">🔄 Atual:</span> ---<br>
-                            <span style="color:var(--cyber-gold)">🎯 Alvo:</span> --- (+0.9%)
+                            <span>Alvo: <span style="color:var(--cyber-gold)">+0.5%</span></span> --- (+0.9%)
                         </div>
                     </div>
                 </div>
@@ -534,10 +534,10 @@
             if (pivotInfo && pivotInfo.t2) {
                 document.getElementById('valPivot').innerText = pivotInfo.pivot || 'Aguardando...';
                 const j2 = pivotInfo.j2 ? ` [⚡${pivotInfo.j2}%]` : '';
-                const j6 = pivotInfo.j6 ? ` [⚡${pivotInfo.j6}%]` : '';
+                const j3 = pivotInfo.j3 ? ` [⚡${pivotInfo.j3}%]` : '';
                 document.getElementById('valDistances').innerHTML = `
                     <span style="color:var(--cyber-blue)">${pivotInfo.t2}:</span> ${pivotInfo.d2}%${j2} | 
-                    <span style="color:var(--alert-red)">${pivotInfo.t6}:</span> ${pivotInfo.d6}%${j6}
+                    <span style="color:var(--alert-red)">${pivotInfo.t3}:</span> ${pivotInfo.d3}%${j3}
                 `;
             } else {
                 document.getElementById('valPivot').innerText = 'Aguardando...';

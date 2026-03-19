@@ -474,7 +474,7 @@ async function runFluxoAlfaScanner(username) {
         j3: (globalMarket.coinJumps[rank3.symbol] || 0).toFixed(2)
     };
 
-    // LOGS DE VARREDURA NARRADOS (MAIS DETALHADOS)
+    // LOGS DE VARREDURA NARRADOS
     if (!state._lastLogTime || Date.now() - state._lastLogTime > 25000) {
         // Encontrar maior movimento na piscina de 50 moedas para "narração"
         const movers = Object.keys(globalMarket.coinJumps)
@@ -620,11 +620,11 @@ async function executeRealBuy(username, symbol, price) {
     }
 
     state.buyPrice = realPrice;
-    state.currentPrice = realPrice; 
-    state.buyQty = qty;
-    state.targetPrice = realPrice * 1.004; // SINCRONIZADO: 0.4% LÍQUIDO
+    state.buyQty = qty; // Assuming 'truncatedQty' was a typo and should be 'qty'
+    state.targetPrice = realPrice * 1.005; // ALVO ELITE 0.5%
+    state.status = 'IN_TRADE';
     addLog(username, `🚀 COMPRA EXECUTADA: ${symbol} @ $${realPrice.toFixed(6)}`, 'buy');
-    addLog(username, `🎯 ALVO DEFINIDO: Venda programada para $${state.targetPrice.toFixed(6)} (+0.4%)`, 'info');
+    addLog(username, `🎯 ALVO DEFINIDO: Venda programada para $${state.targetPrice.toFixed(6)} (+0.5%)`, 'info');
     
     startTradeMonitor(username, symbol);
 }

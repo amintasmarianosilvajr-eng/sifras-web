@@ -222,6 +222,10 @@
             <div class="stat-label">Performance Total</div>
             <div class="stat-value" id="avgProfit">0.00%</div>
         </div>
+        <div class="stat-card" style="border-color: var(--cyber-blue); background: rgba(204, 255, 0, 0.02);">
+            <div class="stat-label">Latência / Uptime</div>
+            <div class="stat-value" id="netStatus" style="font-size: 1.2rem; margin-top: 10px;">-- ms | 00h 00m</div>
+        </div>
     </div>
 
     <div class="client-list">
@@ -438,9 +442,14 @@
         const totalRisk = users.reduce((sum, u) => sum + (u.buyAmountUSDT || 0), 0);
         // document.getElementById('riskValue').innerText = `$ ${totalRisk.toFixed(2)}`; // This ID does not exist in the HTML
 
-        const totalProfit = users.reduce((sum, u) => sum + (Number(u.totalProfitPct) || 0), 0);
         const avg = users.length > 0 ? (totalProfit / users.length) : 0;
         document.getElementById('avgProfit').innerText = `${avg.toFixed(2)}%`;
+
+        if (data.globalLatency || data.serverUptime) {
+            const h = Math.floor(data.serverUptime / 3600);
+            const m = Math.floor((data.serverUptime % 3600) / 60);
+            document.getElementById('netStatus').innerText = `${data.globalLatency || 0}ms | ${h}h ${m}m`;
+        }
     }
 
     function renderTable(data) { // data here is now the array of users
@@ -459,16 +468,17 @@
             if (u.status === 'IN_TRADE' && u.buyPrice > 0 && u.currentPrice > 0) {
                 roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
                 
-                // Mapeia de -6.0% (0%) até +0.6% (100%)
-                const minRange = -6.0;
+                // Mapeia de -2.0% (ALINHADO COM PIXEL LOSS) até +0.6% (100%)
+                const minRange = -2.0;
                 const maxRange = 0.6;
                 progressPercent = ((roi - minRange) / (maxRange - minRange)) * 100;
                 progressPercent = Math.max(0, Math.min(100, progressPercent));
                 
                 // Cor dinâmica
-                if (roi >= 0) barColor = '#ccff00'; // Green
-                else if (roi > -3) barColor = '#f3ba2f'; // Gold
-                else barColor = '#ff3366'; // Red
+                if (roi >= 0.6) barColor = '#ccff00'; // Meta
+                else if (roi >= 0) barColor = '#00ff88'; // Positivo
+                else if (roi > -1.5) barColor = '#f3ba2f'; // Alerta
+                else barColor = '#ff3366'; // Pixel Loss
             }
 
             return `
@@ -487,11 +497,11 @@
                     <span class="step-text">${u.currentStep}</span>
                     ${u.status === 'IN_TRADE' ? `
                         <div class="telemetry-container">
-                            <div class="telemetry-marker" style="left: 90.9%;"></div> <!-- Marcador do 0% (6/6.6) -->
+                             <div class="telemetry-marker" style="left: 76.9%;"></div> <!-- Marcador do 0% (2/2.6) -->
                             <div class="telemetry-bar" style="width: ${progressPercent}%; background: ${barColor}; box-shadow: 0 0 10px ${barColor}"></div>
                         </div>
                         <div class="telemetry-labels">
-                            <span>-6.0%</span>
+                            <span>-2.0%</span>
                             <span style="color:${roi >= 0 ? '#ccff00' : '#ff3366'}">${roi.toFixed(2)}%</span>
                             <span>+0.6%</span>
                         </div>

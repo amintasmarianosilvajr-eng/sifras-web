@@ -1117,12 +1117,12 @@ app.get('/admin/overview', async (req, res) => {
             currentPrice: state.currentPrice || 0,
             targetPrice: state.targetPrice || 0,
             buyAmountUSDT: (state.buyQty || 0) * (state.buyPrice || 0),
-            balanceUSDT: state.balanceUSDT || 0,
-            realizedProfitBRL: state.realizedProfitBRL || 0,
-            profit24h: sum24hProfit(state.history),
-            totalProfitPct: (state.history || []).reduce((s, h) => s + (h.profitPct || 0), 0),
-            dailyGain: state.profitPoolUSDT || 0,
-            salesCount: state.salesCount || 0,
+            balanceUSDT: Number(state.balanceUSDT || 0),
+            realizedProfitBRL: Number(state.realizedProfitBRL || 0),
+            profit24h: Number(sum24hProfit(state.history) || 0),
+            totalProfitPct: Number((state.history || []).reduce((s, h) => s + (h.profitPct || 0), 0) || 0),
+            dailyGain: Number(state.profitPoolUSDT || 0),
+            salesCount: Number(state.salesCount || 0),
             currentStep: state.status === 'IN_TRADE' ? 'MONITORANDO TRADE' : (state.status === 'PAUSED' ? 'EM PAUSA (CICLO)' : 'BUSCANDO RADAR')
         });
     }

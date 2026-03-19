@@ -5,6 +5,8 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const app = express();
+const serverStartTime = Date.now(); // NOVO: Controle de Uptime
+let lastGlobalLatency = 0; // Latência média de rede
 app.use(express.json());
 app.use(cors());
 
@@ -293,12 +295,15 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
         const signature = getSignature(queryString, state.apiSecret);
         const url = `https://api.binance.com${endpoint}?${queryString}&signature=${signature}`;
 
+        const start = Date.now();
         const res = await axios({
             method,
             url,
             headers: { 'X-MBX-APIKEY': state.apiKey },
             timeout: 10000
         });
+
+        state.lastLatency = Date.now() - start;
 
         return res.data;
     } catch (e) {
@@ -1090,12 +1095,11 @@ function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Auth' });
 }
 
-app.get('/status', requireAuth, async (req, res) => {
     const data = { ...req.state };
-    data.profit24h = sum24hProfit(req.state.history);
-    data.profitPoolUSDT = req.state.profitPoolUSDT || 0;
-    data.realizedProfitBRL = req.state.realizedProfitBRL || 0;
-    // Adicionar info de diagnóstico
+    data.serverUptime = Math.floor((Date.now() - serverStartTime) / 1000);
+    data.lastLatency = req.state.lastLatency || 0;
+    res.json(data);
+});
     data.serverIp = globalMarket.serverIp || 'N/A';
     data.binanceClockOk = Math.abs(binanceTimeOffset) < 60000;
     res.json(data);

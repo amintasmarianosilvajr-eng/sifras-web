@@ -570,8 +570,13 @@
             }
 
             const pivotInfo = state.dashboardData?.pivotInfo;
-            if (pivotInfo && pivotInfo.t2) {
-                document.getElementById('valPivot').innerText = pivotInfo.pivot || 'Aguardando...';
+            // Diagnóstico
+            if (state.lastLatency) document.getElementById('diagLatency').innerText = `${state.lastLatency} ms`;
+            if (state.serverUptime != null) {
+                const h = Math.floor(state.serverUptime / 3600);
+                const m = Math.floor((state.serverUptime % 3600) / 60);
+                document.getElementById('diagUptime').innerText = `${h}h ${m}m`;
+            }
                 const j2 = pivotInfo.j2 ? ` [⚡${pivotInfo.j2}%]` : '';
                 const j3 = pivotInfo.j3 ? ` [⚡${pivotInfo.j3}%]` : '';
                 document.getElementById('valDistances').innerHTML = `

@@ -264,6 +264,20 @@ async function syncBinanceTime() {
 syncBinanceTime(); // Sync inicial
 setInterval(syncBinanceTime, 600000); // Sync a cada 10min
 
+async function syncExchangeInfo() {
+    try {
+        const res = await axios.get('https://api.binance.com/api/v3/exchangeInfo');
+        if (res.data && res.data.symbols) {
+            globalMarket.exchangeInfo = res.data;
+            console.log(`[SYSTEM] ExchangeInfo Sincronizado. ${res.data.symbols.length} símbolos carregados.`);
+        }
+    } catch (e) {
+        console.error("Erro ao sincronizar exchangeInfo:", e.message);
+    }
+}
+syncExchangeInfo();
+setInterval(syncExchangeInfo, 3600000); // Sync a cada 1 hora
+
 function getSignature(queryString, apiSecret) {
     return crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
 }
@@ -345,20 +359,20 @@ async function startMarketLoop() {
             const history = globalMarket.priceHistory[coin.symbol];
             history.push({ price: coin.price, time: now });
 
-            // Encontrar o preço de ~10 segundos atrás (Garantir que tenha pelo menos 10s)
-            const targetTime = now - 10000;
+            // Encontrar o preço de ~15 segundos atrás (Garantir que tenha pelo menos 15s)
+            const targetTime = now - 15000;
             const oldEnough = history.filter(h => h.time <= targetTime);
             
             if (oldEnough.length > 0) {
-                const refPoint = oldEnough[oldEnough.length - 1]; // O mais próximo de 10s atrás
+                const refPoint = oldEnough[oldEnough.length - 1]; // O mais próximo de 15s atrás
                 const jump = ((coin.price - refPoint.price) / refPoint.price) * 100;
                 globalMarket.coinJumps[coin.symbol] = jump;
             } else {
-                globalMarket.coinJumps[coin.symbol] = 0; // Aguardando base de 10s
+                globalMarket.coinJumps[coin.symbol] = 0; // Aguardando base de 15s
             }
 
-            // Limpar histórico antigo (>15s)
-            globalMarket.priceHistory[coin.symbol] = history.filter(h => now - h.time < 15000);
+            // Limpar histórico antigo (>20s para garantir margem para o cálculo de 15s)
+            globalMarket.priceHistory[coin.symbol] = history.filter(h => now - h.time < 20000);
         }
 
         // NOVO: Cálculo de Sentimento de Mercado (para narração detalhada)
@@ -399,8 +413,21 @@ async function startMarketLoop() {
 startMarketLoop(); // Início oficial
 
 function shouldExcludeCoin(symbol) {
+    // 1. Blacklist Permanente (Fan Tokens, Stables, Suspeitas)
     if (BLACKLIST.some(kw => symbol.includes(kw))) return true;
+
+    // 2. Filtro de Volume/Visibilidade (Top 50 por Volume Quote)
     if (globalMarket.tickerCache && !globalMarket.tickerCache.includes(symbol)) return true;
+
+    // 3. Filtro de Tags de Risco e Status (Monitoramento, Seed, Deslistagem)
+    if (globalMarket.exchangeInfo) {
+        const sInfo = globalMarket.exchangeInfo.symbols.find(s => s.symbol === symbol);
+        if (sInfo) {
+            if (sInfo.status !== 'TRADING') return true;
+            const tags = sInfo.tags || [];
+            if (tags.includes('monitoring') || tags.includes('seed')) return true;
+        }
+    }
     return false;
 }
 
@@ -463,18 +490,19 @@ async function runFluxoAlfaScanner(username) {
 
     const rank2 = globalMarket.top10[1];
     const rank3 = globalMarket.top10[2];
-    const rank4 = globalMarket.top10[3]; // PIVÔ OFICIAL
+    const rank4 = globalMarket.top10[3]; // PIVÔ E CANDIDATO
 
-    // ATUALIZAR PIXEL INFO NO DASHBOARD (Apenas R2 e R3)
+    // ATUALIZAR PIXEL INFO NO DASHBOARD (R2, R3 e R4)
     const d2 = Math.abs(rank2.change - rank4.change);
     const d3 = Math.abs(rank3.change - rank4.change);
     state.dashboardData.pivotInfo = { 
         pivot: rank4.symbol, 
         d2: d2.toFixed(2), 
         d3: d3.toFixed(2), 
-        t2: rank2.symbol, t3: rank3.symbol,
+        t2: rank2.symbol, t3: rank3.symbol, t4: rank4.symbol,
         j2: (globalMarket.coinJumps[rank2.symbol] || 0).toFixed(2),
-        j3: (globalMarket.coinJumps[rank3.symbol] || 0).toFixed(2)
+        j3: (globalMarket.coinJumps[rank3.symbol] || 0).toFixed(2),
+        j4: (globalMarket.coinJumps[rank4.symbol] || 0).toFixed(2)
     };
 
     // LOGS DE VARREDURA NARRADOS
@@ -498,8 +526,8 @@ async function runFluxoAlfaScanner(username) {
         state._lastLogTime = Date.now();
     }
 
-    // MONITORAR TENDÊNCIA E GATILHO (Foco R2 e R3)
-    const candidates = [rank2, rank3];
+    // MONITORAR TENDÊNCIA E GATILHO (Foco R2, R3 e R4)
+    const candidates = [rank2, rank3, rank4];
     let target = null;
     let triggerJump = 0;
     let triggerRank = '';
@@ -509,18 +537,18 @@ async function runFluxoAlfaScanner(username) {
         const jump = globalMarket.coinJumps[coin.symbol] || 0;
         
         // Log de Aproximação (Interativo)
-        if (jump >= 0.05 && jump < 0.1) {
+        if (jump >= 0.1 && jump < 0.2) {
             if (!state._lastTendency || state._lastTendency.symbol !== coin.symbol || Date.now() - state._lastTendency.time > 10000) {
-                const approx = (jump / 0.1) * 100;
-                addLog(username, `⚡ TENDÊNCIA PARA ${coin.symbol}: ${approx.toFixed(0)}% de aproximação do gatilho 0.1%`, 'info');
+                const approx = (jump / 0.2) * 100;
+                addLog(username, `⚡ TENDÊNCIA PARA ${coin.symbol}: ${approx.toFixed(0)}% de aproximação do gatilho 0.2%`, 'info');
                 state._lastTendency = { symbol: coin.symbol, time: Date.now() };
             }
         }
 
-        if (jump >= 0.1) {
+        if (jump >= 0.2) {
             target = coin;
             triggerJump = jump;
-            triggerRank = (i === 0) ? '2' : '3';
+            triggerRank = (i === 0) ? '2' : (i === 1 ? '3' : '4');
             break;
         }
     }
@@ -625,11 +653,11 @@ async function executeRealBuy(username, symbol, price) {
     }
 
     state.buyPrice = realPrice;
-    state.buyQty = qty; // Assuming 'truncatedQty' was a typo and should be 'qty'
-    state.targetPrice = realPrice * 1.005; // ALVO ELITE 0.5%
+    state.buyQty = qty;
+    state.targetPrice = realPrice * 1.008; // ALVO ELITE 0.8% (para ~0.6% líquido)
     state.status = 'IN_TRADE';
     addLog(username, `🚀 COMPRA EXECUTADA: ${symbol} @ $${realPrice.toFixed(6)}`, 'buy');
-    addLog(username, `🎯 ALVO DEFINIDO: Venda programada para $${state.targetPrice.toFixed(6)} (+0.5%)`, 'info');
+    addLog(username, `🎯 ALVO DEFINIDO: Venda programada para $${state.targetPrice.toFixed(6)} (+0.6% líquido)`, 'info');
     
     startTradeMonitor(username, symbol);
 }
@@ -647,8 +675,8 @@ function startTradeMonitor(username, symbol) {
 
             // 1. MONITORAMENTO CONTÍNUO (Sem Stop Loss / Sem Pausa)
 
-            // 2. META ALVO: 0.4% LÍQUIDO
-            if (roi >= 0.4) {
+            // 2. META ALVO: 0.6% LÍQUIDO
+            if (roi >= 0.6) {
                 addLog(username, `🎯 ALVO ALCANÇADO: +${roi.toFixed(2)}% @ $${current.toFixed(6)}. Iniciando Liquidação...`, 'info');
                 const success = await executeRealSell(username, symbol, 'LUCRO');
                 if (success) {
@@ -840,7 +868,11 @@ async function realizeProfitToBRL(username) {
         state.realizedProfitBRL += brlReceived;
         state.profitPoolUSDT -= 20;
         
-        addLog(username, `✅ LUCRO PROTEGIDO: R$ ${brlReceived.toFixed(2)} adicionados à sua carteira.`, 'buy');
+        // Pausa de 10 minutos após "guardar" o lucro
+        state.pauseUntil = Date.now() + 10 * 60 * 1000;
+        state.status = 'PAUSED';
+
+        addLog(username, `✅ LUCRO PROTEGIDO: R$ ${brlReceived.toFixed(2)} guardados. Pausa de 10 min ativada.`, 'buy');
         saveUserState(username);
 
     } catch (e) {
@@ -974,7 +1006,7 @@ app.post('/login', (req, res) => {
         return res.status(401).json({ error: 'Senha incorreta.' });
     }
 
-    if (usersDB[username].isApproved === false) {
+    if (!usersDB[username].isApproved) {
         return res.status(403).json({ error: 'Aguardando ativação pelo administrador.' });
     }
 
@@ -1111,7 +1143,7 @@ app.get('/admin/overview', async (req, res) => {
             clientName: state.clientName || '---',
             status: state.status || 'OFFLINE',
             isLoopActive: state.isLoopActive || false,
-            isApproved: dbUser.isApproved !== false, // Use dbUser for approval status
+            isApproved: !!dbUser.isApproved, // Garantir booleano estrito
             activeSymbol: state.activeSymbol || '---',
             buyPrice: state.buyPrice || 0,
             currentPrice: state.currentPrice || 0,

@@ -436,9 +436,9 @@
             if (u.status === 'IN_TRADE' && u.buyPrice > 0 && u.currentPrice > 0) {
                 roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
                 
-                // Mapeia de -6.0% (0%) até +0.4% (100%)
+                // Mapeia de -6.0% (0%) até +0.6% (100%)
                 const minRange = -6.0;
-                const maxRange = 0.5;
+                const maxRange = 0.6;
                 progressPercent = ((roi - minRange) / (maxRange - minRange)) * 100;
                 progressPercent = Math.max(0, Math.min(100, progressPercent));
                 
@@ -470,7 +470,7 @@
                         <div class="telemetry-labels">
                             <span>-6.0%</span>
                             <span style="color:${roi >= 0 ? '#ccff00' : '#ff3366'}">${roi.toFixed(2)}%</span>
-                            <span>+0.5%</span>
+                            <span>+0.6%</span>
                         </div>
                     ` : ''}
                 </td>

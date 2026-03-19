@@ -201,6 +201,13 @@
     async function submitReg() {
         const email = document.getElementById('regEmail').value.trim();
         const pass = document.getElementById('regPass').value.trim();
+        const err = document.getElementById('errorMsg');
+        
+        if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email.toLowerCase())) {
+            err.innerText = 'Utilize apenas e-mail @gmail.com';
+            err.style.display = 'block';
+            return;
+        }
         performLogin(email, pass);
     }
 

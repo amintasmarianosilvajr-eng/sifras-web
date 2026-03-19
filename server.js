@@ -1028,6 +1028,12 @@ app.post('/login', (req, res) => {
     }
 
     if (!email || !password) return res.status(400).json({ error: 'Preencha E-mail e Senha' });
+    
+    // VALIDAÇÃO ESTRITA GMAIL
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    if (!gmailRegex.test(email.trim().toLowerCase())) {
+        return res.status(400).json({ error: 'Utilize um e-mail @gmail.com válido.' });
+    }
 
     // CASO 2: CLIENTE
     const username = email.trim().toLowerCase();

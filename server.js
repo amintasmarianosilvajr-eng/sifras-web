@@ -716,6 +716,9 @@ async function executeRealSell(username, symbol, reason) {
         addLog(username, `💵 Lucro Real (sobre ${truncatedBalance} moedas): +$${tradeProfitUSDT.toFixed(2)}. Acumulado BRL: $${state.profitPoolUSDT.toFixed(2)} / $20.00`, 'info');
     }
 
+    const profit = ((realSellPrice - state.buyPrice) / state.buyPrice) * 100;
+    state.history.unshift({ symbol, date: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }), profitPct: parseFloat(profit.toFixed(2)), type: 'LUCRO ELITE' });
+
     // ATIVAR SUPER CARD NO MEIO DA TELA
     state.dashboardData.triggerProfitAnim = profit > 0;
     setTimeout(() => {
@@ -729,23 +732,23 @@ async function executeRealSell(username, symbol, reason) {
         addLog(username, `📉 PROTEÇÃO: ${symbol} liquidado com ${profit.toFixed(2)}% de oscilação.`, 'error');
     }
     
-    // Gestão de Histórico e Repetição
+    // Gestão de Repetição (Quarentena 2 ciclos)
     state.lastCoins.push(symbol);
     if (state.lastCoins.length > 10) state.lastCoins.shift();
 
-    // Reduzir Quarentena de outras moedas
-    for (let c in state.quarantine) {
-        if (c !== symbol) {
-            state.quarantine[c]--;
-            if (state.quarantine[c] <= 0) delete state.quarantine[c];
+    // Reduzir bloqueios de outras moedas
+    Object.keys(state.blockedSymbols).forEach(s => {
+        if (s !== symbol) {
+            state.blockedSymbols[s]--;
+            if (state.blockedSymbols[s] <= 0) delete state.blockedSymbols[s];
         }
-    }
+    });
 
-    // Se é a 2ª vez seguida desta moeda, quarentena de 2 trades
+    // Se é a 2ª vez seguida desta moeda, bloqueia por 2 trades
     const len = state.lastCoins.length;
     if (len >= 2 && state.lastCoins[len-1] === symbol && state.lastCoins[len-2] === symbol) {
-        state.quarantine[symbol] = 2; // Bloqueia por 2 operações de outras moedas
-        addLog(username, `⏳ QUARENTENA: ${symbol} suspensa por 2 ciclos de outras moedas.`, 'warn');
+        state.blockedSymbols[symbol] = 2; 
+        addLog(username, `⏳ BLOQUEIO: ${symbol} suspensa por 2 ciclos de outras moedas.`, 'warn');
     }
 
     // Ciclo de Trades (Sem Pausa)

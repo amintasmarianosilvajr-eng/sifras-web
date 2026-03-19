@@ -480,7 +480,8 @@
                 <td class="amount-text" title="Montante Alocado">$ ${u.buyAmountUSDT.toFixed(2)}</td>
                 <td class="amount-text" style="color:var(--cyber-blue)">$ ${u.balanceUSDT.toFixed(2)}</td>
                 <td class="${u.totalProfit >= 0 ? 'profit-up' : 'profit-down'}">
-                    ${u.profit24h >= 0 ? '+' : ''}${u.profit24h.toFixed(2)}% / ${u.totalProfit >= 0 ? '+' : ''}${u.totalProfit.toFixed(2)}%
+                    ${u.profit24h >= 0 ? '+' : ''}${u.profit24h.toFixed(2)}%<br>
+                    <span style="font-size: 0.7rem; color: #999;">Dia: $ ${u.dailyGain.toFixed(2)}</span>
                 </td>
                 <td style="color: var(--cyber-gold); font-weight: bold;">R$ ${(u.realizedProfitBRL || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 <td>

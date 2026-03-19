@@ -321,7 +321,7 @@
                 <div class="input-group" style="display: flex; align-items: center; gap: 10px; margin-top:20px;">
                     <input type="checkbox" id="chkLoop" checked
                         style="width: 20px; height: 20px; accent-color: var(--cyber-blue);">
-                    <label style="margin: 0; color: #fff;">Ativar Ciclo: 5 Operações + Pausa 20m</label>
+                    <label style="margin: 0; color: #fff;">Operação Contínua (Sem Pausas)</label>
                 </div>
 
                 <button class="btn btn-start" id="btnStart" onclick="startSystem()">
@@ -513,7 +513,7 @@
                 isBlinking = true;
             } else if (state.status === 'PAUSED') {
                 const remaining = Math.max(0, Math.ceil((state.pauseUntil - Date.now()) / 60000));
-                statusText = `PAUSA CICLO (${remaining} MIN)`;
+                statusText = `AGUARDANDO GATILHO`;
                 statusColor = '#ff9900';
                 isBlinking = true;
             } else if (state.status === 'OFFLINE') {
@@ -549,7 +549,7 @@
             document.getElementById('valProfitPool').innerText = `Próximo Alvo: $${(state.profitPoolUSDT || 0).toFixed(2)} / $20.00`;
 
             document.getElementById('valOpsCount').innerText = `${state.opsCount || 0} / 5`;
-            document.getElementById('valCooldown').innerText = state.status === 'PAUSED' ? 'Em Pausa de Ciclo' : `${(state.lastTradedCoins || []).length} Moedas Bloqueadas`;
+            document.getElementById('valCooldown').innerText = `${(state.blockedSymbols || []).length || 0} Moedas em Quarentena`;
 
             if (state.activeSymbol && state.status === 'IN_TRADE') {
                 const buyP = state.buyPrice ? state.buyPrice.toFixed(9) : '0.000000000';

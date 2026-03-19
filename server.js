@@ -534,6 +534,10 @@ async function runFluxoAlfaScanner(username) {
 
     for (let i = 0; i < candidates.length; i++) {
         const coin = candidates[i];
+
+        // CHECK EXCLUSION RULES (Fan Tokens, Monitored, Delisting, etc.)
+        if (shouldExcludeCoin(coin.symbol)) continue;
+
         const jump = globalMarket.coinJumps[coin.symbol] || 0;
         
         // Log de Aproximação (Interativo)

@@ -329,6 +329,11 @@ async function startMarketLoop() {
             }))
             .sort((a, b) => b.change - a.change)
             .slice(0, 10);
+        
+        // Atribuir Pivô Global (Rank 4)
+        if (globalMarket.top10.length >= 4) {
+            globalMarket.pivot = globalMarket.top10[3].symbol;
+        }
 
         // 3. Monitorar Histórico de Preços (Janela Deslizante de 10-15s)
         for (const coin of globalMarket.top10) {
@@ -480,6 +485,11 @@ async function runFluxoAlfaScanner(username) {
         addLog(username, `🌊 FLUXO ALFA: Mercado em tendência de ${globalMarket.sentiment} (${globalMarket.marketStrength}%).`, 'info');
         addLog(username, `💡 DESTAQUE RADAR: ${topMover.s} é a moeda mais agressiva (+${topMover.j.toFixed(2)}% jump).`, 'info');
         addLog(username, `📏 BUSCANDO EM: R2:${rank2.symbol} | R3:${rank3.symbol}`, 'info');
+        
+        if (topMover.s !== rank2.symbol && topMover.s !== rank3.symbol && topMover.j >= 0.1) {
+            addLog(username, `💡 INFO: ${topMover.s} está em ALTA (+${topMover.j.toFixed(2)}%), mas não pertence ao RANK 2 ou 3 para gatilho.`, 'info');
+        }
+
         state._lastLogTime = Date.now();
     }
 

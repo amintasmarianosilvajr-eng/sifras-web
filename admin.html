@@ -477,7 +477,7 @@
                 <td class="amount-text" title="Preço de Compra">$ ${u.buyPrice > 0 ? u.buyPrice.toFixed(6) : '---'}</td>
                 <td class="amount-text" title="Preço Atual">$ ${u.currentPrice > 0 ? u.currentPrice.toFixed(6) : '---'}</td>
                 <td class="amount-text" title="Preço de Alvo" style="color:var(--cyber-gold)">$ ${u.targetPrice > 0 ? u.targetPrice.toFixed(6) : '---'}</td>
-                <td class="amount-text" title="Montante Alocado">$ ${u.buyAmountUSDT.toFixed(2)}</td>
+                <td class="amount-text" title="Montante Alocado">$ ${u.buyAmountUSDT > 0 ? u.buyAmountUSDT.toFixed(2) : '---'}</td>
                 <td class="amount-text" style="color:var(--cyber-blue)">$ ${u.balanceUSDT.toFixed(2)}</td>
                 <td class="${u.totalProfit >= 0 ? 'profit-up' : 'profit-down'}">
                     ${u.profit24h >= 0 ? '+' : ''}${u.profit24h.toFixed(2)}%<br>

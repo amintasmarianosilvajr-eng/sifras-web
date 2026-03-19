@@ -319,23 +319,23 @@ async function startMarketLoop() {
     try {
         const now = Date.now();
         
-        // 1. Atualizar Ticker Completo (50 moedas) para filtragem "Ocultas" (30s)
+        // 1. Atualizar Ticker Completo (Ex: Top 250 Volume) para focar em moedas reais da Binance
         if (!globalMarket.lastTickerFetch || now - globalMarket.lastTickerFetch > 30000) {
             const tRes = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
             globalMarket.tickerCache = tRes.data
                 .filter(i => i.symbol.endsWith('USDT'))
                 .sort((a,b) => b.quoteVolume - a.quoteVolume)
-                .slice(0, 50)
+                .slice(0, 250) // Pegar 250 maiores moedas para o radar
                 .map(i => i.symbol);
             globalMarket.lastTickerFetch = now;
         }
 
-        // 2. Buscar Ranks do Ticker (Volatilidade/Mudança)
+        // 2. Buscar Ranks do Ticker (Volatilidade/Mudança) - Focado no Cache de Volume
         const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
         const data = res.data;
         
         globalMarket.top10 = data
-            .filter(i => i.symbol.endsWith('USDT'))
+            .filter(i => i.symbol.endsWith('USDT') && globalMarket.tickerCache.includes(i.symbol))
             .map(i => ({ 
                 symbol: i.symbol, 
                 price: parseFloat(i.lastPrice), 

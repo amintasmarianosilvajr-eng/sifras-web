@@ -414,7 +414,7 @@
         const totalRisk = users.reduce((sum, u) => sum + (u.buyAmountUSDT || 0), 0);
         // document.getElementById('riskValue').innerText = `$ ${totalRisk.toFixed(2)}`; // This ID does not exist in the HTML
 
-        const totalProfit = users.reduce((sum, u) => sum + (u.totalProfit || 0), 0);
+        const totalProfit = users.reduce((sum, u) => sum + (Number(u.totalProfitPct) || 0), 0);
         const avg = users.length > 0 ? (totalProfit / users.length) : 0;
         document.getElementById('avgProfit').innerText = `${avg.toFixed(2)}%`;
     }

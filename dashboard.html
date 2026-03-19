@@ -349,6 +349,27 @@
                     <button class="btn btn-secondary" onclick="resetHistory()" style="font-size: 0.75rem; padding: 8px 2px;"><i class="ph ph-trash"></i> Limpar</button>
                     <button class="btn btn-secondary" onclick="downloadReport()" style="font-size: 0.75rem; padding: 8px 2px;"><i class="ph ph-download"></i> Extrato</button>
                 </div>
+
+                <!-- DIAGNÓSTICO DE REDE ALFA -->
+                <div class="panel" style="margin-top: 25px; padding: 15px; background: rgba(204, 255, 0, 0.03); border: 1px dashed rgba(204, 255, 0, 0.2); border-radius: 12px;">
+                    <h3 style="font-size: 0.75rem; color: var(--cyber-blue); font-family: 'Orbitron'; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">
+                        <i class="ph-fill ph-broadcast"></i> Diagnóstico de Rede Alfa
+                    </h3>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                            <span style="color: #666;">Latência Binance:</span>
+                            <span id="diagLatency" style="color: #ccff00; font-weight: bold;">-- ms</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                            <span style="color: #666;">Sistema Ativo:</span>
+                            <span id="diagUptime" style="color: #fff;">00h 00m</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                            <span style="color: #666;">Status Servidor:</span>
+                            <span style="color: #00ff88;"><i class="ph-fill ph-shield-check"></i> Seguro</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Central: Monitoramento -->
@@ -570,13 +591,8 @@
             }
 
             const pivotInfo = state.dashboardData?.pivotInfo;
-            // Diagnóstico
-            if (state.lastLatency) document.getElementById('diagLatency').innerText = `${state.lastLatency} ms`;
-            if (state.serverUptime != null) {
-                const h = Math.floor(state.serverUptime / 3600);
-                const m = Math.floor((state.serverUptime % 3600) / 60);
-                document.getElementById('diagUptime').innerText = `${h}h ${m}m`;
-            }
+            if (pivotInfo && pivotInfo.t2) {
+                document.getElementById('valPivot').innerText = pivotInfo.pivot || 'Aguardando...';
                 const j2 = pivotInfo.j2 ? ` [⚡${pivotInfo.j2}%]` : '';
                 const j3 = pivotInfo.j3 ? ` [⚡${pivotInfo.j3}%]` : '';
                 document.getElementById('valDistances').innerHTML = `
@@ -586,6 +602,14 @@
             } else {
                 document.getElementById('valPivot').innerText = 'Aguardando...';
                 document.getElementById('valDistances').innerText = 'D2: --- | D6: ---';
+            }
+
+            // Diagnóstico
+            if (state.lastLatency) document.getElementById('diagLatency').innerText = `${state.lastLatency} ms`;
+            if (state.serverUptime != null) {
+                const h = Math.floor(state.serverUptime / 3600);
+                const m = Math.floor((state.serverUptime % 3600) / 60);
+                document.getElementById('diagUptime').innerText = `${h}h ${m}m`;
             }
 
             document.getElementById('valBalanceUSDT').innerText = `$ ${state.balanceUSDT ? state.balanceUSDT.toFixed(2) : '0.00'}`;

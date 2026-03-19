@@ -109,10 +109,9 @@ function createInitialState(username) {
     return {
         username, clientName: '', apiKey: '', apiSecret: '', status: 'OFFLINE', opsCount: 0,
         isApproved: false, // BLOQUEIO INICIAL: Requer ativação do administrador
-        // NOVO: Sistema de repetição — 2x seguidas OK, bloqueia por 2 ops
-        lastSymbol: null,           // Última moeda comprada
-        consecutiveCount: 0,        // Quantas vezes seguidas essa moeda foi comprada
-        blockedSymbols: {},         // { symbol: opsRestantes } para desbloquear
+        lastCoin: '',
+        consecutiveCount: 0,
+        cooldownCoins: {}, // { symbol: opsRemaining }
         history: [], logs: [], balanceUSDT: 0, lastCoins: [],
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
@@ -177,8 +176,8 @@ function loadUserState(rawUsername) {
             console.log(`[USER] Estado carregado para ${username}. Status: ${state.status} | Loop: ${state.isLoopActive}`);
         } catch (e) {}
     }
-    if (!state.blockedSymbols || typeof state.blockedSymbols !== 'object') state.blockedSymbols = {};
-    if (state.lastSymbol === undefined) state.lastSymbol = null;
+    if (!state.cooldownCoins || typeof state.cooldownCoins !== 'object') state.cooldownCoins = {};
+    if (state.lastCoin === undefined) state.lastCoin = '';
     if (state.consecutiveCount === undefined) state.consecutiveCount = 0;
     if (!Array.isArray(state.logs)) state.logs = [];
     
@@ -195,7 +194,7 @@ function saveUserState(rawUsername) {
         clientName: state.clientName, history: state.history, opsCount: state.opsCount, 
         apiKey: state.apiKey, apiSecret: state.apiSecret, 
         buyPercentage: state.buyPercentage,
-        lastSymbol: state.lastSymbol, consecutiveCount: state.consecutiveCount, blockedSymbols: state.blockedSymbols || {},
+        lastCoin: state.lastCoin, consecutiveCount: state.consecutiveCount, cooldownCoins: state.cooldownCoins || {},
         status: state.status, isLoopActive: state.isLoopActive,
         activeSymbol: state.activeSymbol, buyPrice: state.buyPrice, buyQty: state.buyQty,
         targetPrice: state.targetPrice, currentPrice: state.currentPrice,
@@ -350,6 +349,9 @@ async function startMarketLoop() {
         }
 
         // 3. Monitorar Histórico de Preços (Janela Deslizante de 10-15s)
+        const tenSecsAgo = now - 10 * 1000;
+        const cutoff = now - 15 * 1000; // 2. CLEANUP (Keep 15s for extra margin)
+
         for (const coin of globalMarket.top10) {
             if (!globalMarket.priceHistory[coin.symbol]) {
                 globalMarket.priceHistory[coin.symbol] = [];
@@ -359,20 +361,19 @@ async function startMarketLoop() {
             const history = globalMarket.priceHistory[coin.symbol];
             history.push({ price: coin.price, time: now });
 
-            // Encontrar o preço de ~15 segundos atrás (Garantir que tenha pelo menos 15s)
-            const targetTime = now - 15000;
-            const oldEnough = history.filter(h => h.time <= targetTime);
+            // Encontrar o preço de ~10 segundos atrás (Garantir que tenha pelo menos 10s)
+            const oldEnough = history.filter(h => h.time <= tenSecsAgo);
             
             if (oldEnough.length > 0) {
-                const refPoint = oldEnough[oldEnough.length - 1]; // O mais próximo de 15s atrás
+                const refPoint = oldEnough[oldEnough.length - 1]; // O mais próximo de 10s atrás
                 const jump = ((coin.price - refPoint.price) / refPoint.price) * 100;
                 globalMarket.coinJumps[coin.symbol] = jump;
             } else {
-                globalMarket.coinJumps[coin.symbol] = 0; // Aguardando base de 15s
+                globalMarket.coinJumps[coin.symbol] = 0; // Aguardando base de 10s
             }
 
-            // Limpar histórico antigo (>20s para garantir margem para o cálculo de 15s)
-            globalMarket.priceHistory[coin.symbol] = history.filter(h => now - h.time < 20000);
+            // Limpar histórico antigo (>15s para garantir margem para o cálculo de 10s)
+            globalMarket.priceHistory[coin.symbol] = history.filter(h => now - h.time < 15000);
         }
 
         // NOVO: Cálculo de Sentimento de Mercado (para narração detalhada)
@@ -431,18 +432,6 @@ function shouldExcludeCoin(symbol) {
     return false;
 }
 
-function checkRepetition(username, symbol) {
-    const state = userStates.get(username);
-    // Bloqueio por Repetição Excedida
-    if (state.blockedSymbols && state.blockedSymbols[symbol] > 0) return true;
-    
-    // Máximo 2 vezes sequenciais
-    const len = state.lastCoins.length;
-    if (len >= 2 && state.lastCoins[len-1] === symbol && state.lastCoins[len-2] === symbol) return true;
-    
-    return false;
-}
-
 // --- NOVO: FUNÇÃO DE BOOTSTRAP PARA AUTO-RESUME ---
 async function bootstrapRobots() {
     console.log("[SYSTEM] Verificando robôs para Auto-Resume...");
@@ -483,6 +472,12 @@ async function runFluxoAlfaScanner(username) {
         if (Date.now() < state.pauseUntil) return;
         state.status = 'SCANNING';
         state.pauseUntil = null;
+        // Update cooldowns for other coins
+        if (state.cooldownCoins) {
+            for (let c in state.cooldownCoins) {
+                if (state.cooldownCoins[c] > 0) state.cooldownCoins[c]--;
+            }
+        }
         if (state.opsCount >= 5) state.opsCount = 0;
         addLog(username, "🔄 Pausa encerrada. Retomando radar...", 'info');
         saveUserState(username);
@@ -506,7 +501,13 @@ async function runFluxoAlfaScanner(username) {
     };
 
     // LOGS DE VARREDURA NARRADOS
-    if (!state._lastLogTime || Date.now() - state._lastLogTime > 25000) {
+    // LOG INTERVAL: Apenas a cada 10 segundos
+    const now = Date.now();
+    const lastLog = state.lastScannerLog || 0;
+    const shouldLog = (now - lastLog) >= 10000;
+    if (shouldLog) state.lastScannerLog = now;
+
+    if (shouldLog) {
         // Encontrar maior movimento na piscina de 50 moedas para "narração"
         const movers = Object.keys(globalMarket.coinJumps)
             .map(s => ({ s, j: globalMarket.coinJumps[s] }))
@@ -514,16 +515,14 @@ async function runFluxoAlfaScanner(username) {
         const topMover = movers[0] || { s: '---', j: 0 };
         
         addLog(username, `🌊 FLUXO ALFA: Mercado em tendência de ${globalMarket.sentiment} (${globalMarket.marketStrength}%).`, 'info');
-        addLog(username, `💡 DESTAQUE RADAR: ${topMover.s} é a moeda mais agressiva (+${topMover.j.toFixed(2)}% jump).`, 'info');
-        addLog(username, `📏 BUSCANDO EM: R2:${rank2.symbol} | R3:${rank3.symbol}`, 'info');
+        addLog(username, `💡 DESTAQUE RADAR: ${topMover.s} é a moeda mais agressiva (+${topMover.j.toFixed(2)}% jump em 10s).`, 'info');
+        addLog(username, `🔍 BUSCANDO EM: R2:${rank2.symbol} | R3:${rank3.symbol} | R4:${rank4.symbol}`, 'info');
         
-        if (topMover.s !== rank2.symbol && topMover.s !== rank3.symbol && topMover.j >= 0.1) {
-            addLog(username, `💡 INFO: ${topMover.s} está em ALTA (+${topMover.j.toFixed(2)}%), mas não pertence ao RANK 2 ou 3 para gatilho.`, 'info');
+        if (topMover.s !== rank2.symbol && topMover.s !== rank3.symbol && topMover.s !== rank4.symbol && topMover.j >= 0.1) {
+            addLog(username, `💡 INFO: ${topMover.s} está em ALTA (+${topMover.j.toFixed(2)}%), mas não pertence ao RANK 2, 3 ou 4 para gatilho.`, 'info');
         }
         // LOG DIAGNÓSTICO (Apenas Console)
         console.log(`[SCANNER] ${username} | TOP4: R1:${globalMarket.top10[0].symbol} R2:${rank2.symbol} R3:${rank3.symbol} R4:${rank4.symbol} (Pivot)`);
-
-        state._lastLogTime = Date.now();
     }
 
     // MONITORAR TENDÊNCIA E GATILHO (Foco R2, R3 e R4)
@@ -538,6 +537,12 @@ async function runFluxoAlfaScanner(username) {
         // CHECK EXCLUSION RULES (Fan Tokens, Monitored, Delisting, etc.)
         if (shouldExcludeCoin(coin.symbol)) continue;
 
+        // RULE: 2 TIMES SEQUENTIAL, THEN 2 OPS COOLDOWN
+        if (state.cooldownCoins && state.cooldownCoins[coin.symbol] > 0) {
+            if (shouldLog) addLog(username, `⏳ ${coin.symbol} em cooldown por mais ${state.cooldownCoins[coin.symbol]} op.`, 'info');
+            continue;
+        }
+        
         const jump = globalMarket.coinJumps[coin.symbol] || 0;
         
         // Log de Aproximação (Interativo)
@@ -550,6 +555,8 @@ async function runFluxoAlfaScanner(username) {
         }
 
         if (jump >= 0.2) {
+            const rankLabel = (i === 0) ? 'RANK 2' : (i === 1) ? 'RANK 3' : 'RANK 4';
+            addLog(username, `🎯 GATILHO DETECTADO: ${coin.symbol} (${rankLabel}) subiu +${jump.toFixed(2)}% em 10s!`, 'buy');
             target = coin;
             triggerJump = jump;
             triggerRank = (i === 0) ? '2' : (i === 1 ? '3' : '4');
@@ -559,14 +566,6 @@ async function runFluxoAlfaScanner(username) {
 
     // Fim da Verificação de Gatilho Diário
     if (!target) return;
-
-    if (state.blockedSymbols[target.symbol] > 0) {
-        if (!state._lastRepLog || state._lastRepLog !== target.symbol) {
-            addLog(username, `🛡️ BLOQUEIO DE REPETIÇÃO: ${target.symbol} atingiu +${triggerJump.toFixed(2)}%, mas está em quarentena (${state.blockedSymbols[target.symbol]} ops).`, 'warn');
-            state._lastRepLog = target.symbol;
-        }
-        return;
-    }
 
     // DIAGNÓSTICO: Se chegou aqui, VAI COMPRAR. Logar imediatamente.
     console.log(`[TRIGGER SUCCESS] ${username} buying ${target.symbol} at ${triggerJump.toFixed(3)}% jump`);
@@ -800,23 +799,29 @@ async function executeRealSell(username, symbol, reason) {
     state.lastCoins.push(symbol);
     if (state.lastCoins.length > 10) state.lastCoins.shift();
 
-    // Reduzir bloqueios de outras moedas
-    Object.keys(state.blockedSymbols).forEach(s => {
-        if (s !== symbol) {
-            state.blockedSymbols[s]--;
-            if (state.blockedSymbols[s] <= 0) delete state.blockedSymbols[s];
-        }
+    // Reduzir cooldowns de outras moedas
+    Object.keys(state.cooldownCoins).forEach(s => {
+        if (state.cooldownCoins[s] > 0) state.cooldownCoins[s]--;
+        if (state.cooldownCoins[s] <= 0) delete state.cooldownCoins[s];
     });
 
     // Se é a 2ª vez seguida desta moeda, bloqueia por 2 trades
-    const len = state.lastCoins.length;
-    if (len >= 2 && state.lastCoins[len-1] === symbol && state.lastCoins[len-2] === symbol) {
-        state.blockedSymbols[symbol] = 2; 
-        addLog(username, `⏳ BLOQUEIO: ${symbol} suspensa por 2 ciclos de outras moedas.`, 'warn');
+    if (state.lastCoin === symbol) {
+        state.consecutiveCount++;
+    } else {
+        state.lastCoin = symbol;
+        state.consecutiveCount = 1;
+    }
+
+    if (state.consecutiveCount >= 2) {
+        if (!state.cooldownCoins) state.cooldownCoins = {};
+        state.cooldownCoins[symbol] = 2; // Bloqueia por 2 operações
+        state.consecutiveCount = 0; // Reseta para a próxima
+        addLog(username, `⚠️ LIMITE DE REPETIÇÃO: ${symbol} bloqueada pelas próximas 2 operações.`, 'warn');
     }
 
     // Ciclo de Trades (Sem Pausa)
-    state.tradeCount++;
+    state.opsCount++;
 
     state._isSelling = false;
     resetTradeState(username);

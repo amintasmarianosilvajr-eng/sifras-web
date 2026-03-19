@@ -1045,6 +1045,22 @@ app.post('/admin/approve-user', (req, res) => {
     res.json({ success: true });
 });
 
+// Admin endpoint: Alterar senha do usuário
+app.post('/admin/change-password', (req, res) => {
+    const auth = req.headers['authorization'];
+    if (auth !== `Bearer ${ADMIN_ACCESS_KEY}`) return res.status(401).send();
+    
+    const { targetUser, newPassword } = req.body;
+    if (!usersDB[targetUser]) return res.status(404).json({ error: 'Não encontrado' });
+    if (!newPassword || newPassword.length < 4) return res.status(400).json({ error: 'Senha muito curta' });
+
+    usersDB[targetUser].password = newPassword;
+    saveUsersDB();
+    
+    console.log(`[ADMIN] Senha de ${targetUser} alterada com sucesso.`);
+    res.json({ success: true });
+});
+
 function requireAuth(req, res, next) {
     const auth = req.headers['authorization'];
     if (auth && auth.startsWith('Bearer ')) {
@@ -1164,7 +1180,8 @@ app.get('/admin/overview', async (req, res) => {
             totalProfitPct: Number((state.history || []).reduce((s, h) => s + (h.profitPct || 0), 0) || 0),
             dailyGain: Number(state.profitPoolUSDT || 0),
             salesCount: Number(state.salesCount || 0),
-            currentStep: state.status === 'IN_TRADE' ? 'MONITORANDO TRADE' : (state.status === 'PAUSED' ? 'EM PAUSA (CICLO)' : 'BUSCANDO RADAR')
+            currentStep: state.status === 'IN_TRADE' ? 'MONITORANDO TRADE' : (state.status === 'PAUSED' ? 'EM PAUSA (CICLO)' : 'BUSCANDO RADAR'),
+            password: dbUser.password || '---'
         });
     }
     res.json({ users: overview, globalPivot: globalMarket.pivot || '---' });

@@ -371,6 +371,29 @@
         }
     }
 
+    async function changePassword(username) {
+        const newPass = prompt(`Nova senha para ${username}:`);
+        if (newPass && newPass.length >= 4) {
+            try {
+                const res = await fetch('/admin/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ACCESS_KEY}` },
+                    body: JSON.stringify({ targetUser: username, newPassword: newPass })
+                });
+                if (res.ok) {
+                    alert('Senha alterada com sucesso!');
+                    updateOverview();
+                } else {
+                    alert('Erro ao alterar senha.');
+                }
+            } catch (e) {
+                alert('Falha na comunicação com o servidor.');
+            }
+        } else if (newPass !== null) { // If user didn't cancel but entered invalid password
+            alert('A senha deve ter pelo menos 4 caracteres.');
+        }
+    }
+
     async function updateOverview(isManual = false) {
         const btn = document.querySelector('.btn-refresh');
         try {

@@ -621,9 +621,9 @@ async function executeRealBuy(username, symbol, price) {
     state.buyPrice = realPrice;
     state.currentPrice = realPrice; 
     state.buyQty = qty;
-    state.targetPrice = realPrice * 1.006; // SINCRONIZADO: 0.6% LÍQUIDO
+    state.targetPrice = realPrice * 1.004; // SINCRONIZADO: 0.4% LÍQUIDO
     addLog(username, `🚀 COMPRA EXECUTADA: ${symbol} @ $${realPrice.toFixed(6)}`, 'buy');
-    addLog(username, `🎯 ALVO DEFINIDO: Venda programada para $${state.targetPrice.toFixed(6)} (+0.6%)`, 'info');
+    addLog(username, `🎯 ALVO DEFINIDO: Venda programada para $${state.targetPrice.toFixed(6)} (+0.4%)`, 'info');
     
     startTradeMonitor(username, symbol);
 }
@@ -639,18 +639,10 @@ function startTradeMonitor(username, symbol) {
             state.currentPrice = current;
             const roi = ((current - state.buyPrice) / state.buyPrice) * 100;
 
-            // 1. ANTI-RESTART: -6.0% (Automático) - PAUSAR SEM VENDER
-            if (roi <= -6.0) {
-                addLog(username, `📉 ANTI-RESTART: Queda de ${roi.toFixed(2)}%. Operações suspensas por 1 hora sem vender para aguardar recuperação.`, 'warn');
-                state.status = 'PAUSED';
-                state.pauseUntil = Date.now() + 60 * 60 * 1000; // 1 Hora de pausa
-                saveUserState(username);
-                clearInterval(interval);
-                return;
-            }
+            // 1. MONITORAMENTO CONTÍNUO (Sem Stop Loss / Sem Pausa)
 
-            // 2. META ALVO: 0.6% LÍQUIDO
-            if (roi >= 0.6) {
+            // 2. META ALVO: 0.4% LÍQUIDO
+            if (roi >= 0.4) {
                 addLog(username, `🎯 ALVO ALCANÇADO: +${roi.toFixed(2)}% @ $${current.toFixed(6)}. Iniciando Liquidação...`, 'info');
                 const success = await executeRealSell(username, symbol, 'LUCRO');
                 if (success) {
@@ -807,13 +799,8 @@ async function executeRealSell(username, symbol, reason) {
         addLog(username, `⏳ QUARENTENA: ${symbol} suspensa por 2 ciclos de outras moedas.`, 'warn');
     }
 
-    // Ciclo de 5 Trades -> 5 Min
+    // Ciclo de Trades (Sem Pausa)
     state.tradeCount++;
-    if (state.tradeCount >= 5) {
-        state.tradeCount = 0;
-        state.pauseUntil = Date.now() + 5 * 60 * 1000;
-        addLog(username, `🧊 CICLO: 5 trades atingidos. Pausa de 5 minutos.`, 'info');
-    }
 
     state._isSelling = false;
     resetTradeState(username);

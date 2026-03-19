@@ -104,7 +104,8 @@ let globalMarket = {
     exchangeInfo: null,
     lastExchangeFetch: 0,
     lastUpdate: 0,
-    priceHistory: {}
+    priceHistory: {},
+    lastLatency: 0
 };
 
 function createInitialState(username) {
@@ -303,7 +304,9 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
             timeout: 10000
         });
 
-        state.lastLatency = Date.now() - start;
+        const latency = Date.now() - start;
+        state.lastLatency = latency;
+        globalMarket.lastLatency = latency;
 
         return res.data;
     } catch (e) {
@@ -844,6 +847,9 @@ async function executeRealSell(username, symbol, reason) {
     // Ciclo de Trades (Sem Pausa)
     state.opsCount++;
 
+    // Lógica de Pausa por Ciclo de VENDAS (A cada 5 Vendas -> 5 Min)
+    state.salesCount = (state.salesCount || 0) + 1;
+    
     state._isSelling = false;
     resetTradeState(username);
     saveUserState(username);
@@ -851,18 +857,16 @@ async function executeRealSell(username, symbol, reason) {
     // Gestão de BRL ($20 atingidos no PNL Alfa Líquido)
     if (state.liquidPnlPool >= 20) {
         await realizeProfitToBRL(username);
-        // O liquidPnlPool pode ser resetado ou reduzido de 20. 
-        // Para manter a transparência do "Ganho do Dia", vamos zerar após a conversão.
         state.liquidPnlPool = 0; 
     }
 
-    // Lógica de Pausa por Ciclo de VENDAS (A cada 5 Vendas -> 5 Min)
-    state.salesCount = (state.salesCount || 0) + 1;
     if (state.salesCount >= 5) {
-        state.salesCount = 0;
+        state.salesCount = 5; // Mantém 5/5 para o UI durante a pausa
         state.pauseUntil = Date.now() + 5 * 60 * 1000;
         state.status = 'PAUSED';
         addLog(username, `🛑 CICLO DE VENDAS: 5 sucessos atingidos. Pausa de 5 minutos ativada.`, 'warn');
+        saveUserState(username); // Salva novamente para garantir o status PAUSED e salesCount=5
+        state.salesCount = 0; // Reseta internamente para o próximo ciclo após a pausa expirar
     }
 
     return true;
@@ -1207,7 +1211,12 @@ app.get('/admin/overview', async (req, res) => {
             password: dbUser.password || '---'
         });
     }
-    res.json({ users: overview, globalPivot: globalMarket.pivot || '---' });
+    res.json({ 
+        users: overview, 
+        globalPivot: globalMarket.pivot || '---',
+        globalLatency: globalMarket.lastLatency || 0,
+        serverUptime: Math.floor((Date.now() - serverStartTime) / 1000)
+    });
 });
 
 app.post('/admin/stop-all', async (req, res) => {

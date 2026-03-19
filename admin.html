@@ -219,8 +219,8 @@
             <div class="stat-value" id="globalPivot">Aguardando...</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Performance Total</div>
-            <div class="stat-value" id="avgProfit">0.00%</div>
+            <div class="stat-label">Capital em Operação</div>
+            <div class="stat-value" id="avgProfit">$ 0.00</div>
         </div>
         <div class="stat-card" style="border-color: var(--cyber-blue); background: rgba(204, 255, 0, 0.02);">
             <div class="stat-label">Latência / Uptime</div>
@@ -442,8 +442,9 @@
         const totalRisk = users.reduce((sum, u) => sum + (u.buyAmountUSDT || 0), 0);
         // document.getElementById('riskValue').innerText = `$ ${totalRisk.toFixed(2)}`; // This ID does not exist in the HTML
 
-        const avg = users.length > 0 ? (totalProfit / users.length) : 0;
-        document.getElementById('avgProfit').innerText = `${avg.toFixed(2)}%`;
+        const totalProfit = users.reduce((sum, u) => sum + (u.totalProfitPct || 0), 0);
+        const totalCapital = users.reduce((sum, u) => sum + (Number(u.buyAmountUSDT) || 0), 0);
+        document.getElementById('avgProfit').innerText = `$ ${totalCapital.toFixed(2)}`;
 
         if (data.globalLatency || data.serverUptime) {
             const h = Math.floor(data.serverUptime / 3600);

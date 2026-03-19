@@ -113,10 +113,10 @@ function createInitialState(username) {
         lastSymbol: null,           // Última moeda comprada
         consecutiveCount: 0,        // Quantas vezes seguidas essa moeda foi comprada
         blockedSymbols: {},         // { symbol: opsRestantes } para desbloquear
-        history: [], logs: [], balanceUSDT: 0,
+        history: [], logs: [], balanceUSDT: 0, lastCoins: [],
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
-        buyPercentage: 0.99, pauseUntil: null, tradePauseUntil: null, recoveryMode: false, recoveryThreshold: -4.0,
+        buyPercentage: 0.99, pauseUntil: null, recoveryMode: false, recoveryThreshold: -4.0,
         profitPoolUSDT: 0, realizedProfitBRL: 0,
         lastSearchLogTime: 0
     };
@@ -381,8 +381,8 @@ function shouldExcludeCoin(symbol) {
 
 function checkRepetition(username, symbol) {
     const state = userStates.get(username);
-    // Quarentena de 2 ciclos
-    if (state.quarantine[symbol] > 0) return true;
+    // Bloqueio por Repetição Excedida
+    if (state.blockedSymbols && state.blockedSymbols[symbol] > 0) return true;
     
     // Máximo 2 vezes sequenciais
     const len = state.lastCoins.length;

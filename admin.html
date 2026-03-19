@@ -215,12 +215,12 @@
             <div class="stat-value" id="tradingCount">0</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Fator Pixel Alfa</div>
-            <div class="stat-value" id="globalPivot">Aguardando...</div>
-        </div>
-        <div class="stat-card">
             <div class="stat-label">Capital em Operação</div>
             <div class="stat-value" id="avgProfit">$ 0.00</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Performance Geral</div>
+            <div class="stat-value" id="globalProfitPct">0.00%</div>
         </div>
         <div class="stat-card" style="border-color: var(--cyber-blue); background: rgba(204, 255, 0, 0.02);">
             <div class="stat-label">Latência / Uptime</div>
@@ -443,6 +443,8 @@
         // document.getElementById('riskValue').innerText = `$ ${totalRisk.toFixed(2)}`; // This ID does not exist in the HTML
 
         const totalProfit = users.reduce((sum, u) => sum + (u.totalProfitPct || 0), 0);
+        document.getElementById('globalProfitPct').innerText = `${totalProfit.toFixed(2)}%`;
+        
         const totalCapital = users.reduce((sum, u) => sum + (Number(u.buyAmountUSDT) || 0), 0);
         document.getElementById('avgProfit').innerText = `$ ${totalCapital.toFixed(2)}`;
 

@@ -397,9 +397,22 @@ async function startMarketLoop() {
 
         // 4. Fluxo por Usuário
         for (const [username, state] of userStates) {
-            // Sincronizar Pivô e Telemetria para o Dashboard (mesmo em trade)
-            // SINCRONIZAR TELEMETRIA PARA O DASHBOARD (VINCULADO AO MONITORAMENTO DO SCANNER)
-            // Removido loop redundante que sobrepunha os dados de R2/R3.
+            // Sincronizar Pivô e Telemetria Global para o Dashboard (mesmo em trade)
+            if (globalMarket.top10.length >= 6) {
+                const r2 = globalMarket.top10[1];
+                const r4 = globalMarket.top10[3];
+                const r6 = globalMarket.top10[5];
+                
+                state.dashboardData.pivotInfo = {
+                    pivot: r4.symbol,
+                    d2: Math.abs(r2.change - r4.change).toFixed(2),
+                    d6: Math.abs(r6.change - r4.change).toFixed(2),
+                    t2: r2.symbol,
+                    t6: r6.symbol,
+                    j2: (globalMarket.coinJumps[r2.symbol] || 0).toFixed(2),
+                    j6: (globalMarket.coinJumps[r6.symbol] || 0).toFixed(2)
+                };
+            }
 
             // ATUALIZAR SALDO PERIODICAMENTE (CADA 30 SEGUNDOS) PARA TODOS CONECTADOS
             if (!state._lastBalanceUpdate || now - state._lastBalanceUpdate > 30000) {

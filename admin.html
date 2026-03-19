@@ -237,8 +237,8 @@
                     <th>V. ALVO ($)</th>
                     <th>V. OPERAÇÃO ($)</th>
                     <th>SALDO CONTA (USDT)</th>
-                    <th>LUCRO ACUM.</th>
-                    <th>LUCRO BRL (R$)</th>
+                    <th>PNL ALFA LÍQUIDO ($)</th>
+                    <th>TOTAL CONVERTIDO (BRL)</th>
                     <th>AÇÕES</th>
                 </tr>
             </thead>
@@ -503,9 +503,9 @@
                 <td class="amount-text" title="Preço de Alvo" style="color:var(--cyber-gold)">$ ${(Number(u.targetPrice) || 0).toFixed(6)}</td>
                 <td class="amount-text" title="Montante Alocado">$ ${(Number(u.buyAmountUSDT) || 0).toFixed(2)}</td>
                 <td class="amount-text" style="color:var(--cyber-blue)">$ ${(Number(u.balanceUSDT) || 0).toFixed(2)}</td>
-                <td class="${(Number(u.dailyGain) || 0) >= 0 ? 'profit-up' : 'profit-down'}">
-                    <strong>$ ${(Number(u.dailyGain) || 0).toFixed(2)}</strong><br>
-                    <span style="font-size: 0.7rem; color: #999;">Total: ${(Number(u.totalProfitPct) || 0).toFixed(2)}%</span>
+                <td class="${(Number(u.liquidPnlPool) || 0) >= 0 ? 'profit-up' : 'profit-down'}">
+                    <strong>$ ${(Number(u.liquidPnlPool) || 0).toFixed(2)}</strong><br>
+                    <span style="font-size: 0.7rem; color: #999;">Meta: $20.00</span>
                 </td>
                 <td style="color: var(--cyber-gold); font-weight: bold;">R$ ${(Number(u.realizedProfitBRL) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td>

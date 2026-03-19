@@ -112,6 +112,7 @@ function createInitialState(username) {
         lastCoin: '',
         consecutiveCount: 0,
         cooldownCoins: {}, // { symbol: opsRemaining }
+        liquidPnlPool: 0,   // NOVO: PNL Alfa Líquido (Somatório de lucros reais líq.)
         history: [], logs: [], balanceUSDT: 0, lastCoins: [],
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
@@ -636,6 +637,12 @@ async function executeRealBuy(username, symbol, price) {
 
     const amountToUse = usdt * (state.buyPercentage === 1.0 ? 0.99 : state.buyPercentage);
     
+    // REVISÃO ELITE: Se o valor for menor que $12, ignorar (Anti-Fragmento)
+    if (amountToUse < 12) {
+        addLog(username, `⚠️ SALDO INSUFICIENTE/FRAGMENTADO ($${amountToUse.toFixed(2)}). Mínimo $12 para Operação Elite.`, 'warn');
+        return resetTradeState(username);
+    }
+
     // ORDEM DE COMPRA REAL
     const order = await binanceRequest(username, '/api/v3/order', 'POST', {
         symbol, side: 'BUY', type: 'MARKET', quoteOrderQty: amountToUse.toFixed(6)
@@ -772,10 +779,19 @@ async function executeRealSell(username, symbol, reason) {
         if (totalQtyFilled > 0) realSellPrice = totalCost / totalQtyFilled;
     }
 
-    // Lógica de Sincronismo de Lucro Diário (Referência: 1ª Op do Dia)
+    // Lógica PNL ALFA LÍQUIDO (Net Profit Realizado)
+    const buyCost = state.buyPrice * state.buyQty;
+    const sellRevenue = realSellPrice * totalQtyFilled;
+    const totalFees = (buyCost * 0.001) + (sellRevenue * 0.001); // 0.1% na compra e 0.1% na venda
+    const tradeNetProfit = sellRevenue - buyCost - totalFees;
+    
+    state.liquidPnlPool = (state.liquidPnlPool || 0) + tradeNetProfit;
+    
+    // Antigo dayGain para compatibilidade visual no Dashboard
     const currentTotal = await binanceFetchBalance(username);
     const dayGain = currentTotal - (state.initialDayBalance || currentTotal);
-    state.profitPoolUSDT = dayGain; // Sincroniza pool para o Dashboard
+    
+    addLog(username, `📊 PNL ALFA LÍQUIDO: +$${tradeNetProfit.toFixed(2)} nesta operação. Acumulado: $${state.liquidPnlPool.toFixed(2)}`, 'info');
     
     addLog(username, `📊 DESEMPENHO DIÁRIO: Ganho de $${dayGain.toFixed(2)} vs Alvo $20.00`, 'info');
 
@@ -827,9 +843,12 @@ async function executeRealSell(username, symbol, reason) {
     resetTradeState(username);
     saveUserState(username);
 
-    // Gestão de BRL ($20 atingidos no Delta Diário)
-    if (state.profitPoolUSDT >= 20) {
+    // Gestão de BRL ($20 atingidos no PNL Alfa Líquido)
+    if (state.liquidPnlPool >= 20) {
         await realizeProfitToBRL(username);
+        // O liquidPnlPool pode ser resetado ou reduzido de 20. 
+        // Para manter a transparência do "Ganho do Dia", vamos zerar após a conversão.
+        state.liquidPnlPool = 0; 
     }
 
     // Lógica de Pausa por Ciclo de VENDAS (A cada 5 Vendas -> 5 Min)
@@ -1180,6 +1199,7 @@ app.get('/admin/overview', async (req, res) => {
             totalProfitPct: Number((state.history || []).reduce((s, h) => s + (h.profitPct || 0), 0) || 0),
             dailyGain: Number(state.profitPoolUSDT || 0),
             salesCount: Number(state.salesCount || 0),
+            liquidPnlPool: Number(state.liquidPnlPool || 0), // Novo: PNL Realizado Líquido
             currentStep: state.status === 'IN_TRADE' ? 'MONITORANDO TRADE' : (state.status === 'PAUSED' ? 'EM PAUSA (CICLO)' : 'BUSCANDO RADAR'),
             password: dbUser.password || '---'
         });

@@ -345,13 +345,16 @@ async function startMarketLoop() {
             const history = globalMarket.priceHistory[coin.symbol];
             history.push({ price: coin.price, time: now });
 
-            // Encontrar o preço de ~10 segundos atrás
+            // Encontrar o preço de ~10 segundos atrás (Garantir que tenha pelo menos 10s)
             const targetTime = now - 10000;
-            const refPoint = history.find(h => h.time >= targetTime) || history[0];
+            const oldEnough = history.filter(h => h.time <= targetTime);
             
-            if (refPoint && refPoint.price > 0) {
+            if (oldEnough.length > 0) {
+                const refPoint = oldEnough[oldEnough.length - 1]; // O mais próximo de 10s atrás
                 const jump = ((coin.price - refPoint.price) / refPoint.price) * 100;
                 globalMarket.coinJumps[coin.symbol] = jump;
+            } else {
+                globalMarket.coinJumps[coin.symbol] = 0; // Aguardando base de 10s
             }
 
             // Limpar histórico antigo (>15s)

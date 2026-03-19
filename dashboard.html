@@ -379,7 +379,7 @@
                         <div style="font-size: 0.9rem; margin-top:5px; text-align:left; display:inline-block; margin-left:auto; margin-right:auto;" id="valTradeTarget">
                             <span style="color:#a0aab5">📥 Compra:</span> ---<br>
                             <span style="color:#fff">🔄 Atual:</span> ---<br>
-                            <span>Alvo: <span style="color:var(--cyber-gold)">+0.5%</span></span> --- (+0.9%)
+                            <span>Alvo: <span style="color:var(--cyber-gold)">+0.5%</span></span>
                         </div>
                     </div>
                 </div>
@@ -392,7 +392,7 @@
                     <div style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: bold;">
                         <span style="color: #666;">0.00%</span>
                         <span id="telemetryPct" style="color: #fff; font-size: 1.5rem; text-shadow: 0 0 10px rgba(255,255,255,0.5);">+0.00%</span>
-                        <span style="color: var(--cyber-blue);">Meta: 0.90%</span>
+                        <span style="color: var(--cyber-blue);">Meta: 0.50%</span>
                     </div>
                     <div class="progress-container">
                         <div class="progress-bar" id="telemetryBar"></div>
@@ -560,7 +560,7 @@
                 document.getElementById('valTradeTarget').innerHTML = `
                     <span style="color:#a0aab5">📥 Compra:</span> $${buyP}<br>
                     <span style="color:#fff">🔄 Atual:</span> $${currP}<br>
-                    <span style="color:var(--cyber-gold)">🎯 Alvo:</span> $${tgtP} (+0.4%)
+                    <span style="color:var(--cyber-gold)">🎯 Alvo:</span> $${tgtP} (+0.5%)
                 `;
 
                 document.getElementById('telemetryCard').classList.add('active');
@@ -575,14 +575,14 @@
 
                 document.getElementById('telemetryPct').innerText = `${currentProfitPct >= 0 ? '+' : ''}${currentProfitPct.toFixed(2)}%`;
 
-                let barWidth = (currentProfitPct / 0.6) * 100;
+                let barWidth = (currentProfitPct / 0.5) * 100;
                 if (barWidth < 0) barWidth = 0;
                 if (barWidth > 100) barWidth = 100;
                 document.getElementById('telemetryBar').style.width = `${barWidth}%`;
 
                 if (currentProfitPct < 0) {
                     document.getElementById('telemetryPct').style.color = 'var(--alert-red)';
-                } else if (currentProfitPct >= 0.6) {
+                } else if (currentProfitPct >= 0.5) {
                     document.getElementById('telemetryPct').style.color = 'var(--cyber-blue)';
                 } else {
                     document.getElementById('telemetryPct').style.color = 'var(--cyber-gold)';

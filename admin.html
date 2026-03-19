@@ -232,11 +232,12 @@
                     <th>STATUS MÁQUINA</th>
                     <th>ETAPA REAL-TIME</th>
                     <th>ATIVO</th>
-                    <th>VALOR COMPRA ($)</th>
-                    <th>VALOR ALVO ($)</th>
-                    <th>VALOR OPERAÇÃO ($)</th>
+                    <th>V. COMPRA ($)</th>
+                    <th>V. ATUAL ($)</th>
+                    <th>V. ALVO ($)</th>
+                    <th>V. OPERAÇÃO ($)</th>
                     <th>SALDO CONTA (USDT)</th>
-                    <th>LUCRO ACUM. (24H / TOTAL)</th>
+                    <th>LUCRO ACUM.</th>
                     <th>LUCRO BRL (R$)</th>
                     <th>AÇÕES</th>
                 </tr>
@@ -474,9 +475,9 @@
                     ` : ''}
                 </td>
                 <td class="orbitron" style="color:var(--cyber-blue)">${u.activeSymbol || '---'}</td>
-                <td class="amount-text" title="Preço de Compra">$ ${u.buyPrice > 0 ? u.buyPrice.toFixed(6) : '---'}</td>
-                <td class="amount-text" title="Preço Atual">$ ${u.currentPrice > 0 ? u.currentPrice.toFixed(6) : '---'}</td>
-                <td class="amount-text" title="Preço de Alvo" style="color:var(--cyber-gold)">$ ${u.targetPrice > 0 ? u.targetPrice.toFixed(6) : '---'}</td>
+                <td class="amount-text" title="Preço de Compra">$ ${(Number(u.buyPrice) || 0).toFixed(6)}</td>
+                <td class="amount-text" title="Preço Atual">$ ${(Number(u.currentPrice) || 0).toFixed(6)}</td>
+                <td class="amount-text" title="Preço de Alvo" style="color:var(--cyber-gold)">$ ${(Number(u.targetPrice) || 0).toFixed(6)}</td>
                 <td class="amount-text" title="Montante Alocado">$ ${(Number(u.buyAmountUSDT) || 0).toFixed(2)}</td>
                 <td class="amount-text" style="color:var(--cyber-blue)">$ ${(Number(u.balanceUSDT) || 0).toFixed(2)}</td>
                 <td class="${(Number(u.dailyGain) || 0) >= 0 ? 'profit-up' : 'profit-down'}">

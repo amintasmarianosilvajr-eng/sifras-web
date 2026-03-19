@@ -206,6 +206,7 @@ function saveUserState(rawUsername) {
         profitPoolUSDT: state.profitPoolUSDT, realizedProfitBRL: state.realizedProfitBRL,
         salesCount: state.salesCount || 0, initialDayBalance: state.initialDayBalance || 0,
         initialDayTimestamp: state.initialDayTimestamp || 0,
+        liquidPnlPool: state.liquidPnlPool || 0,
         isApproved: state.isApproved // Persistir status de aprovação
     }, null, 2));
 }

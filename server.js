@@ -344,20 +344,8 @@ async function startMarketLoop() {
         // 4. Fluxo por Usuário
         for (const [username, state] of userStates) {
             // Sincronizar Pivô e Telemetria para o Dashboard (mesmo em trade)
-            if (globalMarket.top10.length >= 6) {
-                const r2 = globalMarket.top10[1];
-                const r4 = globalMarket.top10[3];
-                const r6 = globalMarket.top10[5];
-                state.dashboardData.pivotInfo = { 
-                    pivot: r4.symbol, 
-                    d2: Math.abs(r2.change - r4.change).toFixed(2), 
-                    d6: Math.abs(r6.change - r4.change).toFixed(2), 
-                    t2: r2.symbol, t6: r6.symbol,
-                    j2: (globalMarket.coinJumps[r2.symbol] || 0).toFixed(2),
-                    j6: (globalMarket.coinJumps[r6.symbol] || 0).toFixed(2)
-                };
-                globalMarket.pivot = r4.symbol; // Guardar para Admin Global
-            }
+            // SINCRONIZAR TELEMETRIA PARA O DASHBOARD (VINCULADO AO MONITORAMENTO DO SCANNER)
+            // Removido loop redundante que sobrepunha os dados de R2/R3.
 
             // ATUALIZAR SALDO PERIODICAMENTE (CADA 30 SEGUNDOS) PARA TODOS CONECTADOS
             if (!state._lastBalanceUpdate || now - state._lastBalanceUpdate > 30000) {
@@ -386,7 +374,7 @@ async function startMarketLoop() {
 startMarketLoop(); // Início oficial
 
 function shouldExcludeCoin(symbol) {
-    if (EXCLUDED_KEYWORDS.some(kw => symbol.includes(kw))) return true;
+    if (BLACKLIST.some(kw => symbol.includes(kw))) return true;
     if (globalMarket.tickerCache && !globalMarket.tickerCache.includes(symbol)) return true;
     return false;
 }
@@ -721,32 +709,7 @@ async function executeRealSell(username, symbol, reason) {
         if (totalQtyFilled > 0) realSellPrice = totalCost / totalQtyFilled;
     }
 
-    const profit = ((realSellPrice - state.buyPrice) / state.buyPrice) * 100; // Porcentagem real
-    const histType = reason === 'ANTI-RESTART' ? 'ANTI-RESTART (AUTO)' : (reason === 'LUCRO' ? 'LUCRO ELITE' : reason);
-    state.history.unshift({ symbol, date: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }), profitPct: parseFloat(profit.toFixed(2)), type: histType });
-
-    // PARÂMETRO OFICIAL: Atualizar controle de repetição de moeda
-    if (!state.blockedSymbols) state.blockedSymbols = {};
-    if (symbol === state.lastSymbol) {
-        state.consecutiveCount = (state.consecutiveCount || 0) + 1;
-        if (state.consecutiveCount >= 2) {
-            // Bloqueada por 2 operações após 2x seguidas
-            state.blockedSymbols[symbol] = 2;
-            state.consecutiveCount = 0;
-            addLog(username, `🔒 ${symbol} bloqueada por 2 operações (comprada 2x consecutivas).`, 'warn');
-        }
-    } else {
-        // Nova moeda: decrementar bloqueios e resetar consecutivos
-        state.consecutiveCount = 1;
-        Object.keys(state.blockedSymbols).forEach(s => {
-            state.blockedSymbols[s]--;
-            if (state.blockedSymbols[s] <= 0) delete state.blockedSymbols[s];
-        });
-    }
-    state.lastSymbol = symbol;
-    state.opsCount++;
-
-    // Lógica de Acúmulo para Realização em BRL (USANDO VALORES REAIS DA BINANCE)
+    // Lógica de Acúmulo para Realização em BRL ($20 Accum)
     const tradeProfitUSDT = (truncatedBalance * realSellPrice) - (truncatedBalance * state.buyPrice);
     if (tradeProfitUSDT > 0) {
         state.profitPoolUSDT += tradeProfitUSDT;

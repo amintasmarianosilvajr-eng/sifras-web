@@ -1095,11 +1095,10 @@ function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Auth' });
 }
 
+app.get('/status', requireAuth, async (req, res) => {
     const data = { ...req.state };
     data.serverUptime = Math.floor((Date.now() - serverStartTime) / 1000);
     data.lastLatency = req.state.lastLatency || 0;
-    res.json(data);
-});
     data.serverIp = globalMarket.serverIp || 'N/A';
     data.binanceClockOk = Math.abs(binanceTimeOffset) < 60000;
     res.json(data);

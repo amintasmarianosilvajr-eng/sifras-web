@@ -492,6 +492,8 @@ async function runFluxoAlfaScanner(username) {
         if (topMover.s !== rank2.symbol && topMover.s !== rank3.symbol && topMover.j >= 0.1) {
             addLog(username, `💡 INFO: ${topMover.s} está em ALTA (+${topMover.j.toFixed(2)}%), mas não pertence ao RANK 2 ou 3 para gatilho.`, 'info');
         }
+        // LOG DIAGNÓSTICO (Apenas Console)
+        console.log(`[SCANNER] ${username} | TOP4: R1:${globalMarket.top10[0].symbol} R2:${rank2.symbol} R3:${rank3.symbol} R4:${rank4.symbol} (Pivot)`);
 
         state._lastLogTime = Date.now();
     }
@@ -1116,12 +1118,11 @@ app.get('/admin/overview', async (req, res) => {
             targetPrice: state.targetPrice || 0,
             buyAmountUSDT: (state.buyQty || 0) * (state.buyPrice || 0),
             balanceUSDT: state.balanceUSDT || 0,
-            profit24h: sum24hProfit(state.history),
-            totalProfit: (state.history || []).reduce((s, h) => s + (h.profitPct || 0), 0),
             realizedProfitBRL: state.realizedProfitBRL || 0,
-            salesCount: state.salesCount || 0,
+            profit24h: sum24hProfit(state.history),
+            totalProfitPct: (state.history || []).reduce((s, h) => s + (h.profitPct || 0), 0),
             dailyGain: state.profitPoolUSDT || 0,
-            currentStep: state.status === 'IN_TRADE' ? 'MONITORANDO TRADE' : (state.status === 'PAUSED' ? 'EM PAUSA (CICLO)' : 'BUSCANDO RADAR')
+            salesCount: state.salesCount || 0
         });
     }
     res.json({ users: overview, globalPivot: globalMarket.pivot || '---' });

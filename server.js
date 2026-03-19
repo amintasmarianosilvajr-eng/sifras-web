@@ -827,11 +827,7 @@ async function realizeProfitToBRL(username) {
         state.realizedProfitBRL += brlReceived;
         state.profitPoolUSDT -= 20;
         
-        // Pausa de 10 minutos conforme solicitado
-        state.pauseUntil = Date.now() + 10 * 60000;
-        state.status = 'PAUSED';
-
-        addLog(username, `✅ LUCRO PROTEGIDO: R$ ${brlReceived.toFixed(2)} adicionados à sua carteira. O robô entrará em pausa de 10 minutos.`, 'buy');
+        addLog(username, `✅ LUCRO PROTEGIDO: R$ ${brlReceived.toFixed(2)} adicionados à sua carteira.`, 'buy');
         saveUserState(username);
 
     } catch (e) {

@@ -344,10 +344,10 @@
                     <i class="ph-fill ph-warning-circle"></i> STOP GERAL E VENDER
                 </button>
 
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-secondary" onclick="resetApi()"><i class="ph ph-arrows-clockwise"></i> Reset Chaves</button>
-                    <button class="btn btn-secondary" onclick="resetHistory()"><i class="ph ph-trash"></i> Limpar Extrato</button>
-                    <button class="btn btn-secondary" onclick="downloadReport()"><i class="ph ph-download-simple"></i> Baixar Extrato</button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px;">
+                    <button class="btn btn-secondary" onclick="resetApi()" style="font-size: 0.75rem; padding: 8px 2px;"><i class="ph ph-key"></i> Reset</button>
+                    <button class="btn btn-secondary" onclick="resetHistory()" style="font-size: 0.75rem; padding: 8px 2px;"><i class="ph ph-trash"></i> Limpar</button>
+                    <button class="btn btn-secondary" onclick="downloadReport()" style="font-size: 0.75rem; padding: 8px 2px;"><i class="ph ph-download"></i> Extrato</button>
                 </div>
             </div>
 
@@ -547,7 +547,7 @@
                 statusColor = 'var(--cyber-green)';
                 isBlinking = true;
             } else if (state.status === 'IN_TRADE') {
-                statusText = 'COMPRADO (ALVO 0.9%)';
+                statusText = 'COMPRADO (ALVO 0.6%)';
                 statusColor = 'var(--cyber-green)';
                 isBlinking = true;
             } else if (state.status === 'PAUSED') {

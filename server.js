@@ -446,23 +446,20 @@ async function runFluxoAlfaScanner(username) {
         saveUserState(username);
     }
 
-    // PARÂMETRO OFICIAL: Pivô = rank4 | Monitorados = rank2, rank3, rank5, rank6
     const rank2 = globalMarket.top10[1];
     const rank3 = globalMarket.top10[2];
-    const rank4 = globalMarket.top10[3]; // PIVÔ
-    const rank5 = globalMarket.top10[4];
-    const rank6 = globalMarket.top10[5];
+    const rank4 = globalMarket.top10[3]; // PIVÔ OFICIAL
 
-    // ATUALIZAR PIXEL INFO NO DASHBOARD
+    // ATUALIZAR PIXEL INFO NO DASHBOARD (Apenas R2 e R3)
     const d2 = Math.abs(rank2.change - rank4.change);
-    const d6 = Math.abs(rank6.change - rank4.change);
+    const d3 = Math.abs(rank3.change - rank4.change);
     state.dashboardData.pivotInfo = { 
         pivot: rank4.symbol, 
         d2: d2.toFixed(2), 
-        d6: d6.toFixed(2), 
-        t2: rank2.symbol, t6: rank6.symbol,
+        d3: d3.toFixed(2), 
+        t2: rank2.symbol, t3: rank3.symbol,
         j2: (globalMarket.coinJumps[rank2.symbol] || 0).toFixed(2),
-        j6: (globalMarket.coinJumps[rank6.symbol] || 0).toFixed(2)
+        j3: (globalMarket.coinJumps[rank3.symbol] || 0).toFixed(2)
     };
 
     // LOGS DE VARREDURA NARRADOS (MAIS DETALHADOS)
@@ -475,12 +472,12 @@ async function runFluxoAlfaScanner(username) {
         
         addLog(username, `🌊 FLUXO ALFA: Mercado em tendência de ${globalMarket.sentiment} (${globalMarket.marketStrength}%).`, 'info');
         addLog(username, `💡 DESTAQUE RADAR: ${topMover.s} é a moeda mais agressiva (+${topMover.j.toFixed(2)}% jump).`, 'info');
-        addLog(username, `📏 BUSCANDO EM: R2:${rank2.symbol} | R3:${rank3.symbol} | R5:${rank5.symbol} | R6:${rank6.symbol}`, 'info');
+        addLog(username, `📏 BUSCANDO EM: R2:${rank2.symbol} | R3:${rank3.symbol}`, 'info');
         state._lastLogTime = Date.now();
     }
 
-    // MONITORAR TENDÊNCIA E GATILHO
-    const candidates = [rank2, rank3, rank5, rank6];
+    // MONITORAR TENDÊNCIA E GATILHO (Foco R2 e R3)
+    const candidates = [rank2, rank3];
     let target = null;
     let triggerJump = 0;
     let triggerRank = '';
@@ -501,23 +498,12 @@ async function runFluxoAlfaScanner(username) {
         if (jump >= 0.1) {
             target = coin;
             triggerJump = jump;
-            triggerRank = [2, 3, 5, 6][i];
+            triggerRank = (i === 0) ? '2' : '3';
             break;
         }
     }
 
-    if (!target) {
-        // NOVO: Regra da Quarta Moeda (Squeeze/Proximidade < 2%)
-        const dist3 = Math.abs(rank4.change - rank3.change);
-        const dist5 = Math.abs(rank4.change - rank5.change);
-        if (dist3 < 2.0 || dist5 < 2.0) {
-            addLog(username, `💡 INSIGHT PIVÔ: ${rank4.symbol} em zona de compressão (< 2% de R3/R5).`, 'info');
-            target = rank4;
-            triggerJump = 0;
-            triggerRank = '4 (SQUEEZE < 2%)';
-        }
-    }
-
+    // Fim da Verificação de Gatilho Diário
     if (!target) return;
 
     if (state.blockedSymbols[target.symbol] > 0) {

@@ -330,22 +330,27 @@ async function startMarketLoop() {
             .sort((a, b) => b.change - a.change)
             .slice(0, 10);
 
-        // 3. Monitorar Histórico de Preços (Janela de 10s)
+        // 3. Monitorar Histórico de Preços (Janela Deslizante de 10-15s)
         for (const coin of globalMarket.top10) {
             if (!globalMarket.priceHistory[coin.symbol]) {
-                globalMarket.priceHistory[coin.symbol] = { old: coin.price, time: now };
+                globalMarket.priceHistory[coin.symbol] = [];
                 globalMarket.coinJumps[coin.symbol] = 0;
-                continue;
             }
-            // Atualizar salto atual em TEMPO REAL contra a base de 10s atrás
-            const oldPrice = globalMarket.priceHistory[coin.symbol].old;
-            const currentJump = ((coin.price - oldPrice) / oldPrice) * 100;
-            globalMarket.coinJumps[coin.symbol] = currentJump;
+            
+            const history = globalMarket.priceHistory[coin.symbol];
+            history.push({ price: coin.price, time: now });
 
-            // Rotacionar a base de preço a cada 10 segundos
-            if (now - globalMarket.priceHistory[coin.symbol].time >= 10000) {
-                globalMarket.priceHistory[coin.symbol] = { old: coin.price, time: now };
+            // Encontrar o preço de ~10 segundos atrás
+            const targetTime = now - 10000;
+            const refPoint = history.find(h => h.time >= targetTime) || history[0];
+            
+            if (refPoint && refPoint.price > 0) {
+                const jump = ((coin.price - refPoint.price) / refPoint.price) * 100;
+                globalMarket.coinJumps[coin.symbol] = jump;
             }
+
+            // Limpar histórico antigo (>15s)
+            globalMarket.priceHistory[coin.symbol] = history.filter(h => now - h.time < 15000);
         }
 
         // NOVO: Cálculo de Sentimento de Mercado (para narração detalhada)
@@ -422,6 +427,8 @@ async function bootstrapRobots() {
             startTradeMonitor(username, state.activeSymbol);
         } else if (state.isLoopActive && (state.status === 'SCANNING' || state.status === 'PAUSED')) {
              console.log(`[RESUME] Reativando Radar para ${username}`);
+             // Garantir saldo atualizado no início
+             binanceFetchBalance(username).catch(() => {});
         }
     }
 }
@@ -522,15 +529,6 @@ async function runFluxoAlfaScanner(username) {
     state._lastRepLog = null;
 
     addLog(username, `🎯 GATILHO RANK ${triggerRank}: ${target.symbol} (+${triggerJump.toFixed(2)}% REAL-TIME)`, 'trigger');
-
-    // Acionamento de Pausa por Ciclo (5 ops / 10min)
-    if (state.opsCount >= 5 && state.isLoopActive && !state.pauseUntil) {
-        state.pauseUntil = Date.now() + 10 * 60000;
-        state.status = 'PAUSED';
-        addLog(username, "🛑 Ciclo de 5 concluído. Pausa de 10min ativada.", 'warn');
-        saveUserState(username);
-        return;
-    }
 
     // ATOMICIDADE: Mudar status IMEDIATAMENTE antes da requisição Binance
     state.status = 'IN_TRADE';

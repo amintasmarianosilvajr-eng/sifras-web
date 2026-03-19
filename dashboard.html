@@ -546,9 +546,9 @@
 
             document.getElementById('valBalanceUSDT').innerText = `$ ${state.balanceUSDT ? state.balanceUSDT.toFixed(2) : '0.00'}`;
             document.getElementById('valRealizedBRL').innerText = `R$ ${(state.realizedProfitBRL || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            document.getElementById('valProfitPool').innerText = `Próximo Alvo: $${(state.profitPoolUSDT || 0).toFixed(2)} / $20.00`;
+            document.getElementById('valProfitPool').innerText = `Ganho do Dia: $${(state.profitPoolUSDT || 0).toFixed(2)} / $20.00`;
 
-            document.getElementById('valOpsCount').innerText = `${state.opsCount || 0} / 5`;
+            document.getElementById('valOpsCount').innerText = `Vendas: ${state.salesCount || 0} / 5`;
             document.getElementById('valCooldown').innerText = `${(state.blockedSymbols || []).length || 0} Moedas em Quarentena`;
 
             if (state.activeSymbol && state.status === 'IN_TRADE') {

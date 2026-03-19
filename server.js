@@ -118,6 +118,7 @@ function createInitialState(username) {
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
         buyPercentage: 0.99, pauseUntil: null, recoveryMode: false, recoveryThreshold: -4.0,
         profitPoolUSDT: 0, realizedProfitBRL: 0,
+        salesCount: 0, initialDayBalance: 0, initialDayTimestamp: 0,
         lastSearchLogTime: 0
     };
 }
@@ -200,6 +201,8 @@ function saveUserState(rawUsername) {
         targetPrice: state.targetPrice, currentPrice: state.currentPrice,
         pauseUntil: state.pauseUntil, logs: state.logs.slice(0, 30),
         profitPoolUSDT: state.profitPoolUSDT, realizedProfitBRL: state.realizedProfitBRL,
+        salesCount: state.salesCount || 0, initialDayBalance: state.initialDayBalance || 0,
+        initialDayTimestamp: state.initialDayTimestamp || 0,
         isApproved: state.isApproved // Persistir status de aprovação
     }, null, 2));
 }
@@ -216,6 +219,15 @@ function addLog(username, msg, type = 'info') {
     if (type === 'buy' || type === 'card-sell' || type === 'error' || type === 'warn') {
         saveUserState(username);
     }
+}
+
+function isNewDay(timestamp) {
+    if (!timestamp) return true;
+    const date = new Date(timestamp);
+    const now = new Date();
+    const dateStr = date.toLocaleDateString('en-US', { timeZone: 'America/Sao_Paulo' });
+    const nowStr = now.toLocaleDateString('en-US', { timeZone: 'America/Sao_Paulo' });
+    return dateStr !== nowStr;
 }
 
 function sum24hProfit(history) {
@@ -571,6 +583,13 @@ async function executeRealBuy(username, symbol, price) {
         return resetTradeState(username);
     }
 
+    // REFERÊNCIA DIÁRIA: Captura o saldo da primeira operação do dia (America/Sao_Paulo)
+    if (isNewDay(state.initialDayTimestamp)) {
+        state.initialDayBalance = usdt; 
+        state.initialDayTimestamp = Date.now();
+        addLog(username, `📅 NOVO DIA: Saldo de Referência definido em $${usdt.toFixed(2)}`, 'info');
+    }
+
     const amountToUse = usdt * (state.buyPercentage === 1.0 ? 0.99 : state.buyPercentage);
     
     // ORDEM DE COMPRA REAL
@@ -709,12 +728,12 @@ async function executeRealSell(username, symbol, reason) {
         if (totalQtyFilled > 0) realSellPrice = totalCost / totalQtyFilled;
     }
 
-    // Lógica de Acúmulo para Realização em BRL ($20 Accum)
-    const tradeProfitUSDT = (truncatedBalance * realSellPrice) - (truncatedBalance * state.buyPrice);
-    if (tradeProfitUSDT > 0) {
-        state.profitPoolUSDT += tradeProfitUSDT;
-        addLog(username, `💵 Lucro Real (sobre ${truncatedBalance} moedas): +$${tradeProfitUSDT.toFixed(2)}. Acumulado BRL: $${state.profitPoolUSDT.toFixed(2)} / $20.00`, 'info');
-    }
+    // Lógica de Sincronismo de Lucro Diário (Referência: 1ª Op do Dia)
+    const currentTotal = await binanceFetchBalance(username);
+    const dayGain = currentTotal - (state.initialDayBalance || currentTotal);
+    state.profitPoolUSDT = dayGain; // Sincroniza pool para o Dashboard
+    
+    addLog(username, `📊 DESEMPENHO DIÁRIO: Ganho de $${dayGain.toFixed(2)} vs Alvo $20.00`, 'info');
 
     const profit = ((realSellPrice - state.buyPrice) / state.buyPrice) * 100;
     state.history.unshift({ symbol, date: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }), profitPct: parseFloat(profit.toFixed(2)), type: 'LUCRO ELITE' });
@@ -758,10 +777,20 @@ async function executeRealSell(username, symbol, reason) {
     resetTradeState(username);
     saveUserState(username);
 
-    // Gestão de BRL ($20 -> 10 Min)
+    // Gestão de BRL ($20 atingidos no Delta Diário)
     if (state.profitPoolUSDT >= 20) {
-        realizeProfitToBRL(username);
+        await realizeProfitToBRL(username);
     }
+
+    // Lógica de Pausa por Ciclo de VENDAS (A cada 5 Vendas -> 5 Min)
+    state.salesCount = (state.salesCount || 0) + 1;
+    if (state.salesCount >= 5) {
+        state.salesCount = 0;
+        state.pauseUntil = Date.now() + 5 * 60 * 1000;
+        state.status = 'PAUSED';
+        addLog(username, `🛑 CICLO DE VENDAS: 5 sucessos atingidos. Pausa de 5 minutos ativada.`, 'warn');
+    }
+
     return true;
 } catch (e) {
     console.error("Erro Crítico na Venda:", e);
@@ -1069,19 +1098,23 @@ app.get('/admin/overview', async (req, res) => {
         const dbUser = usersDB[username] || {};
         
         overview.push({
-            username,
-            status: state.status,
-            isApproved: dbUser.isApproved !== false,
+            username: state.username,
+            clientName: state.clientName || '---',
+            status: state.status || 'OFFLINE',
+            isLoopActive: state.isLoopActive || false,
+            isApproved: dbUser.isApproved !== false, // Use dbUser for approval status
             activeSymbol: state.activeSymbol || '---',
-            balanceUSDT: state.balanceUSDT || 0,
-            buyAmountUSDT: (state.buyQty || 0) * (state.buyPrice || 0),
             buyPrice: state.buyPrice || 0,
-            targetPrice: state.targetPrice || 0,
             currentPrice: state.currentPrice || 0,
-            totalProfit: (state.history || []).reduce((sum, h) => sum + (h.profitPct || 0), 0),
-            profit24h: sum24hProfit(state.history || []),
+            targetPrice: state.targetPrice || 0,
+            buyAmountUSDT: (state.buyQty || 0) * (state.buyPrice || 0),
+            balanceUSDT: state.balanceUSDT || 0,
+            profit24h: sum24hProfit(state.history),
+            totalProfit: (state.history || []).reduce((s, h) => s + (h.profitPct || 0), 0),
             realizedProfitBRL: state.realizedProfitBRL || 0,
-            currentStep: state.status === 'SCANNING' ? 'Monitorando Radar' : (state.status === 'IN_TRADE' ? `Em Trade (Alvo 0.6%)` : (state.status === 'PAUSED' ? 'Pausa Técnica' : 'Aguardando Start'))
+            salesCount: state.salesCount || 0,
+            dailyGain: state.profitPoolUSDT || 0,
+            currentStep: state.status === 'IN_TRADE' ? 'MONITORANDO TRADE' : (state.status === 'PAUSED' ? 'EM PAUSA (CICLO)' : 'BUSCANDO RADAR')
         });
     }
     res.json({ users: overview, globalPivot: globalMarket.pivot || '---' });

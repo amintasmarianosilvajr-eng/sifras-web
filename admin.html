@@ -437,7 +437,7 @@
                 
                 // Mapeia de -6.0% (0%) até +0.4% (100%)
                 const minRange = -6.0;
-                const maxRange = 0.6;
+                const maxRange = 0.4;
                 progressPercent = ((roi - minRange) / (maxRange - minRange)) * 100;
                 progressPercent = Math.max(0, Math.min(100, progressPercent));
                 
@@ -449,7 +449,10 @@
 
             return `
             <tr>
-                <td><strong><i class="ph ph-user"></i> ${u.username}</strong></td>
+                <td>
+                    <strong><i class="ph ph-user"></i> ${u.username}</strong>
+                    <div style="font-size: 0.65rem; color: #999;">Vendas: ${u.salesCount || 0}/5</div>
+                </td>
                 <td>
                     ${!u.isApproved ? 
                         '<span class="status-pill status-pending">PENDENTE</span>' : 

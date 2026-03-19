@@ -185,6 +185,10 @@ function loadUserState(rawUsername) {
     if (state.consecutiveCount === undefined) state.consecutiveCount = 0;
     if (!Array.isArray(state.logs)) state.logs = [];
     
+    if (usersDB[username]) {
+        state.isApproved = !!usersDB[username].isApproved;
+    }
+
     if (isNew) userStates.set(username, state);
     return state;
 }
@@ -1100,10 +1104,20 @@ function requireAuth(req, res, next) {
     const auth = req.headers['authorization'];
     if (auth && auth.startsWith('Bearer ')) {
         const token = auth.split(' ')[1];
-        const username = activeTokens.get(token);
-        if (username) { req.username = username; req.state = userStates.get(username); return next(); }
+        const usernameValue = activeTokens.get(token);
+        if (usernameValue) {
+            if (usernameValue === 'ADMIN_CONTROL') return next();
+            
+            const state = userStates.get(usernameValue);
+            // BLOQUEIO GLOBAL: Se não estiver aprovado, barra o acesso imediatamente.
+            if (state && state.isApproved) {
+                req.username = usernameValue;
+                req.state = state;
+                return next();
+            }
+        }
     }
-    return res.status(401).json({ error: 'Auth' });
+    return res.status(401).json({ error: 'Acesso negado. Aguarde aprovação do Suporte.' });
 }
 
 app.get('/status', requireAuth, async (req, res) => {

@@ -639,15 +639,14 @@ function startTradeMonitor(username, symbol) {
             state.currentPrice = current;
             const roi = ((current - state.buyPrice) / state.buyPrice) * 100;
 
-            // 1. ANTI-RESTART: -6.0% (Automático)
+            // 1. ANTI-RESTART: -6.0% (Automático) - PAUSAR SEM VENDER
             if (roi <= -6.0) {
-                addLog(username, `📉 ANTI-RESTART: Stop Loss em ${roi.toFixed(2)}%. Vendendo e pausando 1 hora.`, 'error');
-                const done = await executeRealSell(username, symbol, 'ANTI-RESTART');
-                if (done) {
-                    state.pauseUntil = Date.now() + 60 * 60 * 1000; // 1 Hora de pausa
-                    clearInterval(interval);
-                    return;
-                }
+                addLog(username, `📉 ANTI-RESTART: Queda de ${roi.toFixed(2)}%. Operações suspensas por 1 hora sem vender para aguardar recuperação.`, 'warn');
+                state.status = 'PAUSED';
+                state.pauseUntil = Date.now() + 60 * 60 * 1000; // 1 Hora de pausa
+                saveUserState(username);
+                clearInterval(interval);
+                return;
             }
 
             // 2. META ALVO: 0.6% LÍQUIDO
@@ -777,13 +776,17 @@ async function executeRealSell(username, symbol, reason) {
     }
 
     // ATIVAR SUPER CARD NO MEIO DA TELA
-    state.dashboardData.triggerProfitAnim = true;
+    state.dashboardData.triggerProfitAnim = profit > 0;
     setTimeout(() => {
         const s = userStates.get(username);
         if (s) s.dashboardData.triggerProfitAnim = false;
     }, 8000);
 
-    addLog(username, `💰✅ SUCESSO ABSOLUTO: ${symbol} Vendido com +${profit.toFixed(2)}% de Lucro!`, 'card-sell');
+    if (profit >= 0) {
+        addLog(username, `💰✅ SUCESSO: ${symbol} Vendido com +${profit.toFixed(2)}% de Lucro!`, 'card-sell');
+    } else {
+        addLog(username, `📉 PROTEÇÃO: ${symbol} liquidado com ${profit.toFixed(2)}% de oscilação.`, 'error');
+    }
     
     // Gestão de Histórico e Repetição
     state.lastCoins.push(symbol);

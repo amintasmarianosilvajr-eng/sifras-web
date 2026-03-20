@@ -223,16 +223,22 @@
             // Reinforcement
             document.getElementById('reinforceVal').innerText = `$ ${Number(state.liquidPnlPool || 0).toFixed(2)} / $15.00`;
 
-            // Logs (10s)
+            // Logs (Corrigido para evitar undefined)
             const terminal = document.getElementById('terminalLogs');
-            if (JSON.stringify(state.logs) !== lastLogs) {
-                terminal.innerHTML = state.logs.map(log => `
-                    <div class="log-entry">
-                        <span class="log-time">[${new Date(log.time).toLocaleTimeString()}]</span>
-                        <span style="color: ${log.type==='success'?'#ccff00':log.type==='error'?'#ff3366':'#888'}">${log.message}</span>
-                    </div>
-                `).join('') + terminal.innerHTML;
-                lastLogs = JSON.stringify(state.logs);
+            if (state.logs && state.logs.length > 0) {
+                const logsHtml = state.logs
+                    .filter(log => log && log.message) // Remove nulos
+                    .map(log => `
+                        <div class="log-entry">
+                            <span class="log-time">[${new Date(log.time).toLocaleTimeString('pt-BR')}]</span>
+                            <span style="color: ${log.type==='success'?'#ccff00':log.type==='error'?'#ff3366':'#888'}">${log.message}</span>
+                        </div>
+                    `).join('');
+                
+                if (logsHtml !== lastLogs) {
+                    terminal.innerHTML = logsHtml; // Substitui, não acumula lixo
+                    lastLogs = logsHtml;
+                }
             }
         }
 

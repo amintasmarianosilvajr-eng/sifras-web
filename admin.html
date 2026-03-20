@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa — Painel Administrativo</title>
+    <title>Sifras Alfa 1.0 — Painel Administrativo</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
@@ -184,6 +184,9 @@
             width: 2px;
             background: rgba(255,255,255,0.2);
         }
+
+        .read-only-badge { display: none; }
+
     </style>
 </head>
 <body>
@@ -192,7 +195,7 @@
     <header>
         <div class="logo-box" style="display: flex; align-items: center; gap: 15px;">
             <img src="logo.png" alt="Logo" style="width: 45px; border-radius: 8px;">
-            <h1 class="orbitron" style="cursor:pointer" onclick="window.location.href='/'">SIFRAS <span class="logo-alfa">ALFA</span> <span class="admin-badge">ADMIN MONITOR</span></h1>
+            <h1 class="orbitron" style="cursor:pointer" onclick="window.location.href='/'">SIFRAS <span class="logo-alfa">ALFA 1.0</span> <span class="admin-badge">ADMIN MONITOR OFFICIAL</span></h1>
         </div>
         <div style="display: flex; gap: 15px; align-items: center;">
             <div id="lastUpdateTime" style="color: #666; font-size: 0.8rem;">Atualizado em: --:--:--</div>
@@ -225,6 +228,14 @@
         <div class="stat-card" style="border-color: var(--cyber-blue); background: rgba(204, 255, 0, 0.02);">
             <div class="stat-label">Latência / Uptime</div>
             <div class="stat-value" id="netStatus" style="font-size: 1.2rem; margin-top: 10px;">-- ms | 00h 00m</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Pivo Global (R4)</div>
+            <div class="stat-value" id="globalPivot" style="color:var(--cyber-gold); font-size: 1.4rem;">---</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--cyber-gold); background: rgba(255, 153, 0, 0.02);">
+            <div class="stat-label">Total Realizado (BRL)</div>
+            <div class="stat-value" id="totalBRL" style="color:var(--cyber-gold); font-size: 1.4rem;">R$ 0,00</div>
         </div>
     </div>
 
@@ -433,25 +444,26 @@
     }
 
     function renderStats(data) {
-        const users = data.users || []; // Ensure users is an array
-        document.getElementById('totalClients').innerText = users.length;
-        document.getElementById('tradingCount').innerText = users.filter(u => u.status === 'IN_TRADE').length;
-        
-        document.getElementById('globalPivot').innerText = data.globalPivot || '---'; // Update globalPivot
+        const users = data.users || [];
+        const setSafe = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
 
-        const totalRisk = users.reduce((sum, u) => sum + (u.buyAmountUSDT || 0), 0);
-        // document.getElementById('riskValue').innerText = `$ ${totalRisk.toFixed(2)}`; // This ID does not exist in the HTML
+        setSafe('totalClients', users.length);
+        setSafe('tradingCount', users.filter(u => u.status === 'IN_TRADE').length);
+        setSafe('globalPivot', data.globalPivot || '---');
 
-        const totalProfit = users.reduce((sum, u) => sum + (u.totalProfitPct || 0), 0);
-        document.getElementById('globalProfitPct').innerText = `${totalProfit.toFixed(2)}%`;
+        const totalYield = users.reduce((sum, u) => sum + (Number(u.totalProfitPct) || 0), 0);
+        setSafe('globalProfitPct', `${totalYield.toFixed(2)}%`);
         
         const totalCapital = users.reduce((sum, u) => sum + (Number(u.buyAmountUSDT) || 0), 0);
-        document.getElementById('avgProfit').innerText = `$ ${totalCapital.toFixed(2)}`;
+        setSafe('avgProfit', `$ ${totalCapital.toFixed(2)}`);
+
+        const totalBRL = users.reduce((sum, u) => sum + (Number(u.realizedProfitBRL) || 0), 0);
+        setSafe('totalBRL', `R$ ${totalBRL.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
         if (data.globalLatency || data.serverUptime) {
             const h = Math.floor(data.serverUptime / 3600);
             const m = Math.floor((data.serverUptime % 3600) / 60);
-            document.getElementById('netStatus').innerText = `${data.globalLatency || 0}ms | ${h}h ${m}m`;
+            setSafe('netStatus', `${data.globalLatency || 0}ms | ${h}h ${m}m`);
         }
     }
 
@@ -471,8 +483,8 @@
             if (u.status === 'IN_TRADE' && u.buyPrice > 0 && u.currentPrice > 0) {
                 roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
                 
-                // Mapeia de -2.0% (ALINHADO COM PIXEL LOSS) até +0.6% (100%)
-                const minRange = -2.0;
+                // Mapeia de -6.0% (ALINHADO COM PIXEL LOSS) até +0.6% (100%)
+                const minRange = -6.0;
                 const maxRange = 0.6;
                 progressPercent = ((roi - minRange) / (maxRange - minRange)) * 100;
                 progressPercent = Math.max(0, Math.min(100, progressPercent));
@@ -504,7 +516,7 @@
                             <div class="telemetry-bar" style="width: ${progressPercent}%; background: ${barColor}; box-shadow: 0 0 10px ${barColor}"></div>
                         </div>
                         <div class="telemetry-labels">
-                            <span>-2.0%</span>
+                            <span>-6.0%</span>
                             <span style="color:${roi >= 0 ? '#ccff00' : '#ff3366'}">${roi.toFixed(2)}%</span>
                             <span>+0.6%</span>
                         </div>
@@ -524,18 +536,18 @@
                 <td>
                     <div style="display: flex; gap: 5px;">
                         ${!u.isApproved ? `
-                            <button onclick="approveUser('${u.username}')" style="background:#ccff00; color:#000; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                            <button onclick="approveUser('${u.username}')" class="btn-action" style="background:#ccff00; color:#000; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
                                 ATIVAR ACESSO
                             </button>
                         ` : `
-                            <button onclick="antiRestartUser('${u.username}')" style="background:rgba(204,255,0,0.1); border:1px solid var(--cyber-blue); color:var(--cyber-blue); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                            <button onclick="antiRestartUser('${u.username}')" class="btn-action" style="background:rgba(204,255,0,0.1); border:1px solid var(--cyber-blue); color:var(--cyber-blue); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
                                 ANTI-RESTART
                             </button>
-                            <button onclick="stopUser('${u.username}')" style="background:rgba(255,153,0,0.1); border:1px solid #ff9900; color:#ff9900; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                            <button onclick="stopUser('${u.username}')" class="btn-action" style="background:rgba(255,153,0,0.1); border:1px solid #ff9900; color:#ff9900; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
                                 STOP
                             </button>
                         `}
-                        <button onclick="deleteUser('${u.username}')" style="background:rgba(255,51,102,0.1); border:1px solid var(--alert-red); color:var(--alert-red); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                        <button onclick="deleteUser('${u.username}')" class="btn-action" style="background:rgba(255,51,102,0.1); border:1px solid var(--alert-red); color:var(--alert-red); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
                             EXCLUIR
                         </button>
                     </div>
@@ -546,10 +558,12 @@
 
     // Inicialização
     window.onload = async () => {
-        console.log("🚀 Elite Fluxo Alfa Admin V1.2 Loaded - Anti-Cache Active");
+        console.log("🚀 Elite Fluxo Alfa Admin V1.0 Official Loaded");
+        
         updateOverview();
         setInterval(updateOverview, 5000);
     };
+
 </script>
 
 </body>

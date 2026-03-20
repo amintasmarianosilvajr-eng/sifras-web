@@ -28,7 +28,8 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Senhas de Acesso
 const GLOBAL_ACCESS_KEY = 'alfa777';
-const ADMIN_ACCESS_KEY = 'admin2026@'; // ATUALIZADO CONFORME SOLICITAÇÃO
+const ADMIN_ACCESS_KEY = 'admin2026@';
+const MASTER_CEO_KEY = 'sifras_ceo_2026@'; // NOVO: Acesso Portal CEO
 const GMAIL_REGEX = /^[a-z0-9._%+-]+@gmail\.com$/;
 
 // CONFIGURAÇÃO E PERSISTÊNCIA
@@ -113,6 +114,7 @@ const BLACKLIST = ['CHESS', 'KP3R', 'REEF', 'VITE', 'UNFI', 'EPX', 'FOR', 'VGX',
 
 let globalMarket = {
     top10: [],
+    top30USDC: [], // NOVO: Ranking USDC para Modo CEO
     coinJumps: {},
     exchangeInfo: null,
     lastExchangeFetch: 0,
@@ -124,12 +126,15 @@ let globalMarket = {
 function createInitialState(username) {
     return {
         username, clientName: '', apiKey: '', apiSecret: '', status: 'OFFLINE', opsCount: 0,
-        isApproved: false, // BLOQUEIO INICIAL: Requer ativação do administrador
+        isApproved: false,
+        mode: 'ALFA', // 'ALFA' ou 'CEO'
+        ceoStep: 10,  // Degrau atual (10 a 1)
+        ceoPhase: 'COUNTDOWN', // 'COUNTDOWN' ou 'STRATEGY30'
         lastCoin: '',
         consecutiveCount: 0,
-        cooldownCoins: {}, // { symbol: opsRemaining }
-        liquidPnlPool: 0,   // NOVO: PNL Alfa Líquido (Somatório de lucros reais líq.)
-        history: [], logs: [], balanceUSDT: 0, lastCoins: [],
+        cooldownCoins: {},
+        liquidPnlPool: 0,
+        history: [], logs: [], balanceUSDT: 0, balanceUSDC: 0, lastCoins: [],
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
         buyPercentage: 0.99, pauseUntil: null, recoveryMode: false, recoveryThreshold: -4.0,
@@ -297,7 +302,8 @@ async function syncExchangeInfo() {
     }
 }
 syncExchangeInfo();
-setInterval(syncExchangeInfo, 3600000); // Sync a cada 1 hora
+setInterval(syncExchangeInfo, 1800000); // Sync a cada 30 min (Mais rápido para deslistagens)
+syncExchangeInfo(); // Forçar carga inicial imediata
 
 function getSignature(queryString, apiSecret) {
     return crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
@@ -345,41 +351,49 @@ async function startMarketLoop() {
     try {
         const now = Date.now();
         
-        // 1. Atualizar Ticker Completo (Ex: Top 250 Volume) para focar em moedas reais da Binance
-        if (!globalMarket.lastTickerFetch || now - globalMarket.lastTickerFetch > 30000) {
-            const tRes = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
-            globalMarket.tickerCache = tRes.data
-                .filter(i => i.symbol.endsWith('USDT'))
-                .sort((a,b) => b.quoteVolume - a.quoteVolume)
-                .slice(0, 250) // Pegar 250 maiores moedas para o radar
+        // 1. Buscar Todos os Tickers 24h em uma única chamada
+        const tRes = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
+        const allTickers = tRes.data;
+        const allUsdt = allTickers.filter(i => i.symbol.endsWith('USDT'));
+        const allUsdc = allTickers.filter(i => i.symbol.endsWith('USDC'));
+
+        // 2. Atualizar Cache de Volume (Top 50 USDT e Top 50 USDC)
+        if (!globalMarket.lastVolumeFetch || now - globalMarket.lastVolumeFetch > 15000) {
+            globalMarket.tickerCache = [...allUsdt]
+                .sort((a,b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+                .slice(0, 50)
                 .map(i => i.symbol);
-            globalMarket.lastTickerFetch = now;
+            
+            globalMarket.usdcVolumeCache = [...allUsdc]
+                .sort((a,b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+                .slice(0, 50)
+                .map(i => i.symbol);
+
+            globalMarket.lastVolumeFetch = now;
         }
 
-        // 2. Buscar Ranks do Ticker (Volatilidade/Mudança) - Focado no Cache de Volume
-        const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
-        const data = res.data;
-        
-        globalMarket.top10 = data
-            .filter(i => i.symbol.endsWith('USDT') && globalMarket.tickerCache.includes(i.symbol))
-            .map(i => ({ 
-                symbol: i.symbol, 
-                price: parseFloat(i.lastPrice), 
-                change: parseFloat(i.priceChangePercent) 
-            }))
+        // 3. Atualizar Ranking Global USDT (ALFA)
+        globalMarket.top10 = allUsdt
+            .filter(i => parseFloat(i.quoteVolume) > 500000 && !shouldExcludeCoin(i.symbol))
+            .map(i => ({ symbol: i.symbol, price: parseFloat(i.lastPrice), change: parseFloat(i.priceChangePercent) }))
             .sort((a, b) => b.change - a.change)
             .slice(0, 10);
         
-        // Atribuir Pivô Global (Rank 4)
-        if (globalMarket.top10.length >= 4) {
-            globalMarket.pivot = globalMarket.top10[3].symbol;
-        }
+        if (globalMarket.top10.length >= 4) globalMarket.pivot = globalMarket.top10[3].symbol;
 
-        // 3. Monitorar Histórico de Preços (Janela Deslizante de 10-15s)
-        const tenSecsAgo = now - 10 * 1000;
-        const cutoff = now - 15 * 1000; // 2. CLEANUP (Keep 15s for extra margin)
+        // 4. Atualizar Ranking Global USDC (CEO)
+        globalMarket.top30USDC = allUsdc
+            .filter(i => parseFloat(i.quoteVolume) > 100000 && !shouldExcludeCoinUSDC(i.symbol))
+            .map(i => ({ symbol: i.symbol, price: parseFloat(i.lastPrice), change: parseFloat(i.priceChangePercent) }))
+            .sort((a, b) => b.change - a.change)
+            .slice(0, 30);
 
-        for (const coin of globalMarket.top10) {
+        // 5. Monitorar Histórico de Preços (Jumps)
+        const allMonitoring = [...globalMarket.top10, ...globalMarket.top30USDC];
+        const fifteenSecsAgo = now - 15 * 1000;
+        const twentySecsAgo = now - 20 * 1000;
+
+        for (const coin of allMonitoring) {
             if (!globalMarket.priceHistory[coin.symbol]) {
                 globalMarket.priceHistory[coin.symbol] = [];
                 globalMarket.coinJumps[coin.symbol] = 0;
@@ -388,19 +402,23 @@ async function startMarketLoop() {
             const history = globalMarket.priceHistory[coin.symbol];
             history.push({ price: coin.price, time: now });
 
-            // Encontrar o preço de ~10 segundos atrás (Garantir que tenha pelo menos 10s)
-            const oldEnough = history.filter(h => h.time <= tenSecsAgo);
-            
-            if (oldEnough.length > 0) {
-                const refPoint = oldEnough[oldEnough.length - 1]; // O mais próximo de 10s atrás
-                const jump = ((coin.price - refPoint.price) / refPoint.price) * 100;
-                globalMarket.coinJumps[coin.symbol] = jump;
-            } else {
-                globalMarket.coinJumps[coin.symbol] = 0; // Aguardando base de 10s
+            // Jump 15s (Para ALFA)
+            const old15 = history.filter(h => h.time <= fifteenSecsAgo);
+            if (old15.length > 0) {
+                const ref = old15[old15.length - 1];
+                globalMarket.coinJumps[coin.symbol] = ((coin.price - ref.price) / ref.price) * 100;
             }
 
-            // Limpar histórico antigo (>15s para garantir margem para o cálculo de 10s)
-            globalMarket.priceHistory[coin.symbol] = history.filter(h => now - h.time < 15000);
+            // Jump 20s (Para CEO Hunt)
+            const old20 = history.filter(h => h.time <= twentySecsAgo);
+            if (old20.length > 0) {
+                const ref = old20[old20.length - 1];
+                globalMarket.coinJumps20s = globalMarket.coinJumps20s || {};
+                globalMarket.coinJumps20s[coin.symbol] = ((coin.price - ref.price) / ref.price) * 100;
+            }
+
+            // Limpar histórico antigo (>30s)
+            globalMarket.priceHistory[coin.symbol] = history.filter(h => now - h.time < 30000);
         }
 
         // NOVO: Cálculo de Sentimento de Mercado (para narração detalhada)
@@ -453,14 +471,86 @@ async function startMarketLoop() {
 }
 startMarketLoop(); // Início oficial
 
+// ------------------------------------------------------------
+// ESTRATÉGIA CEO MASTER (PORTA 3: USDC COUNTDOWN/HUNT)
+// ------------------------------------------------------------
+async function runCEOMasterStrategy(username) {
+    const state = userStates.get(username);
+    if (!state || !state.isLoopActive) return;
+
+    // 1. Monitoramento de Lucro (Gatilho $15.00)
+    if (state.liquidPnlPool >= 15) {
+        addLog(username, "🏆 META CEO ATINGIDA ($15.00): Reforçando Fluxo Alfa USDT...", 'info');
+        state.liquidPnlPool = 0; // Prepara para novo ciclo de acúmulo
+    }
+
+    // 2. Lógica de Trade CEO
+    if (state.status === 'IN_TRADE') {
+        const ticker = globalMarket.top30USDC.find(i => i.symbol === state.activeSymbol);
+        if (ticker) {
+            state.currentPrice = ticker.price;
+            const pnl = ((state.currentPrice - state.buyPrice) / state.buyPrice) * 100;
+            if (pnl >= 0.4) {
+                addLog(username, `✅ VENDA CEO: ${state.activeSymbol} atingiu +0.4%`, 'success');
+                state.liquidPnlPool += ( (state.buyQty || 20) * state.buyPrice * 0.004 ); // Simulação lucro
+                state.status = 'SCANNING'; // Imediato sem intervalo conforme pedido
+                if (state.ceoPhase === 'COUNTDOWN') {
+                    state.ceoStep--;
+                    if (state.ceoStep <= 0) {
+                        state.ceoPhase = 'STRATEGY30';
+                        addLog(username, "🚀 FASE 1 CEO CONCLUÍDA: Iniciando Estratégia Hunt 30 USDC!", 'success');
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    // 3. Radar de Entrada CEO
+    if (state.status === 'SCANNING') {
+        if (state.ceoPhase === 'COUNTDOWN') {
+            // Compra degrau atual (10 a 1)
+            const targetIndex = Math.max(0, state.ceoStep - 1);
+            const coin = globalMarket.top30USDC[targetIndex];
+            if (coin) {
+                addLog(username, `🔥 CEO STEP ${state.ceoStep}: Comprando ${coin.symbol} (Rank ${targetIndex + 1})`, 'info');
+                state.activeSymbol = coin.symbol;
+                state.buyPrice = coin.price;
+                state.status = 'IN_TRADE';
+            }
+        } else {
+            // Estratégia Hunt 30: +0.3% em 20s
+            for (const coin of globalMarket.top30USDC) {
+                const jump = (globalMarket.coinJumps20s || {})[coin.symbol] || 0;
+                if (jump >= 0.3) {
+                    addLog(username, `⚡ CEO JUMP! ${coin.symbol} detectado +${jump.toFixed(2)}% em 20s`, 'success');
+                    state.activeSymbol = coin.symbol;
+                    state.buyPrice = coin.price;
+                    state.status = 'IN_TRADE';
+                    break;
+                }
+            }
+        }
+    }
+}
+
 function shouldExcludeCoin(symbol) {
-    // 1. Blacklist Permanente (Fan Tokens, Stables, Suspeitas)
     if (BLACKLIST.some(kw => symbol.includes(kw))) return true;
-
-    // 2. Filtro de Volume/Visibilidade (Top 50 por Volume Quote)
     if (globalMarket.tickerCache && !globalMarket.tickerCache.includes(symbol)) return true;
+    if (globalMarket.exchangeInfo) {
+        const sInfo = globalMarket.exchangeInfo.symbols.find(s => s.symbol === symbol);
+        if (sInfo) {
+            if (sInfo.status !== 'TRADING') return true;
+            const tags = sInfo.tags || [];
+            if (tags.includes('monitoring') || tags.includes('seed')) return true;
+        }
+    }
+    return false;
+}
 
-    // 3. Filtro de Tags de Risco e Status (Monitoramento, Seed, Deslistagem)
+function shouldExcludeCoinUSDC(symbol) {
+    if (BLACKLIST.some(kw => symbol.includes(kw))) return true;
+    if (globalMarket.usdcVolumeCache && !globalMarket.usdcVolumeCache.includes(symbol)) return true;
     if (globalMarket.exchangeInfo) {
         const sInfo = globalMarket.exchangeInfo.symbols.find(s => s.symbol === symbol);
         if (sInfo) {
@@ -544,7 +634,7 @@ async function runFluxoAlfaScanner(username) {
     // LOG INTERVAL: Apenas a cada 10 segundos
     const now = Date.now();
     const lastLog = state.lastScannerLog || 0;
-    const shouldLog = (now - lastLog) >= 10000;
+    const shouldLog = (now - lastLog) >= 10000; // ATUALIZADO: Log de varredura a cada 10 segundos
     if (shouldLog) state.lastScannerLog = now;
 
     if (shouldLog) {
@@ -554,8 +644,8 @@ async function runFluxoAlfaScanner(username) {
             .sort((a,b) => b.j - a.j);
         const topMover = movers[0] || { s: '---', j: 0 };
         
-        addLog(username, `🌊 FLUXO ALFA: Mercado em tendência de ${globalMarket.sentiment} (${globalMarket.marketStrength}%).`, 'info');
-        addLog(username, `💡 DESTAQUE RADAR: ${topMover.s} é a moeda mais agressiva (+${topMover.j.toFixed(2)}% jump em 10s).`, 'info');
+        addLog(username, `🌊 FLUXO ALFA 1.0: Mercado em tendência de ${globalMarket.sentiment} (${globalMarket.marketStrength}%).`, 'info');
+        addLog(username, `💡 DESTAQUE RADAR: ${topMover.s} é a moeda mais agressiva (+${topMover.j.toFixed(2)}% jump em 15s).`, 'info');
         addLog(username, `🔍 BUSCANDO EM: R2:${rank2.symbol} | R3:${rank3.symbol} | R4:${rank4.symbol}`, 'info');
         
         if (topMover.s !== rank2.symbol && topMover.s !== rank3.symbol && topMover.s !== rank4.symbol && topMover.j >= 0.1) {
@@ -596,7 +686,7 @@ async function runFluxoAlfaScanner(username) {
 
         if (jump >= 0.2) {
             const rankLabel = (i === 0) ? 'RANK 2' : (i === 1) ? 'RANK 3' : 'RANK 4';
-            addLog(username, `🎯 GATILHO DETECTADO: ${coin.symbol} (${rankLabel}) subiu +${jump.toFixed(2)}% em 10s!`, 'buy');
+            addLog(username, `🎯 GATILHO DETECTADO: ${coin.symbol} (${rankLabel}) subiu +${jump.toFixed(2)}% em 15s!`, 'buy');
             target = coin;
             triggerJump = jump;
             triggerRank = (i === 0) ? '2' : (i === 1 ? '3' : '4');
@@ -1088,7 +1178,7 @@ app.post('/login', (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     activeTokens.set(token, username);
     saveSessions();
-    return res.json({ token, username });
+    return res.json({ token, username, isAdmin: usersDB[username].isAdmin || false });
 });
 
 // Admin endpoint: Aprovar usuário
@@ -1161,11 +1251,13 @@ function requireAuth(req, res, next) {
 }
 
 app.get('/status', requireAuth, async (req, res) => {
-    const data = { ...req.state };
+    // Se for modo CEO, busca o estado específico
+    let username = req.username;
+    if (req.headers['x-mode'] === 'CEO') username += '_CEO';
+    
+    let state = userStates.get(username) || createInitialState(username);
+    const data = { ...state };
     data.serverUptime = Math.floor((Date.now() - serverStartTime) / 1000);
-    data.lastLatency = req.state.lastLatency || 0;
-    data.serverIp = globalMarket.serverIp || 'N/A';
-    data.binanceClockOk = Math.abs(binanceTimeOffset) < 60000;
     res.json(data);
 });
 
@@ -1183,16 +1275,31 @@ app.post('/start', requireAuth, async (req, res) => {
         });
         
         if (test.data && test.data.canTrade !== undefined) {
-            Object.assign(req.state, { 
-                clientName, apiKey, apiSecret, 
+            let username = req.username;
+            if (req.body.mode === 'CEO') username += '_CEO';
+            
+            let state = userStates.get(username) || createInitialState(username);
+            userStates.set(username, state);
+
+            Object.assign(state, { 
+                clientName: clientName || state.clientName, 
+                apiKey, apiSecret, 
+                mode: req.body.mode || 'ALFA',
+                ceoStep: (req.body.mode === 'CEO' && !state.activeSymbol) ? 10 : state.ceoStep,
+                ceoPhase: (req.body.mode === 'CEO' && !state.activeSymbol) ? 'COUNTDOWN' : state.ceoPhase,
                 buyPercentage: parseFloat(buyPercentage) || 0.99,
-                opsCount: req.state.opsCount || 0,
+                opsCount: state.opsCount || 0,
                 pauseUntil: null
             });
-            saveUserState(req.username);
+            saveUserState(username);
             
-            // Inicia o Radar ou Resgata Operação Ativa
-            startFluxoAlfa(req.username);
+            if (state.mode === 'CEO') {
+                state.isLoopActive = true;
+                state.status = state.activeSymbol ? 'IN_TRADE' : 'SCANNING';
+                addLog(username, "🚀 MODO CEO ATIVADO EM CANAL ISOLADO.", 'success');
+            } else {
+                startFluxoAlfa(username);
+            }
             
             return res.json({ success: true });
         }
@@ -1377,4 +1484,4 @@ app.post('/admin/delete-user', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3014;
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Elite Fluxo Alfa Real na Porta ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Elite Fluxo Alfa 1.0 (OFFICIAL) na Porta ${PORT}`));

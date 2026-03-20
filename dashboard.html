@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa — Painel Operacional</title>
+    <title>Sifras Alfa 1.0 — Painel Operacional</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap"
         rel="stylesheet">
@@ -262,6 +262,58 @@
         ::-webkit-scrollbar-track { background: #000; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--cyber-blue); }
+
+        /* Modo Leitura */
+        .read-only-mode .btn-start, 
+        .read-only-mode .btn-panic,
+        .read-only-mode .btn-secondary,
+        .read-only-mode .fraction-btn {
+            opacity: 0.3 !important;
+            pointer-events: none !important;
+            filter: grayscale(1);
+        }
+        .read-only-mode input {
+            pointer-events: none !important;
+            opacity: 0.6;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.05);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--cyber-blue); }
+        input:checked + .slider:before { transform: translateX(20px); }
     </style>
 </head>
 
@@ -279,7 +331,14 @@
         <header>
             <div class="logo-box" style="display: flex; align-items: center; gap: 12px;">
                 <img src="logo.png" alt="Logo" style="width: 40px; border-radius: 8px;">
-                <h1 class="orbitron">FLUXO <span class="logo-alfa">ALFA</span></h1>
+                <h1 class="orbitron">FLUXO <span class="logo-alfa">ALFA 1.0</span></h1>
+            </div>
+            <div class="toggle-container" style="margin-left: 15px;">
+                <span style="font-size: 0.7rem; color: #888; font-weight: bold; letter-spacing: 1px;">MODO LEITURA</span>
+                <label class="switch">
+                    <input type="checkbox" id="readModeToggle" onchange="toggleReadMode()">
+                    <span class="slider"></span>
+                </label>
             </div>
             <span style="font-size: 0.75rem; color: var(--cyber-gold); margin-left:15px; border: 1px solid var(--cyber-gold); padding: 2px 8px; border-radius: 4px;">
                 <i class="ph ph-cloud-check"></i> OPERAÇÃO EM NUVEM 24H ATIVA
@@ -415,7 +474,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: flex-end; font-size: 1.1rem; font-weight: bold; margin-bottom: 15px;">
                         <div style="text-align: left;">
                             <span style="color: #a0aab5; display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">PIXEL LOSS</span>
-                            <span style="color: #a0aab5; font-size: 1.5rem; font-family: 'Orbitron';">-2.00%</span>
+                            <span style="color: #a0aab5; font-size: 1.5rem; font-family: 'Orbitron';">-6.00%</span>
                         </div>
                         <div style="text-align: center;">
                             <span style="color: #a0aab5; display: block; font-size: 0.8rem; text-transform: uppercase;">VARIAÇÃO ATUAL</span>
@@ -542,6 +601,11 @@
                 const data = await res.json();
                 errorCount = 0;
                 updateUI(data);
+
+                // Re-aplicar modo leitura se necessário
+                if (localStorage.getItem('sifras_user_read_mode') === 'true') {
+                    document.body.classList.add('read-only-mode');
+                }
             } catch (e) {
                 // Ignorar erros de autenticação (redirecionamento já ocorreu)
                 if (e.message !== 'Não autorizado' && e.message !== 'Acesso negado') {
@@ -647,7 +711,7 @@
 
                 document.getElementById('telemetryPct').innerText = `${currentProfitPct >= 0 ? '+' : ''}${currentProfitPct.toFixed(2)}%`;
 
-                const minR = -2.0;
+                const minR = -6.0;
                 const maxR = 0.6;
                 let barWidth = ((currentProfitPct - minR) / (maxR - minR)) * 100;
                 if (barWidth < 0) barWidth = 0;
@@ -845,23 +909,27 @@
 
         // ── Init ─────────────────────────────────────────────
         window.onload = async () => {
-            console.log("🚀 Elite Fluxo Alfa Dashboard V1.3 - Anti-Cache Active");
+            console.log("🚀 Elite Fluxo Alfa Dashboard V1.0 Official Loaded");
             
             const token = getToken();
 
-            // PORTÃO DE SEGURANÇA: sem token, vai para login imediatamente
+            // Portão de Segurança
             if (!token) {
                 window.location.href = '/login.html';
                 return;
             }
 
-            // VALIDAÇÃO REAL NO SERVIDOR: verifica token E aprovação antes de mostrar qualquer dado
+            // Carregar Modo Leitura antes de buscar status
+            const isReadMode = localStorage.getItem('sifras_user_read_mode') === 'true';
+            document.getElementById('readModeToggle').checked = isReadMode;
+            if (isReadMode) document.body.classList.add('read-only-mode');
+
+            // Validação Real no Servidor
             try {
                 const checkRes = await fetch(`${API_URL}/status`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (checkRes.status === 401 || checkRes.status === 403) {
-                    // Token inválido ou usuário não aprovado — limpar e redirecionar
                     localStorage.removeItem('sifrasToken');
                     localStorage.removeItem('sifras_token');
                     sessionStorage.removeItem('gatewayOk');
@@ -871,23 +939,41 @@
                 const data = await checkRes.json();
                 updateUI(data);
             } catch (e) {
-                // Erro de rede — redirecionar por segurança
                 window.location.href = '/login.html';
                 return;
             }
 
             // Restaurar dados salvos
-            const savedUser = localStorage.getItem('sifrasUser');
+            const savedUser = localStorage.getItem('sifras_user') || localStorage.getItem('sifrasUser');
             if (savedUser) document.getElementById('userNameLabel').innerText = savedUser;
 
             const savedKey = localStorage.getItem('sifrasApiKey');
             const savedSecret = localStorage.getItem('sifrasApiSecret');
+            const savedClient = localStorage.getItem('sifrasClientName');
             if (savedKey) document.getElementById('apiKey').value = savedKey;
             if (savedSecret) document.getElementById('apiSecret').value = savedSecret;
+            if (savedClient) document.getElementById('clientName').value = savedClient;
 
             // Iniciar loop de atualização
-            refreshInterval = setInterval(fetchStatus, 1500);
+            refreshInterval = setInterval(fetchStatus, 3000);
         };
+
+        function toggleReadMode() {
+            const isActive = document.getElementById('readModeToggle').checked;
+            localStorage.setItem('sifras_user_read_mode', isActive);
+            if (isActive) {
+                document.body.classList.add('read-only-mode');
+                // Forçar desativação imediata sem esperar o próximo tick
+                document.getElementById('btnStart').disabled = true;
+                document.getElementById('btnStart').style.opacity = '0.3';
+                document.getElementById('btnPanic').disabled = true;
+                document.querySelectorAll('.btn-secondary').forEach(b => b.disabled = true);
+                document.querySelectorAll('.fraction-btn').forEach(b => b.disabled = true);
+            } else {
+                document.body.classList.remove('read-only-mode');
+                // O próximo fetchStatus restaurará o estado correto dos botões
+            }
+        }
     </script>
 </body>
 

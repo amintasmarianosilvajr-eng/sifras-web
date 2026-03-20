@@ -228,7 +228,12 @@
                 localStorage.setItem('sifrasUser', data.username);
                 sessionStorage.setItem('gatewayOk', 'true');
                 
-                window.location.href = data.isAdmin ? 'admin.html' : 'dashboard.html';
+                if (data.isAdmin) {
+                    const choice = confirm("Clique em OK para PAINEL ADMIN ou CANCELAR para CANAL CEO (Finance Tech)");
+                    window.location.href = choice ? 'admin.html' : 'ceo_gate.html';
+                } else {
+                    window.location.href = 'dashboard.html';
+                }
             } else {
                 err.innerText = data.error;
                 err.style.display = 'block';

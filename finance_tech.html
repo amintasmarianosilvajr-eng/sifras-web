@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FINANCE TECH — Inteligência Financeira (CEO)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --bg-dark: #070707;
+            --cyber-blue: #00f2ff;
+            --cyber-green: #ccff00;
+            --alert-red: #ff3366;
+            --alert-orange: #ff9900;
+            --text-main: #ffffff;
+            --glass-panel: rgba(18, 18, 18, 0.98);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: radial-gradient(circle at 50% 10%, rgba(204, 255, 0, 0.03) 0%, transparent 80%), #070707;
+            color: var(--text-main); font-family: 'Outfit', sans-serif; min-height: 100vh; overflow-x: hidden;
+        }
+        .container { max-width: 1600px; margin: 0 auto; padding: 30px; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 20px; margin-bottom: 30px; }
+        .logo-box h1 { font-family: 'Orbitron', sans-serif; font-size: 1.4rem; letter-spacing: 2px; }
+        .logo-alfa { color: var(--cyber-green); text-shadow: 0 0 15px rgba(204, 255, 0, 0.4); }
+
+        .ceo-grid { display: grid; grid-template-columns: 450px 1fr; gap: 30px; }
+        .panel { background: var(--glass-panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 30px; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        
+        .pnl-card { text-align: center; background: rgba(204, 255, 0, 0.03); border: 1px solid rgba(204, 255, 0, 0.1); }
+        .pnl-title { font-family: 'Orbitron'; font-size: 0.8rem; color: #888; margin-bottom: 15px; letter-spacing: 2px; }
+        .pnl-value { font-family: 'Orbitron'; font-size: 2.8rem; font-weight: 900; color: var(--cyber-green); text-shadow: 0 0 25px rgba(204, 255, 0, 0.3); }
+        .pnl-pct { font-family: 'Orbitron'; font-size: 1.2rem; margin-top: 10px; font-weight: bold; }
+        
+        .progresso-container { margin-top: 30px; padding: 20px; border-radius: 15px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); }
+        .progresso-header { display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; margin-bottom: 10px; }
+        .bar-outer { height: 12px; background: #222; border-radius: 10px; overflow: hidden; position: relative; }
+        .bar-inner { height: 100%; background: var(--cyber-green); transition: 1s cubic-bezier(0.4, 0, 0.2, 1); width: 10%; box-shadow: 0 0 15px var(--cyber-green); }
+        
+        .step-labels { display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.65rem; color: #444; font-family: 'Orbitron'; }
+        .step-item { transition: 0.3s; }
+        .step-item.active { color: var(--cyber-green); text-shadow: 0 0 10px var(--cyber-green); }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 8px; font-size: 0.75rem; color: #555; font-weight: bold; }
+        .input-group input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; border-radius: 8px; color: #fff; font-family: 'Outfit'; outline: none; transition: 0.3s; }
+        .input-group input:focus { border-color: var(--cyber-green); }
+
+        .btn { width: 100%; padding: 15px; border-radius: 10px; cursor: pointer; font-family: 'Orbitron'; font-weight: 700; border: none; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-start { background: var(--cyber-green); color: #000; }
+        .btn-start:hover { box-shadow: 0 0 25px rgba(204, 255, 0, 0.5); }
+        .btn-panic { background: rgba(255, 51, 102, 0.1); border: 1px solid var(--alert-red); color: var(--alert-red); margin-top: 10px; }
+        .btn-panic:hover { background: var(--alert-red); color: #fff; }
+
+        .log-wide { grid-column: 1 / span 2; padding: 25px; min-height: 400px; display: flex; flex-direction: column; }
+        .terminal { flex: 1; background: #000; border: 1px solid #222; border-radius: 12px; padding: 20px; font-family: monospace; font-size: 0.85rem; overflow-y: auto; color: #00ff88; line-height: 1.6; }
+        .log-entry { margin-bottom: 8px; }
+        .log-time { color: #555; margin-right: 10px; }
+
+        .meta-reinforcement { margin-top: 25px; padding: 20px; border: 1px dashed var(--cyber-blue); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .meta-text { font-size: 0.8rem; color: var(--cyber-blue); font-family: 'Orbitron'; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-box">
+                <h1 class="orbitron">FINANCE <span style="color: #fff;">TECH</span> <span class="logo-alfa">INTELIGÊNCIA FINANCEIRA</span></h1>
+            </div>
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <div id="countdownTimer" style="font-family:'Orbitron'; color: #444; font-size: 0.8rem;">Radar USDC: Ativo</div>
+                <button onclick="logout()" style="background:transparent; border:none; color:#555; cursor:pointer;"><i class="ph ph-sign-out"></i> SAIR</button>
+            </div>
+        </header>
+
+        <div class="ceo-grid">
+            <aside>
+                <div class="panel pnl-card">
+                    <div class="pnl-title">PNL GLOBAL CEO (BRL)</div>
+                    <div class="pnl-value" id="pnlValue">R$ 0,00</div>
+                    <div class="pnl-pct" id="pnlPct" style="color: var(--cyber-green);">+0.00%</div>
+                </div>
+
+                <div class="panel progresso-container">
+                    <div class="progresso-header">
+                        <span>EVOLUÇÃO ESTRATÉGIA 10 ➔ 1</span>
+                        <span id="targetText">STEP 10 (USDC)</span>
+                    </div>
+                    <div class="bar-outer">
+                        <div class="bar-inner" id="progBar"></div>
+                    </div>
+                    <div class="step-labels">
+                        <span class="step-item" id="s10">10º</span>
+                        <span class="step-item" id="s9">9º</span>
+                        <span class="step-item" id="s8">8º</span>
+                        <span class="step-item" id="s7">7º</span>
+                        <span class="step-item" id="s6">6º</span>
+                        <span class="step-item" id="s5">5º</span>
+                        <span class="step-item" id="s4">4º</span>
+                        <span class="step-item" id="s3">3º</span>
+                        <span class="step-item" id="s2">2º</span>
+                        <span class="step-item" id="s1">1º</span>
+                        <span class="step-item" id="s30">H30</span>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 25px;">
+                    <div class="input-group">
+                        <label>BINANCE API KEY</label>
+                        <input type="text" id="apiKey" placeholder="Sua Chave API" value="">
+                    </div>
+                    <div class="input-group">
+                        <label>BINANCE API SECRET</label>
+                        <input type="password" id="apiSecret" placeholder="Seu Secret" value="">
+                    </div>
+                    
+                    <button class="btn btn-start" id="btnStart" onclick="startCEO()">
+                        <i class="ph-fill ph-rocket-launch"></i> INICIAR MOTOR CEO
+                    </button>
+                    <button class="btn btn-panic" id="btnPanic" onclick="panicSell()">
+                        <i class="ph ph-warning"></i> STOP GERAL / VENDA IMEDIATA
+                    </button>
+
+                    <div class="meta-reinforcement">
+                        <div class="meta-text">REFORÇO ALFA (META $15):</div>
+                        <div id="reinforceVal" style="color:#fff; font-family:'Orbitron';">$ 0.00 / $15.00</div>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="panel log-wide">
+                <div class="pnl-title"><i class="ph ph-terminal"></i> TERMINAL DE INTELIGÊNCIA FINANCEIRA (USDC RADAR)</div>
+                <div class="terminal" id="terminalLogs">
+                    <div class="log-entry"><span class="log-time">[SISTEMA]</span> Modo CEO Inicializado. Aguardando comando de Start...</div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+        let lastStatus = null;
+
+        // Middlewares de Segurança (3ª Etapa)
+        if (sessionStorage.getItem('ceoOk') !== 'true') window.location.href = '/ceo_gate.html';
+
+        async function authFetch(url, options = {}) {
+            const token = localStorage.getItem('sifras_token');
+            if (!token) return window.location.href = '/login.html';
+            return fetch(url, { ...options, headers: { ...options.headers, 'Authorization': `Bearer ${token}` } });
+        }
+
+        async function fetchStatus() {
+            try {
+                const res = await authFetch(`${API_URL}/status`);
+                if (!res.ok) throw new Error('Auth Failed');
+                const state = await res.json();
+                updateUI(state);
+            } catch (e) {
+                console.error("Status Failed");
+            }
+        }
+
+        function updateUI(state) {
+            // PNL
+            const pnlVal = document.getElementById('pnlValue');
+            const pnlPct = document.getElementById('pnlPct');
+            const val = state.realizedProfitBRL || 0;
+            pnlVal.innerText = `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            
+            // Neon Dynamic Colors
+            if (val < 0) {
+                pnlVal.style.color = 'var(--alert-orange)';
+                pnlVal.style.textShadow = '0 0 25px rgba(255, 153, 0, 0.4)';
+            } else {
+                pnlVal.style.color = 'var(--cyber-green)';
+                pnlVal.style.textShadow = '0 0 25px rgba(204, 255, 0, 0.4)';
+            }
+
+            // Progress Bar (10 -> 1)
+            const progBar = document.getElementById('progBar');
+            const targetText = document.getElementById('targetText');
+            
+            if (state.ceoPhase === 'COUNTDOWN') {
+                const pct = (10 - state.ceoStep) * 10;
+                progBar.style.width = `${pct || 5}%`;
+                targetText.innerText = `DEGURA ${state.ceoStep} (USDC)`;
+                
+                // Highlight steps
+                document.querySelectorAll('.step-item').forEach(el => el.classList.remove('active'));
+                const stepEl = document.getElementById(`s${state.ceoStep}`);
+                if (stepEl) stepEl.classList.add('active');
+            } else {
+                progBar.style.width = `100%`;
+                targetText.innerText = `STRATEGY 30 (HUNT)`;
+                document.querySelectorAll('.step-item').forEach(el => el.classList.remove('active'));
+                document.getElementById('s30').classList.add('active');
+            }
+
+            // Reinforcement
+            document.getElementById('reinforceVal').innerText = `$ ${Number(state.liquidPnlPool || 0).toFixed(2)} / $15.00`;
+
+            // Logs (10s)
+            const terminal = document.getElementById('terminalLogs');
+            if (JSON.stringify(state.logs) !== lastLogs) {
+                terminal.innerHTML = state.logs.map(log => `
+                    <div class="log-entry">
+                        <span class="log-time">[${new Date(log.time).toLocaleTimeString()}]</span>
+                        <span style="color: ${log.type==='success'?'#ccff00':log.type==='error'?'#ff3366':'#888'}">${log.message}</span>
+                    </div>
+                `).join('') + terminal.innerHTML;
+                lastLogs = JSON.stringify(state.logs);
+            }
+        }
+
+        let lastLogs = "";
+
+        async function startCEO() {
+            const apiKey = document.getElementById('apiKey').value;
+            const apiSecret = document.getElementById('apiSecret').value;
+            if (!apiKey || !apiSecret) return alert("Keys Obrigatórias");
+
+            await authFetch(`${API_URL}/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apiKey, apiSecret, mode: 'CEO' })
+            });
+        }
+
+        async function panicSell() {
+            if (confirm("🚨 PARAR TUDO E VENDER AGORA?")) {
+                await authFetch(`${API_URL}/panic`, { method: 'POST' });
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('sifras_token');
+            sessionStorage.removeItem('ceoOk');
+            window.location.href = '/login.html';
+        }
+
+        setInterval(fetchStatus, 5000);
+        window.onload = fetchStatus;
+    </script>
+</body>
+</html>

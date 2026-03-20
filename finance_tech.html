@@ -237,20 +237,25 @@
             // Reinforcement
             document.getElementById('reinforceVal').innerText = `$ ${Number(state.liquidPnlPool || 0).toFixed(2)} / $15.00`;
 
-            // Logs (Corrigido para evitar undefined)
+            // Logs (Corrigido: campo correto é log.msg, não log.message)
             const terminal = document.getElementById('terminalLogs');
             if (state.logs && state.logs.length > 0) {
                 const logsHtml = state.logs
-                    .filter(log => log && log.message) // Remove nulos
-                    .map(log => `
-                        <div class="log-entry">
-                            <span class="log-time">[${new Date(log.time).toLocaleTimeString('pt-BR')}]</span>
-                            <span style="color: ${log.type==='success'?'#ccff00':log.type==='error'?'#ff3366':'#888'}">${log.message}</span>
-                        </div>
-                    `).join('');
+                    .filter(log => log && log.msg)
+                    .map(log => {
+                        const color = log.type === 'success' ? '#ccff00'
+                                    : log.type === 'error'   ? '#ff3366'
+                                    : log.type === 'warn'    ? '#ff9900'
+                                    : log.type === 'buy'     ? '#00f2ff'
+                                    : '#888';
+                        return `<div class="log-entry">
+                            <span class="log-time">[${log.timestamp || ''}]</span>
+                            <span style="color: ${color}">${log.msg}</span>
+                        </div>`;
+                    }).join('');
                 
                 if (logsHtml !== lastLogs) {
-                    terminal.innerHTML = logsHtml; // Substitui, não acumula lixo
+                    terminal.innerHTML = logsHtml;
                     lastLogs = logsHtml;
                 }
             }
@@ -286,13 +291,17 @@
 
         async function stopCEO() {
             if (confirm("Deseja parar o motor CEO agora?")) {
+                // FIX: Passar header x-mode para o servidor resolver o estado correto
                 await authFetch(`${API_URL}/stop`, { method: 'POST' });
+                fetchStatus();
             }
         }
 
         async function panicSell() {
             if (confirm("🚨 PARAR TUDO E VENDER AGORA?")) {
+                // FIX: Passar header x-mode para vender a posição CEO correta
                 await authFetch(`${API_URL}/panic`, { method: 'POST' });
+                fetchStatus();
             }
         }
 

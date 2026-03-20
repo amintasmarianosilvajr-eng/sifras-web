@@ -223,6 +223,10 @@ function saveUserState(rawUsername) {
         buyPercentage: state.buyPercentage,
         lastCoin: state.lastCoin, consecutiveCount: state.consecutiveCount, cooldownCoins: state.cooldownCoins || {},
         status: state.status, isLoopActive: state.isLoopActive,
+        // FIX: Persistir campos CEO para sobreviver reinicializações do servidor
+        mode: state.mode || 'ALFA',
+        ceoStep: state.ceoStep || 10,
+        ceoPhase: state.ceoPhase || 'COUNTDOWN',
         activeSymbol: state.activeSymbol, buyPrice: state.buyPrice, buyQty: state.buyQty,
         targetPrice: state.targetPrice, currentPrice: state.currentPrice,
         pauseUntil: state.pauseUntil, logs: state.logs.slice(0, 30),
@@ -487,18 +491,29 @@ async function runCEOMasterStrategy(username) {
         state.liquidPnlPool = 0; // Prepara para novo ciclo de acúmulo
     }
 
-    // 2. Lógica de Trade CEO
+    // 2. Lógica de Trade CEO — monitorando posição aberta
     if (state.status === 'IN_TRADE') {
+        if (!state.activeSymbol) { state.status = 'SCANNING'; return; }
+
         const ticker = globalMarket.top30USDC.find(i => i.symbol === state.activeSymbol);
         if (ticker) {
             state.currentPrice = ticker.price;
             const pnl = ((state.currentPrice - state.buyPrice) / state.buyPrice) * 100;
-            if (pnl >= 0.4) {
-                addLog(username, `✅ VENDA CEO: ${state.activeSymbol} atingiu +0.4%`, 'success');
-                state.liquidPnlPool += ( (state.buyQty || 20) * state.buyPrice * 0.004 ); // Simulação lucro
-                state.status = 'SCANNING'; // Imediato sem intervalo conforme pedido
-                if (state.ceoPhase === 'COUNTDOWN') {
-                    state.ceoStep--;
+
+            // VENDA REAL ao atingir +0.4% ou stop em -3%
+            const shouldSell = pnl >= 0.4;
+            const shouldStop  = pnl <= -3.0;
+
+            if (shouldSell || shouldStop) {
+                const reason = shouldSell ? `✅ VENDA CEO: +0.4% atingido` : `🛑 STOP CEO: -3% atingido (Anti-Restart)`;
+                addLog(username, `${reason} em ${state.activeSymbol}`, shouldSell ? 'success' : 'warn');
+
+                // ORDEM REAL DE VENDA
+                state.status = 'SCANNING';
+                await executeRealSell(username, state.activeSymbol, shouldSell ? 'CEO_PROFIT' : 'CEO_STOP');
+
+                if (shouldSell && state.ceoPhase === 'COUNTDOWN') {
+                    state.ceoStep = Math.max(0, state.ceoStep - 1);
                     if (state.ceoStep <= 0) {
                         state.ceoPhase = 'STRATEGY30';
                         addLog(username, "🚀 FASE 1 CEO CONCLUÍDA: Iniciando Estratégia Hunt 30 USDC!", 'success');
@@ -511,6 +526,9 @@ async function runCEOMasterStrategy(username) {
 
     // 3. Radar de Entrada CEO
     if (state.status === 'SCANNING') {
+        // Bloquear re-entrada simultânea
+        if (state._isCEOBuying) return;
+
         if (state.ceoPhase === 'COUNTDOWN') {
             // Degrau 10 a 1
             if (Date.now() - (state.lastScanLog || 0) > 10000) {
@@ -521,9 +539,15 @@ async function runCEOMasterStrategy(username) {
             const coin = globalMarket.top30USDC[targetIndex];
             if (coin) {
                 addLog(username, `🔥 CEO STEP ${state.ceoStep}: Comprando ${coin.symbol} (Rank ${targetIndex + 1})`, 'info');
+                state.status = 'IN_TRADE';
                 state.activeSymbol = coin.symbol;
                 state.buyPrice = coin.price;
-                state.status = 'IN_TRADE';
+                state._isCEOBuying = true;
+                try {
+                    await executeRealBuy(username, coin.symbol, coin.price);
+                } finally {
+                    state._isCEOBuying = false;
+                }
             }
         } else {
             // Estratégia Hunt 30: +0.3% em 20s
@@ -535,9 +559,15 @@ async function runCEOMasterStrategy(username) {
                 const jump = (globalMarket.coinJumps20s || {})[coin.symbol] || 0;
                 if (jump >= 0.3) {
                     addLog(username, `⚡ CEO JUMP! ${coin.symbol} detectado +${jump.toFixed(2)}% em 20s`, 'success');
+                    state.status = 'IN_TRADE';
                     state.activeSymbol = coin.symbol;
                     state.buyPrice = coin.price;
-                    state.status = 'IN_TRADE';
+                    state._isCEOBuying = true;
+                    try {
+                        await executeRealBuy(username, coin.symbol, coin.price);
+                    } finally {
+                        state._isCEOBuying = false;
+                    }
                     break;
                 }
             }
@@ -1275,56 +1305,62 @@ app.get('/status', requireAuth, async (req, res) => {
 app.post('/start', requireAuth, async (req, res) => {
     const { clientName, apiKey, apiSecret, buyPercentage } = req.body;
     
-    // TESTE DE CONEXÃO IMEDIATO COM TIME SYNC
-    const timestamp = Date.now() + binanceTimeOffset;
-    const queryString = `timestamp=${timestamp}&recvWindow=60000`; // Janela máxima
-    const sig = crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
-    
     let attempts = 3;
     let success = false;
     let lastError = null;
 
+    // FIX: Gerar novo timestamp a CADA tentativa para evitar erro 1100 (timestamp expirado)
     while (attempts > 0 && !success) {
         try {
-            const res = await axios.get(`https://api3.binance.com/api/v3/account?${queryString}&signature=${sig}`, {
+            await syncBinanceTime(); // Garantir offset atualizado antes de cada teste
+            const timestamp = Date.now() + binanceTimeOffset;
+            const queryString = `timestamp=${timestamp}&recvWindow=60000`;
+            const sig = crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
+
+            const testRes = await axios.get(`https://api3.binance.com/api/v3/account?${queryString}&signature=${sig}`, {
                 headers: { 'X-MBX-APIKEY': apiKey }, timeout: 15000
             });
-            const test = res; 
-            if (test.data && test.data.canTrade !== undefined) {
+
+            if (testRes.data && testRes.data.canTrade !== undefined) {
                 success = true;
                 let username = req.username.toLowerCase();
                 if (req.body.mode === 'CEO') username += '_ceo';
-                
+
                 let state = userStates.get(username) || createInitialState(username);
+                // FIX: Garantir que o estado CEO herde aprovação do usuário base
+                state.isApproved = true;
                 userStates.set(username, state);
 
-                Object.assign(state, { 
-                    clientName: clientName || state.clientName, 
-                    apiKey, apiSecret, 
+                Object.assign(state, {
+                    clientName: clientName || state.clientName,
+                    apiKey, apiSecret,
                     mode: req.body.mode || 'ALFA',
-                    ceoStep: (req.body.mode === 'CEO' && !state.activeSymbol) ? 10 : state.ceoStep,
-                    ceoPhase: (req.body.mode === 'CEO' && !state.activeSymbol) ? 'COUNTDOWN' : state.ceoPhase,
+                    ceoStep: (req.body.mode === 'CEO' && !state.activeSymbol) ? 10 : (state.ceoStep || 10),
+                    ceoPhase: (req.body.mode === 'CEO' && !state.activeSymbol) ? 'COUNTDOWN' : (state.ceoPhase || 'COUNTDOWN'),
                     buyPercentage: parseFloat(buyPercentage) || 0.99,
                     opsCount: state.opsCount || 0,
                     pauseUntil: null
                 });
                 saveUserState(username);
-                
+
                 if (state.mode === 'CEO') {
                     state.isLoopActive = true;
                     state.status = state.activeSymbol ? 'IN_TRADE' : 'SCANNING';
-                    addLog(username, "🚀 MODO CEO ATIVADO COM SUCESSO.", 'success');
+                    addLog(username, "🚀 MODO CEO ATIVADO COM SUCESSO. Radar USDC Ligado.", 'success');
+                    // Forçar busca de saldo USDC inicial
+                    binanceFetchBalance(username).catch(() => {});
                 } else {
                     startFluxoAlfa(username);
                 }
+                // FIX: Usar a variável correta (testRes, não res que é o response do Express)
                 return res.json({ success: true });
             }
         } catch (e) {
             lastError = e;
             attempts--;
             if (attempts > 0) {
-                console.log(`[RETRY] Tentando reconexão Binance em 1s... (Faltam ${attempts})`);
-                await new Promise(r => setTimeout(r, 1000));
+                console.log(`[RETRY] Tentando reconexão Binance em 2s... (Faltam ${attempts}) | Erro: ${e.response?.data?.msg || e.message}`);
+                await new Promise(r => setTimeout(r, 2000));
             }
         }
     }
@@ -1332,26 +1368,38 @@ app.post('/start', requireAuth, async (req, res) => {
     // Se falhou após as 3 tentativas
     const e = lastError;
     let errMsg = e?.response?.data?.msg || "Erro de Conexão: O servidor da Binance não respondeu após 3 tentativas.";
-    if (e?.response?.status === 403) {
-        errMsg = "🔒 BINANCE BLOQUEOU O IP: O servidor da Railway não consegue falar com a Binance.";
-    }
-    addLog(req.username, `Falha no Start: ${errMsg}`, 'error');
+    if (e?.response?.status === 403) errMsg = "🔒 BINANCE BLOQUEOU O IP: O servidor da Railway não consegue falar com a Binance.";
+    if (e?.response?.status === 401) errMsg = "🔑 API KEY INVÁLIDA: Verifique se a chave está correta e ativa na Binance.";
+    if (e?.response?.data?.code === -1022) errMsg = "🔑 ASSINATURA INVÁLIDA: Verifique o API Secret. Certifique-se de não ter espaços extras.";
+    addLog(req.username, `Falha no Start CEO: ${errMsg}`, 'error');
     return res.status(400).json({ error: errMsg });
 });
 
 app.post('/stop', requireAuth, (req, res) => {
-    req.state.isLoopActive = false;
-    req.state.status = 'OFFLINE';
-    addLog(req.username, "Radar Desligado.", 'warn');
+    // FIX: Resolver o estado correto baseado no header x-mode
+    let username = req.username.toLowerCase();
+    if (req.headers['x-mode'] === 'CEO') username += '_ceo';
+    const state = userStates.get(username) || req.state;
+
+    state.isLoopActive = false;
+    state.status = 'OFFLINE';
+    addLog(username, "🔴 Motor Desligado.", 'warn');
+    saveUserState(username);
     res.json({ success: true });
 });
 
 app.post('/panic', requireAuth, async (req, res) => {
-    if (req.state.status === 'IN_TRADE' && req.state.activeSymbol) {
-        await executeRealSell(req.username, req.state.activeSymbol, 'PANIC');
+    // FIX: Resolver o estado correto baseado no header x-mode
+    let username = req.username.toLowerCase();
+    if (req.headers['x-mode'] === 'CEO') username += '_ceo';
+    const state = userStates.get(username) || req.state;
+
+    if (state.status === 'IN_TRADE' && state.activeSymbol) {
+        await executeRealSell(username, state.activeSymbol, 'PANIC');
     }
-    req.state.isLoopActive = false;
-    req.state.status = 'OFFLINE';
+    state.isLoopActive = false;
+    state.status = 'OFFLINE';
+    saveUserState(username);
     res.json({ success: true });
 });
 

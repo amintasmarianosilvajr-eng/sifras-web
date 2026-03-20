@@ -1277,58 +1277,63 @@ app.post('/start', requireAuth, async (req, res) => {
     const queryString = `timestamp=${timestamp}&recvWindow=60000`; // Janela máxima
     const sig = crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
     
-    try {
-        // Usar api3 para maior estabilidade em servidores cloud
-        const res = await axios.get(`https://api3.binance.com/api/v3/account?${queryString}&signature=${sig}`, {
-            headers: { 'X-MBX-APIKEY': apiKey }, timeout: 15000
-        });
-        
-        const test = res; // Normalize naming safely
-        if (test.data && test.data.canTrade !== undefined) {
-            let username = req.username.toLowerCase();
-            if (req.body.mode === 'CEO') username += '_ceo';
-            
-            let state = userStates.get(username) || createInitialState(username);
-            userStates.set(username, state);
+    let attempts = 3;
+    let success = false;
+    let lastError = null;
 
-            Object.assign(state, { 
-                clientName: clientName || state.clientName, 
-                apiKey, apiSecret, 
-                mode: req.body.mode || 'ALFA',
-                ceoStep: (req.body.mode === 'CEO' && !state.activeSymbol) ? 10 : state.ceoStep,
-                ceoPhase: (req.body.mode === 'CEO' && !state.activeSymbol) ? 'COUNTDOWN' : state.ceoPhase,
-                buyPercentage: parseFloat(buyPercentage) || 0.99,
-                opsCount: state.opsCount || 0,
-                pauseUntil: null
+    while (attempts > 0 && !success) {
+        try {
+            const res = await axios.get(`https://api3.binance.com/api/v3/account?${queryString}&signature=${sig}`, {
+                headers: { 'X-MBX-APIKEY': apiKey }, timeout: 15000
             });
-            saveUserState(username);
-            
-            if (state.mode === 'CEO') {
-                state.isLoopActive = true;
-                state.status = state.activeSymbol ? 'IN_TRADE' : 'SCANNING';
-                addLog(username, "🚀 MODO CEO ATIVADO EM CANAL ISOLADO.", 'success');
-            } else {
-                startFluxoAlfa(username);
+            const test = res; 
+            if (test.data && test.data.canTrade !== undefined) {
+                success = true;
+                let username = req.username.toLowerCase();
+                if (req.body.mode === 'CEO') username += '_ceo';
+                
+                let state = userStates.get(username) || createInitialState(username);
+                userStates.set(username, state);
+
+                Object.assign(state, { 
+                    clientName: clientName || state.clientName, 
+                    apiKey, apiSecret, 
+                    mode: req.body.mode || 'ALFA',
+                    ceoStep: (req.body.mode === 'CEO' && !state.activeSymbol) ? 10 : state.ceoStep,
+                    ceoPhase: (req.body.mode === 'CEO' && !state.activeSymbol) ? 'COUNTDOWN' : state.ceoPhase,
+                    buyPercentage: parseFloat(buyPercentage) || 0.99,
+                    opsCount: state.opsCount || 0,
+                    pauseUntil: null
+                });
+                saveUserState(username);
+                
+                if (state.mode === 'CEO') {
+                    state.isLoopActive = true;
+                    state.status = state.activeSymbol ? 'IN_TRADE' : 'SCANNING';
+                    addLog(username, "🚀 MODO CEO ATIVADO COM SUCESSO.", 'success');
+                } else {
+                    startFluxoAlfa(username);
+                }
+                return res.json({ success: true });
             }
-            
-            return res.json({ success: true });
+        } catch (e) {
+            lastError = e;
+            attempts--;
+            if (attempts > 0) {
+                console.log(`[RETRY] Tentando reconexão Binance em 1s... (Faltam ${attempts})`);
+                await new Promise(r => setTimeout(r, 1000));
+            }
         }
-    } catch (e) {
-        let errMsg = e.response?.data?.msg || "Erro de Conexão: O servidor da Binance não respondeu.";
-        
-        // Logs de suporte
-        if (e.response?.status === 403) {
-            errMsg = "🔒 BINANCE BLOQUEOU O IP: O servidor da Railway não consegue falar com a Binance. Tente usar o robô exe (desktop) ou mude a região do servidor.";
-        } else if (e.response?.status === 401) {
-            errMsg = "❌ CHAVES INCORRETAS: Verifique se a API Key e o Secret estão corretos.";
-        } else if (e.code === 'ECONNABORTED') {
-            errMsg = "⌛ TIMEOUT: A conexão com a Binance demorou demais. Tente novamente.";
-        }
-        
-        console.error(`[CONNECTION TEST FAILED] ${req.username}:`, e.response?.data || e.message);
-        addLog(req.username, `Falha no Start: ${errMsg}`, 'error');
-        return res.status(400).json({ error: errMsg });
     }
+
+    // Se falhou após as 3 tentativas
+    const e = lastError;
+    let errMsg = e?.response?.data?.msg || "Erro de Conexão: O servidor da Binance não respondeu após 3 tentativas.";
+    if (e?.response?.status === 403) {
+        errMsg = "🔒 BINANCE BLOQUEOU O IP: O servidor da Railway não consegue falar com a Binance.";
+    }
+    addLog(req.username, `Falha no Start: ${errMsg}`, 'error');
+    return res.status(400).json({ error: errMsg });
 });
 
 app.post('/stop', requireAuth, (req, res) => {

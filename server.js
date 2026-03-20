@@ -509,7 +509,11 @@ async function runCEOMasterStrategy(username) {
     // 3. Radar de Entrada CEO
     if (state.status === 'SCANNING') {
         if (state.ceoPhase === 'COUNTDOWN') {
-            // Compra degrau atual (10 a 1)
+            // Degrau 10 a 1
+            if (Date.now() - (state.lastScanLog || 0) > 10000) {
+                addLog(username, `🔎 Radar CEO: Monitorando Rank ${state.ceoStep} para compra automática...`, 'info');
+                state.lastScanLog = Date.now();
+            }
             const targetIndex = Math.max(0, state.ceoStep - 1);
             const coin = globalMarket.top30USDC[targetIndex];
             if (coin) {
@@ -520,6 +524,10 @@ async function runCEOMasterStrategy(username) {
             }
         } else {
             // Estratégia Hunt 30: +0.3% em 20s
+            if (Date.now() - (state.lastScanLog || 0) > 10000) {
+                addLog(username, "🔎 Radar CEO: Escaneando Salto +0.3% nas Top 30 USDC...", 'info');
+                state.lastScanLog = Date.now();
+            }
             for (const coin of globalMarket.top30USDC) {
                 const jump = (globalMarket.coinJumps20s || {})[coin.symbol] || 0;
                 if (jump >= 0.3) {

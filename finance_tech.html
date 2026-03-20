@@ -109,11 +109,17 @@
                 <div class="panel" style="margin-top: 25px;">
                     <div class="input-group">
                         <label>BINANCE API KEY</label>
-                        <input type="text" id="apiKey" placeholder="Sua Chave API" value="">
+                        <div style="position:relative;">
+                            <input type="password" id="apiKey" placeholder="Sua Chave API" value="">
+                            <i class="ph ph-eye" style="position:absolute; right:10px; top:12px; color:#555; cursor:pointer;" onclick="togglePass('apiKey', this)"></i>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label>BINANCE API SECRET</label>
-                        <input type="password" id="apiSecret" placeholder="Seu Secret" value="">
+                        <div style="position:relative;">
+                            <input type="password" id="apiSecret" placeholder="Seu Secret" value="">
+                            <i class="ph ph-eye" style="position:absolute; right:10px; top:12px; color:#555; cursor:pointer;" onclick="togglePass('apiSecret', this)"></i>
+                        </div>
                     </div>
                     
                     <button class="btn btn-start" id="btnStart" onclick="startCEO()">
@@ -284,6 +290,17 @@
         async function panicSell() {
             if (confirm("🚨 PARAR TUDO E VENDER AGORA?")) {
                 await authFetch(`${API_URL}/panic`, { method: 'POST' });
+            }
+        }
+
+        function togglePass(id, icon) {
+            const input = document.getElementById(id);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('ph-eye', 'ph-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('ph-eye-slash', 'ph-eye');
             }
         }
 

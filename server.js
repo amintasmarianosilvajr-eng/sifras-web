@@ -1278,8 +1278,9 @@ app.post('/start', requireAuth, async (req, res) => {
     const sig = crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
     
     try {
-        const test = await axios.get(`https://api.binance.com/api/v3/account?${queryString}&signature=${sig}`, {
-            headers: { 'X-MBX-APIKEY': apiKey }, timeout: 10000
+        // Usar api3 para maior estabilidade em servidores cloud
+        const res = await axios.get(`https://api3.binance.com/api/v3/account?${queryString}&signature=${sig}`, {
+            headers: { 'X-MBX-APIKEY': apiKey }, timeout: 15000
         });
         
         if (test.data && test.data.canTrade !== undefined) {

@@ -243,11 +243,22 @@
             const apiSecret = document.getElementById('apiSecret').value;
             if (!apiKey || !apiSecret) return alert("Keys Obrigatórias");
 
-            await authFetch(`${API_URL}/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ apiKey, apiSecret, mode: 'CEO' })
-            });
+            try {
+                const res = await authFetch(`${API_URL}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ apiKey, apiSecret, mode: 'CEO' })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    const terminal = document.getElementById('terminalLogs');
+                    terminal.innerHTML = `<div class="log-entry" style="color:var(--alert-red)">[ERRO] ${data.error || 'Falha na Conexão'}</div>` + terminal.innerHTML;
+                } else {
+                    fetchStatus(); // Força atualização imediata
+                }
+            } catch (e) {
+                alert("Erro de Rede: Verifique sua conexão.");
+            }
         }
 
         async function stopCEO() {

@@ -455,10 +455,12 @@ async function startMarketLoop() {
             if (state.pauseUntil && now < state.pauseUntil) continue;
 
             // BLOQUEIO DE CONCORRÊNCIA POR USUÁRIO
-            if (state._isScanning) continue;
-            state._isScanning = true;
             try {
-                await runFluxoAlfaScanner(username);
+                if (state.mode === 'CEO') {
+                    await runCEOMasterStrategy(username);
+                } else {
+                    await runFluxoAlfaScanner(username);
+                }
             } finally {
                 state._isScanning = false;
             }

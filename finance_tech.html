@@ -187,6 +187,14 @@
                 btn.onclick = startCEO;
             }
 
+            // Memorização de Chaves
+            if (state.apiKey && !document.getElementById('apiKey').value) {
+                 document.getElementById('apiKey').value = state.apiKey;
+            }
+            if (state.apiSecret && !document.getElementById('apiSecret').value) {
+                 document.getElementById('apiSecret').value = state.apiSecret;
+            }
+
             // PNL
             const pnlVal = document.getElementById('pnlValue');
             const pnlPct = document.getElementById('pnlPct');

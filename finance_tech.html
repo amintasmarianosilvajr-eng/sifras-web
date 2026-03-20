@@ -274,7 +274,10 @@
                     const terminal = document.getElementById('terminalLogs');
                     terminal.innerHTML = `<div class="log-entry" style="color:var(--alert-red)">[ERRO] ${data.error || 'Falha na Conexão'}</div>` + terminal.innerHTML;
                 } else {
-                    fetchStatus(); // Força atualização imediata
+                    // Memorizar localmente após sucesso
+                    localStorage.setItem('sifras_ceo_key', apiKey);
+                    localStorage.setItem('sifras_ceo_secret', apiSecret);
+                    fetchStatus(); 
                 }
             } catch (e) {
                 alert("Erro de Rede: Verifique sua conexão.");
@@ -310,8 +313,18 @@
             window.location.href = '/login.html';
         }
 
+        function loadSavedKeys() {
+            const k = localStorage.getItem('sifras_ceo_key');
+            const s = localStorage.getItem('sifras_ceo_secret');
+            if (k) document.getElementById('apiKey').value = k;
+            if (s) document.getElementById('apiSecret').value = s;
+        }
+
         setInterval(fetchStatus, 5000);
-        window.onload = fetchStatus;
+        window.onload = () => {
+            loadSavedKeys();
+            fetchStatus();
+        };
     </script>
 </body>
 </html>

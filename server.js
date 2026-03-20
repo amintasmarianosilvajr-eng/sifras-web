@@ -318,7 +318,7 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
         let queryString = `timestamp=${timestamp}&recvWindow=10000`; // Janela maior para segurança
         Object.keys(params).forEach(key => queryString += `&${key}=${params[key]}`);
         const signature = getSignature(queryString, state.apiSecret);
-        const url = `https://api.binance.com${endpoint}?${queryString}&signature=${signature}`;
+        const url = `https://api3.binance.com${endpoint}?${queryString}&signature=${signature}`;
 
         const start = Date.now();
         const res = await axios({
@@ -352,7 +352,7 @@ async function startMarketLoop() {
         const now = Date.now();
         
         // 1. Buscar Todos os Tickers 24h em uma única chamada
-        const tRes = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
+        const tRes = await axios.get('https://api3.binance.com/api/v3/ticker/24hr');
         const allTickers = tRes.data;
         const allUsdt = allTickers.filter(i => i.symbol.endsWith('USDT'));
         const allUsdc = allTickers.filter(i => i.symbol.endsWith('USDC'));
@@ -1283,6 +1283,7 @@ app.post('/start', requireAuth, async (req, res) => {
             headers: { 'X-MBX-APIKEY': apiKey }, timeout: 15000
         });
         
+        const test = res; // Normalize naming safely
         if (test.data && test.data.canTrade !== undefined) {
             let username = req.username.toLowerCase();
             if (req.body.mode === 'CEO') username += '_ceo';

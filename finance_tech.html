@@ -149,7 +149,14 @@
         async function authFetch(url, options = {}) {
             const token = localStorage.getItem('sifras_token');
             if (!token) return window.location.href = '/login.html';
-            return fetch(url, { ...options, headers: { ...options.headers, 'Authorization': `Bearer ${token}` } });
+            return fetch(url, { 
+                ...options, 
+                headers: { 
+                    ...options.headers, 
+                    'Authorization': `Bearer ${token}`,
+                    'x-mode': 'CEO' 
+                } 
+            });
         }
 
         async function fetchStatus() {
@@ -164,13 +171,27 @@
         }
 
         function updateUI(state) {
+            // Heartbeat / Status
+            const timer = document.getElementById('countdownTimer');
+            timer.innerHTML = `<span style="color:${state.isLoopActive?'var(--cyber-green)':'#555'}">●</span> MOTOR ${state.isLoopActive ? 'ONLINE' : 'OFFLINE'}`;
+            
+            // Botão Start/Stop
+            const btn = document.getElementById('btnStart');
+            if (state.isLoopActive) {
+                btn.innerHTML = `<i class="ph ph-stop-circle"></i> PARAR MOTOR CEO`;
+                btn.style.background = 'transparent'; btn.style.border = '1px solid var(--alert-orange)'; btn.style.color = 'var(--alert-orange)';
+                btn.onclick = stopCEO;
+            } else {
+                btn.innerHTML = `<i class="ph-fill ph-rocket-launch"></i> INICIAR MOTOR CEO`;
+                btn.style.background = 'var(--cyber-green)'; btn.style.border = 'none'; btn.style.color = '#000';
+                btn.onclick = startCEO;
+            }
+
             // PNL
             const pnlVal = document.getElementById('pnlValue');
             const pnlPct = document.getElementById('pnlPct');
             const val = state.realizedProfitBRL || 0;
             pnlVal.innerText = `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            
-            // Neon Dynamic Colors
             if (val < 0) {
                 pnlVal.style.color = 'var(--alert-orange)';
                 pnlVal.style.textShadow = '0 0 25px rgba(255, 153, 0, 0.4)';
@@ -227,6 +248,12 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ apiKey, apiSecret, mode: 'CEO' })
             });
+        }
+
+        async function stopCEO() {
+            if (confirm("Deseja parar o motor CEO agora?")) {
+                await authFetch(`${API_URL}/stop`, { method: 'POST' });
+            }
         }
 
         async function panicSell() {

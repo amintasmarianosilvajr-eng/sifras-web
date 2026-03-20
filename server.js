@@ -276,7 +276,7 @@ let binanceTimeOffset = 0;
 
 async function syncBinanceTime() {
     try {
-        const res = await axios.get('https://api.binance.com/api/v3/time');
+        const res = await axios.get('https://api3.binance.com/api/v3/time');
         binanceTimeOffset = res.data.serverTime - Date.now();
         
         // Descobrir IP do Servidor para o usuário
@@ -292,7 +292,7 @@ setInterval(syncBinanceTime, 600000); // Sync a cada 10min
 
 async function syncExchangeInfo() {
     try {
-        const res = await axios.get('https://api.binance.com/api/v3/exchangeInfo');
+        const res = await axios.get('https://api3.binance.com/api/v3/exchangeInfo');
         if (res.data && res.data.symbols) {
             globalMarket.exchangeInfo = res.data;
             console.log(`[SYSTEM] ExchangeInfo Sincronizado. ${res.data.symbols.length} símbolos carregados.`);

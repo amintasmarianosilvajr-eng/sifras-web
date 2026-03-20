@@ -381,9 +381,9 @@ async function startMarketLoop() {
         
         if (globalMarket.top10.length >= 4) globalMarket.pivot = globalMarket.top10[3].symbol;
 
-        // 4. Atualizar Ranking Global USDC (CEO)
+        // 4. Atualizar Ranking Global USDC (CEO) - Volume mais leve para garantir top 30
         globalMarket.top30USDC = allUsdc
-            .filter(i => parseFloat(i.quoteVolume) > 100000 && !shouldExcludeCoinUSDC(i.symbol))
+            .filter(i => parseFloat(i.quoteVolume) > 10000 && !shouldExcludeCoinUSDC(i.symbol))
             .map(i => ({ symbol: i.symbol, price: parseFloat(i.lastPrice), change: parseFloat(i.priceChangePercent) }))
             .sort((a, b) => b.change - a.change)
             .slice(0, 30);
@@ -1259,9 +1259,9 @@ function requireAuth(req, res, next) {
 }
 
 app.get('/status', requireAuth, async (req, res) => {
-    // Se for modo CEO, busca o estado específico
-    let username = req.username;
-    if (req.headers['x-mode'] === 'CEO') username += '_CEO';
+    // Se for modo CEO, busca o estado específico (Normalizado em lowercase)
+    let username = req.username.toLowerCase();
+    if (req.headers['x-mode'] === 'CEO') username += '_ceo';
     
     let state = userStates.get(username) || createInitialState(username);
     const data = { ...state };
@@ -1283,8 +1283,8 @@ app.post('/start', requireAuth, async (req, res) => {
         });
         
         if (test.data && test.data.canTrade !== undefined) {
-            let username = req.username;
-            if (req.body.mode === 'CEO') username += '_CEO';
+            let username = req.username.toLowerCase();
+            if (req.body.mode === 'CEO') username += '_ceo';
             
             let state = userStates.get(username) || createInitialState(username);
             userStates.set(username, state);

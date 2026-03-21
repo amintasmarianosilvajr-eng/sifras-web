@@ -261,33 +261,43 @@
                 pulse.className = 'status-pulse pulse-inactive';
                 btnS.style.display = 'flex';
                 btnT.style.display = 'none';
-            }            // Ranking: APENAS 10 SLOTS (Sincronia Elite Spot)
+            }            // Ranking Elite 10 (Lista Vertical Inconfundível)
             const grid = document.getElementById('rankingGrid');
             const top = data.top10 || [];
             if (top.length > 0) {
+                grid.className = "flex flex-col gap-2"; // Transforma grid em lista vertical
                 grid.innerHTML = top.slice(0, 10).map((coin, index) => {
                     const rank = index + 1;
                     const isTarget = targetRanks.includes(rank);
                     return `
-                        <div class="rank-card glass-card p-6 flex flex-col gap-2 ${isTarget ? 'trigger-enabled ring-1 ring-[#00ffc8]/30 shadow-[0_0_20px_rgba(0,255,200,0.1)]' : ''}">
-                            <div class="flex justify-between items-start">
-                                <div class="flex items-center gap-2">
-                                    <span class="mono text-2xl font-black ${rank <= 3 ? 'text-[#00ffc8]' : 'text-gray-600'}">#${rank}</span>
-                                    ${isTarget ? '<span class="text-[0.55rem] bg-[#00ffc8]/20 text-[#00ffc8] px-2 py-1 rounded font-bold uppercase tracking-widest">Sniper</span>' : ''}
-                                </div>
-                                <span class="font-bold text-white text-lg tracking-tighter">${coin.symbol.replace('USDT', '/USDT')}</span>
-                            </div>
-                            <div class="flex justify-between items-end mt-2">
+                        <div class="rank-card glass-card p-4 flex items-center justify-between gap-4 ${isTarget ? 'trigger-enabled ring-1 ring-[#00ffc8]/30' : ''}">
+                            <div class="flex items-center gap-6">
+                                <span class="mono text-3xl font-black italic ${rank <= 3 ? 'text-[#00ffc8]' : 'text-gray-700'} w-12">#${rank}</span>
                                 <div class="flex flex-col">
-                                    <span class="mono text-sm text-gray-400 font-bold">$${parseFloat(coin.price).toFixed(coin.price < 1 ? 6 : 4)}</span>
-                                    <span class="text-[0.6rem] opacity-30 mono">VOL: $${(coin.volume/1000000).toFixed(1)}M</span>
+                                    <span class="font-bold text-white text-lg tracking-tighter">${coin.symbol.replace('USDT', '/USDT')}</span>
+                                    ${isTarget ? '<span class="text-[0.5rem] text-[#00ffc8] font-bold uppercase tracking-widest">Sniper Radar Ativo</span>' : '<span class="text-[0.5rem] text-gray-600 uppercase">Observando</span>'}
                                 </div>
-                                <span class="mono font-black text-xl ${coin.change >= 0 ? 'text-[#39FF14]' : 'text-[#ff3366]'}">${coin.change >= 0 ? '+' : ''}${coin.change.toFixed(2)}%</span>
+                            </div>
+
+                            <div class="flex flex-1 justify-center gap-12 hidden md:flex">
+                                <div class="flex flex-col items-center">
+                                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold mono">Preço Atual</span>
+                                    <span class="mono text-sm text-white font-bold">$${parseFloat(coin.price).toFixed(coin.price < 1 ? 6 : 4)}</span>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold mono">Volume 24h</span>
+                                    <span class="mono text-sm text-gray-400 font-bold">$${(coin.volume/1000000).toFixed(1)}M</span>
+                                </div>
+                            </div>
+
+                            <div class="text-right">
+                                <span class="mono font-black text-2xl ${coin.change >= 0 ? 'text-[#39FF14]' : 'text-[#ff3366]'}">${coin.change >= 0 ? '+' : ''}${coin.change.toFixed(2)}%</span>
                             </div>
                         </div>
                     `;
                 }).join('');
             }
+
 
             // Active Trades
             const activeList = document.getElementById('activeTradesList');

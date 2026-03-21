@@ -21,6 +21,7 @@ const CONFIG = {
 
 let volatilityTracker = {};
 let rapidGrowthTracker = {};     // Rastreador dedicado para o gatilho de 20s
+let symbolRules = {};            // Armazena regras de precisão (Step Size)
 let operationHistory = { 1: [], 2: [] };
 let totalProfitAcc = { 1: 0.0, 2: 0.0 };
 let activeSlots = {
@@ -140,9 +141,19 @@ async function fetchTopGainers() {
         try {
             const infoRes = await fetch(`${CONFIG.BINANCE_API}/exchangeInfo`);
             const info = await infoRes.json();
-            activeSyms = info.symbols
-                .filter(s => s.status === 'TRADING' && s.quoteAsset === 'USDT')
-                .map(s => s.symbol);
+            info.symbols.forEach(s => {
+                if (s.quoteAsset === 'USDT' && s.status === 'TRADING') {
+                    activeSyms.push(s.symbol);
+                    const lot = s.filters.find(f => f.filterType === 'LOT_SIZE');
+                    if (lot) {
+                        const step = parseFloat(lot.stepSize);
+                        symbolRules[s.symbol] = {
+                            stepSize: step,
+                            precision: Math.max(0, Math.round(Math.log10(1 / step)))
+                        };
+                    }
+                }
+            });
         } catch (e) { }
 
         return all
@@ -429,27 +440,28 @@ async function buyUsdtAndReposition() {
 
     addLog(`💹 META ATINGIDA! Vendendo ${prevCoin.symbol} para obter USDT...`, 'sell');
 
-    // 1. Determinar quantidade a vender
-    // Aplica 99.8% de margem para cobrir taxa de 0.1% da Binance por cada lado
+    // 1. Determinar quantidade a vender (Fiel ao LOT_SIZE)
     const FEE_SAFETY = 0.998;
     let coinQty = null;
+    const rules = symbolRules[prevCoin.fullSymbol] || { precision: 2, stepSize: 0.01 };
 
     if (prevCoin.qty && parseFloat(prevCoin.qty) > 0) {
-        // qty foi armazenada como float na compra
         const rawQty = parseFloat(prevCoin.qty);
-        const adjustedQty = rawQty * FEE_SAFETY;
-        coinQty = adjustedQty.toFixed(6);
-        addLog(`📐 Qty armazenada: ${rawQty.toFixed(6)} → com margem (×${FEE_SAFETY}): ${coinQty}`, 'system');
+        const adjustedQty = (rawQty * FEE_SAFETY);
+        // Arredondar para baixo de acordo com o stepSize
+        const finalQty = (Math.floor(adjustedQty / rules.stepSize) * rules.stepSize);
+        coinQty = finalQty.toFixed(rules.precision);
+        addLog(`📐 Qty corrigida: ${rawQty.toFixed(8)} → com margem e precisão (${rules.precision} casas): ${coinQty}`, 'system');
     } else {
-        // fallback: buscar saldo real na Binance
-        addLog(`🔍 Qty não armazenada. Buscando saldo real na Binance...`, 'system');
+        addLog(`🔍 Qty não encontrada. Buscando saldo real na Binance...`, 'system');
         const rawBal = await fetchCoinBalance(monitoringSlots[0], prevCoin.symbol);
         if (rawBal && parseFloat(rawBal) > 0) {
             const adjustedBal = parseFloat(rawBal) * FEE_SAFETY;
-            coinQty = adjustedBal.toFixed(6);
-            addLog(`🔍 Saldo real: ${rawBal} → com margem (×${FEE_SAFETY}): ${coinQty}`, 'system');
+            const finalQty = (Math.floor(adjustedBal / rules.stepSize) * rules.stepSize);
+            coinQty = finalQty.toFixed(rules.precision);
+            addLog(`🔍 Saldo real: ${rawBal} → formatado: ${coinQty}`, 'system');
         } else {
-            addLog(`❌ Saldo zero ou indisponível para ${prevCoin.symbol}. Abortando venda.`, 'error');
+            addLog(`❌ Saldo insuficiente para venda de ${prevCoin.symbol}.`, 'error');
             closingTrade = false;
             return;
         }

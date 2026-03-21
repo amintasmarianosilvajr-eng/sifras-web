@@ -627,7 +627,7 @@
         async function authFetch(url, options = {}) {
             const token = getToken();
             if (!token) {
-                window.location.href = '/login.html';
+                window.location.href = '/';
                 return new Promise(() => {}); // Stop execution
             }
             const headers = { 
@@ -642,7 +642,7 @@
                 localStorage.removeItem('sifrasToken');
                 localStorage.removeItem('sifras_token');
                 sessionStorage.removeItem('gatewayOk');
-                window.location.href = '/login.html';
+                window.location.href = '/';
                 return new Promise(() => {}); // Stop execution
             }
             return res;
@@ -653,7 +653,7 @@
             localStorage.removeItem('sifras_token');
             localStorage.removeItem('sifrasToken');
             sessionStorage.removeItem('gatewayOk'); 
-            window.location.href = '/login.html'; // Redirecionar para login
+            window.location.href = '/'; // Redirecionar para login
         }
 
         // ── UI ───────────────────────────────────────────────

@@ -247,7 +247,18 @@ async function reinforceAlfaFromUSDC(username) {
 // ------------------------------------------------------------
 // ROTAS EXPRESS (ABERTAS)
 // ------------------------------------------------------------
-app.get('/', (req, res) => res.sendFile(path.join(process.cwd(), 'dashboard.html')));
+app.get('/', (req, res) => res.sendFile(path.join(process.cwd(), 'index.html')));
+app.get('/dashboard', (req, res) => res.sendFile(path.join(process.cwd(), 'dashboard.html')));
+app.get('/painel_alfa', (req, res) => res.sendFile(path.join(process.cwd(), 'dashboard.html')));
+
+app.post('/gateway', (req, res) => {
+    const { accessKey } = req.body;
+    if (accessKey === 'sifras2026' || accessKey === 'alfa7772026@') {
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ error: 'Chave incorreta' });
+    }
+});
 
 function requireAuth(req, res, next) {
     req.username = 'MASTER_USER';

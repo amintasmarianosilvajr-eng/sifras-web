@@ -85,6 +85,8 @@ async function fetchExchangeInfo() {
         const res = await axios.get('https://api.binance.com/api/v3/exchangeInfo');
         res.data.symbols.forEach(s => {
             const lot = s.filters.find(f => f.filterType === 'LOT_SIZE');
+            const notional = s.filters.find(f => f.filterType === 'NOTIONAL' || f.filterType === 'MIN_NOTIONAL' || f.filterType === 'QUOTE_ORDER_QTY_MARKET_ALLOWED');
+            
             const isMonitoring = s.permissions?.includes('LEVERAGED') === false && s.tags?.includes('monitoring');
             const isFanToken = ['PSG','BAR','ACM','CITY','ASR','LAZIO','PORTO','SANTOS','ALPINE','OG','JUV'].some(t => s.symbol.startsWith(t));
             const isDelisting = s.status !== 'TRADING' || s.tags?.includes('delisting');
@@ -93,7 +95,8 @@ async function fetchExchangeInfo() {
                 const stepSize = parseFloat(lot.stepSize);
                 symbolRules[s.symbol] = {
                     stepSize: stepSize,
-                    precision: Math.log10(1 / stepSize),
+                    precision: Math.max(0, Math.round(Math.log10(1 / stepSize))),
+                    minNotional: notional ? parseFloat(notional.minNotional || notional.notional || 10) : 10,
                     blacklisted: isMonitoring || isFanToken || isDelisting
                 };
             }
@@ -107,24 +110,44 @@ fetchExchangeInfo();
 
 function startBinanceWS() {
     if (binanceWS) binanceWS.terminate();
-    binanceWS = new WebSocket('wss://stream.binance.com:9443/ws/!miniTicker@arr');
+    // !ticker@arr fornece volume e variação 24h em tempo real
+    binanceWS = new WebSocket('wss://stream.binance.com:9443/ws/!ticker@arr');
 
     binanceWS.on('message', (data) => {
         const tickers = JSON.parse(data);
         const now = Date.now();
         
+        // 1. Atualiza Rank Global Interno para Gatilhos (Performance: Filtro Rápido)
+        const usdtValid = tickers
+            .filter(t => t.s.endsWith('USDT'))
+            .map(t => ({
+                symbol: t.s,
+                price: parseFloat(t.c),
+                change: parseFloat(t.P),
+                volume: parseFloat(t.q) // Quote volume (USDT)
+            }))
+            .filter(t => t.volume >= 30000000 && !symbolRules[t.symbol]?.blacklisted) // Volume > 30M e sem Monitoring/Fans
+            .sort((a,b) => b.change - a.change);
+        
+        globalMarket.top10 = usdtValid.slice(0, 50); // Mantemos até o 50 para garantir margem
+        
+        // 2. Processa Gatilhos Individuais
         tickers.forEach(t => {
             const symbol = t.s;
             const price = parseFloat(t.c);
             
-            if (!tickerHistory[symbol]) tickerHistory[symbol] = [];
-            tickerHistory[symbol].push({ t: now, p: price });
-            
-            // Limpa histórico antigo (> 16s)
-            tickerHistory[symbol] = tickerHistory[symbol].filter(h => now - h.t <= 16000);
-            
-            // Lógica de Gatilho para Usuários Ativos no modo OPERACIONAL
-            checkTriggers(symbol, price, now);
+            // Somente moedas no Top 50 interessam ao motor
+            if (globalMarket.top10.some(c => c.symbol === symbol)) {
+                if (!tickerHistory[symbol]) tickerHistory[symbol] = [];
+                tickerHistory[symbol].push({ t: now, p: price });
+                
+                // Cleanup apenas se necessário (intervalado ou por tamanho)
+                if (tickerHistory[symbol].length > 40) {
+                    tickerHistory[symbol] = tickerHistory[symbol].filter(h => now - h.t <= 20000);
+                }
+                
+                checkTriggers(symbol, price, now);
+            }
         });
     });
 
@@ -188,27 +211,9 @@ startBinanceWS();
 async function startMarketLoop() {
     try {
         const t1 = Date.now();
-        const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr', { timeout: 3000 });
+        // Apenas ping de latência e monitoramento de saúde, o ranking agora é WS real-time
+        await axios.get('https://api.binance.com/api/v3/ping', { timeout: 2000 });
         globalMarket.lastLatency = Date.now() - t1;
-
-        const allTickers = res.data;
-        
-        // 1. Ranking USDT (ALFA USDT)
-        const usdtTickers = allTickers.filter(t => t.symbol.endsWith('USDT'))
-            .map(t => ({ symbol: t.symbol, change: parseFloat(t.priceChangePercent), price: parseFloat(t.lastPrice) }))
-            .sort((a,b) => b.change - a.change);
-        globalMarket.top10 = usdtTickers.slice(0, 10);
-
-        // 2. Ranking USDC (ALFA USDC)
-        const usdcTickers = allTickers.filter(t => t.symbol.endsWith('USDC'))
-            .map(t => ({ symbol: t.symbol, change: parseFloat(t.priceChangePercent), price: parseFloat(t.lastPrice) }))
-            .sort((a,b) => b.change - a.change);
-        globalMarket.top30USDC = usdcTickers.slice(0, 30);
-
-        // 3. Simulação de Jumps (Gatilhos)
-        for (const coin of usdcTickers.slice(0, 30)) {
-            globalMarket.coinJumps20s[coin.symbol] = (Math.random() * 0.4); // Mock para teste ou integrar com histórico
-        }
 
         // Executar Scanners
         for (const [username, state] of userStates.entries()) {
@@ -217,8 +222,8 @@ async function startMarketLoop() {
                 else await runFluxoAlfaScanner(username);
             }
         }
-    } catch (e) { console.error("[MARKET ERROR]:", e.message); }
-    setTimeout(startMarketLoop, 1500);
+    } catch (e) { console.error("[MARKET SYNC]:", e.message); }
+    setTimeout(startMarketLoop, 2000);
 }
 startMarketLoop();
 
@@ -360,10 +365,16 @@ async function executeRealSell(username, symbol, reason) {
             if (rules) {
                 // Cálculo ultra-preciso de Lot Size (Step Size)
                 sellQty = Math.floor(rawBalance / rules.stepSize + 0.00000001) * rules.stepSize;
-                const finalQty = parseFloat(sellQty.toFixed(rules.precision)); // Força a precisão correta da moeda
+                const finalQty = parseFloat(sellQty.toFixed(rules.precision)); 
                 
-                console.log(`[SELL DEBUG] ${symbol} | Free: ${rawBalance} | RulesStep: ${rules.stepSize} | Precision: ${rules.precision} | Final: ${finalQty}`);
-                addLog(username, `📉 Ajuste Venda: ${rawBalance} -> ${finalQty} ${asset}`, 'info');
+                // Validação de MIN_NOTIONAL antes de tentar
+                const currentPrice = globalMarket.top10.find(t => t.symbol === symbol)?.price || pos?.buyPrice || 0;
+                if (finalQty * currentPrice < rules.minNotional) {
+                    addLog(username, `⚠️ Notional Insuficiente para ${symbol} ($${(finalQty * currentPrice).toFixed(2)} < $${rules.minNotional}). Removendo resíduo.`, 'info');
+                    state.activePositions = state.activePositions.filter(p => p.symbol !== symbol);
+                    return false;
+                }
+
                 sellQty = finalQty;
             } else {
                 sellQty = rawBalance;
@@ -372,46 +383,46 @@ async function executeRealSell(username, symbol, reason) {
     }
 
     if (sellQty <= 0) {
-        addLog(username, `❌ Erro: Saldo de ${asset} insuficiente para venda. Removendo posição.`, 'error');
+        addLog(username, `❌ Erro: Saldo de ${asset} insuficiente.`, 'error');
         state.activePositions = state.activePositions.filter(p => p.symbol !== symbol);
         return false;
     }
 
-    console.log(`[SELL] Enviando ordem MARKET SELL ${symbol} | Qty: ${sellQty}`);
+    const qtyStr = sellQty.toString().includes('e') ? sellQty.toFixed(8) : sellQty.toString();
+    console.log(`[SELL] ${symbol} | Qty: ${qtyStr}`);
 
     let res = await binanceRequest(username, '/api/v3/order', 'POST', { 
-        symbol, 
-        side: 'SELL', 
-        type: 'MARKET', 
-        quantity: sellQty.toString().includes('e') ? sellQty.toFixed(8) : sellQty.toString() 
+        symbol, side: 'SELL', type: 'MARKET', quantity: qtyStr 
     });
 
-    // Se falhar por insuficiência de saldo, tenta uma "Venda de Segurança" (99.7% do saldo)
-    if (res.error && res.msg?.toLowerCase().includes('insufficient balance')) {
-        addLog(username, `⚠️ Saldo Impreciso em ${symbol}. Tentando Venda de Segurança (99.7%)...`, 'error');
+    // TRATATIVA DE ERROS BINANCE (INSIGHT REAL)
+    if (res.error) {
+        const msg = res.msg?.toLowerCase() || '';
         
-        // Re-consulta o saldo atualizado e aplica 99.7%
-        const lastCheck = await binanceRequest(username, '/api/v3/account');
-        if (!lastCheck.error) {
-            const b = lastCheck.balances.find(bal => bal.asset === asset);
+        // 1. Saldo Insuficiente (Race condition or Fee impact)
+        if (msg.includes('insufficient balance')) {
+            addLog(username, `⚠️ Ajustando saldo real (99.7%) em ${symbol}...`, 'info');
+            const sync = await binanceRequest(username, '/api/v3/account');
+            const b = sync.balances?.find(bal => bal.asset === asset);
             if (b) {
                 const freshBal = parseFloat(b.free);
                 const rules = symbolRules[symbol];
-                let safeQty = freshBal * 0.997; // Margem de segurança para garantir a execução
+                let safeQty = freshBal * 0.997; 
                 if (rules) {
                     safeQty = Math.floor(safeQty / rules.stepSize + 0.00000001) * rules.stepSize;
                     sellQty = parseFloat(safeQty.toFixed(rules.precision));
-                } else {
-                    sellQty = parseFloat(safeQty.toFixed(8));
                 }
-                
                 res = await binanceRequest(username, '/api/v3/order', 'POST', { 
-                    symbol, 
-                    side: 'SELL', 
-                    type: 'MARKET', 
+                    symbol, side: 'SELL', type: 'MARKET', 
                     quantity: sellQty.toString().includes('e') ? sellQty.toFixed(8) : sellQty.toString() 
                 });
             }
+        } 
+        // 2. Filtros de Lote/Mínimos
+        else if (msg.includes('filter failure: lot_size') || msg.includes('min_notional')) {
+            addLog(username, `❌ Erro de Filtro Binance (${symbol}): ${res.msg}`, 'error');
+            state.activePositions = state.activePositions.filter(p => p.symbol !== symbol);
+            return false;
         }
     }
 
@@ -486,7 +497,7 @@ app.get('/status', requireAuth, (req, res) => {
     let username = req.username;
     if (req.headers['x-mode'] === 'ALFA_USDC') username += '_ALFA_USDC';
     const state = loadUserState(username);
-    res.json({ ...state, globalLatency: globalMarket.lastLatency });
+    res.json({ ...state, globalLatency: globalMarket.lastLatency, top10: globalMarket.top10 });
 });
 
 app.post('/start', requireAuth, async (req, res) => {

@@ -270,26 +270,21 @@
                         return `<p class="${col}">[${l.time}] ${l.msg}</p>`;
                     }).join('');
 
+                    // Ticker Dynamics (Usando o Ranking Oficial do Bot via Backend)
+                    if (state.top10 && state.top10.length) {
+                        const topSubset = state.top10.slice(0, 10);
+                        document.getElementById('tickerMove').innerHTML = [...topSubset, ...topSubset].map((c, i) => `
+                            <div class="ticker-item">
+                                <span class="text-gray-600 font-bold">#${(i % 10 + 1).toString().padStart(2, '0')}</span>
+                                <span class="text-white font-black italic px-2">${c.symbol.replace('USDT','')}</span>
+                                <span class="${parseFloat(c.change) >= 0 ? 'text-[#39FF14]' : 'text-red-500'} font-bold mono">${parseFloat(c.change).toFixed(2)}%</span>
+                                <span class="text-gray-600 px-2">$${parseFloat(c.price).toFixed(4)}</span>
+                            </div>
+                        `).join('');
+                    }
+
                 } catch (e) {}
             }, 2000);
-
-            // Ticker Dynamics
-            setInterval(async () => {
-                const res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
-                const top10 = (await res.json())
-                    .filter(c => c.symbol.endsWith('USDT'))
-                    .sort((a,b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
-                    .slice(0, 10);
-                
-                document.getElementById('tickerMove').innerHTML = [...top10, ...top10].map((c, i) => `
-                    <div class="ticker-item">
-                        <span class="text-gray-600 font-bold">#${(i % 10 + 1).toString().padStart(2, '0')}</span>
-                        <span class="text-white font-black italic px-2">${c.symbol.replace('USDT','')}</span>
-                        <span class="${parseFloat(c.priceChangePercent) >= 0 ? 'text-[#39FF14]' : 'text-red-500'} font-bold mono">${parseFloat(c.priceChangePercent).toFixed(2)}%</span>
-                        <span class="text-gray-600 px-2">$${parseFloat(c.lastPrice).toFixed(4)}</span>
-                    </div>
-                `).join('');
-            }, 5000);
         }
     </script>
 </body>

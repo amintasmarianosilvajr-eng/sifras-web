@@ -167,16 +167,16 @@ async function checkTriggers(symbol, currentPrice, now) {
 
                 const history = tickerHistory[symbol] || [];
                 if (history.length > 5) {
-                    const targetTime = now - 20000; // Intervalo de 20 segundos conforme instrução
+                    const targetTime = now - 15000; // Intervalo de 15 segundos (Nova Instrução)
                     let lp = history[0];
                     for (let i = 1; i < history.length; i++) {
                         if (Math.abs(targetTime - history[i].t) < Math.abs(targetTime - lp.t)) lp = history[i];
                     }
                     const change = ((currentPrice - lp.p) / lp.p) * 100;
 
-                    if (change >= 0.2) {
+                    if (change >= 0.15) { // Gatilho 0.15% (Nova Instrução)
                         const rankPos = globalMarket.top10.findIndex(c => c.symbol === symbol) + 1;
-                        addLog(username, `🔥 Sniper: COMPRA EXECUTADA Rank #${rankPos} -> [${symbol}] +${change.toFixed(2)}% em 20s`, 'success');
+                        addLog(username, `🔥 Sniper: COMPRA EM EXPLOSÃO Rank #${rankPos} -> [${symbol}] +${change.toFixed(2)}% em 15s`, 'success');
                         state.activePositions.push({ symbol, buyPrice: currentPrice, pending: true });
                         await executeRealBuy(username, symbol, currentPrice);
                     }
@@ -184,16 +184,17 @@ async function checkTriggers(symbol, currentPrice, now) {
             }
         }
 
-        // Lógica de Venda Individual: Alvo 1.5% (Margem de Segurança)
+        // Lógica de Venda Individual: Alvo 0.4% (Conforme Nova Instrução)
         const positionIndex = state.activePositions.findIndex(p => p.symbol === symbol && !p.pending);
         if (positionIndex !== -1) {
             const pos = state.activePositions[positionIndex];
-            const target = pos.buyPrice * 1.015; // 1.5% para compensar taxas/latência
+            const target = pos.buyPrice * 1.004; // 0.4% Alvo
             if (currentPrice >= target) {
-                addLog(username, `💰 Sniper: VENDA NO ALVO -> [${symbol}] atingiu +1.50% lucro`, 'sell');
-                await executeRealSell(username, symbol, 'TAKE_PROF_1.5');
+                addLog(username, `🎯 Sniper: VENDA NO ALVO 0.4% -> [${symbol}]`, 'sell');
+                await executeRealSell(username, symbol, 'TAKE_PROF_0.4');
             }
         }
+
 
     }
 }

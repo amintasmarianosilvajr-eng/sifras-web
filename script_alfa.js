@@ -295,7 +295,7 @@ async function executeTrade(coin, isReposition = false) {
     document.getElementById('monitoring-target-price').textContent = `$${tp.toFixed(4)}`;
     document.getElementById('monitoring-current-price').textContent = `$${coin.price.toFixed(4)}`;
 
-    currentTrade = { symbol: symbolShort, buyPrice: coin.price, fullSymbol: coin.symbol, targetPrice: tp };
+    currentTrade = { symbol: symbolShort, buyPrice: coin.price, fullSymbol: coin.symbol, targetPrice: tp, spentUsdt: {} };
 
     const label = isReposition ? `♻️ REPOSIÇÃO #${cycleCount}: ${symbolShort}. Disparando...` : `🔭 ALVO DETECTADO: ${symbolShort}. Disparando chaves...`;
     addLog(label, 'proximity');
@@ -307,7 +307,7 @@ async function executeTrade(coin, isReposition = false) {
         const result = await sendBinanceOrder(id, 'BUY', coin.symbol);
         if (result.ok) {
             successCount++;
-            // Garantir que qty é sempre um número float
+            currentTrade.spentUsdt[id] = result.quoteQty; // Armazena volume gasto
             if (result.executedQty != null) {
                 executedQty = parseFloat(result.executedQty);
                 addLog(`📦 Qty adquirida (Slot #${id}): ${executedQty}`, 'system');
@@ -383,11 +383,12 @@ async function sendBinanceOrder(id, side, symbol, qty = null) {
             // executedQty sempre como float para garantir aritmética correta
             const rawQty = result.executedQty || result.origQty || null;
             const executedQty = rawQty ? parseFloat(rawQty) : null;
+            const quoteQty = result.cummulativeQuoteQty ? parseFloat(result.cummulativeQuoteQty) : 0;
             const label = side === 'BUY'
                 ? `✅ COMPRA CONFIRMADA! ${symbol.replace('USDT', '')} adquirido. Qtd: ${executedQty ?? '?'}`
                 : `✅ USDT ADQUIRIDO! ${symbol.replace('USDT', '')} convertido com sucesso.`;
             addLog(label, 'buy');
-            return { ok: true, executedQty };
+            return { ok: true, executedQty, quoteQty };
         } else {
             const msg = result.msg || 'Erro desconhecido';
             const code = result.code || 'N/A';
@@ -481,15 +482,17 @@ async function buyUsdtAndReposition(pnlValue = 0) {
         if (result.ok) {
             usdtOk = true;
             totalProfitAcc[id] += pnlValue;
+            const profitUsdt = result.quoteQty - (prevCoin.spentUsdt[id] || 0);
             operationHistory[id].push({
                 symbol: prevCoin.symbol,
                 buyPrice: prevCoin.buyPrice,
                 sellPrice: prevCoin.targetPrice,
                 profit: pnlValue,
+                profitUsdt: profitUsdt,
                 timestamp: Date.now(),
                 time: new Date().toLocaleString()
             });
-            addLog(`💰 Saída registrada! PNL: ${pnlValue.toFixed(2)}% | Total Slot #${id}: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
+            addLog(`💰 Saída registrada! PNL: ${pnlValue.toFixed(2)}% ($${profitUsdt.toFixed(2)}) | Total Slot #${id}: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
         }
     }
 
@@ -723,19 +726,21 @@ function updatePnlOverall() {
     const now = Date.now();
     const oneHour = 60 * 60 * 1000;
     let totalPnl1h = 0;
+    let totalUsdt1h = 0;
 
     [1, 2].forEach(id => {
         const history = operationHistory[id] || [];
         history.forEach(op => {
             if (op.timestamp && (now - op.timestamp <= oneHour)) {
                 totalPnl1h += op.profit;
+                totalUsdt1h += (op.profitUsdt || 0);
             }
         });
     });
 
     const el = document.getElementById('pnl-1h');
     if (el) {
-        el.textContent = `${(totalPnl1h >= 0 ? '+' : '')}${totalPnl1h.toFixed(2)}%`;
+        el.textContent = `${(totalPnl1h >= 0 ? '+' : '')}${totalPnl1h.toFixed(2)}% ($${(totalUsdt1h >= 0 ? '+' : '')}${totalUsdt1h.toFixed(2)})`;
         el.style.color = totalPnl1h >= 0 ? 'var(--accent-green)' : 'var(--danger)';
     }
 }

@@ -183,10 +183,15 @@ async function checkTriggers(symbol, currentPrice, now) {
 
                     if (change >= 0.15) { // Gatilho 0.15% (Nova Instrução)
                         const rankPos = globalMarket.top10.findIndex(c => c.symbol === symbol) + 1;
-                        addLog(username, `🔥 Sniper: COMPRA EM EXPLOSÃO Rank #${rankPos} -> [${symbol}] +${change.toFixed(2)}% em 15s`, 'success');
-                        state.activePositions.push({ symbol, buyPrice: currentPrice, pending: true });
+                        addLog(username, `🔥 Sniper: COMPRA EXECUTADA Rank #${rankPos} -> [${symbol}] +${change.toFixed(2)}% em 15s`, 'success');
+                        
+                        const target = currentPrice * 1.004;
+                        addLog(username, `🔍 Audit: Monitorando Venda para ${symbol}. Alvo: $${target.toFixed(6)} (+0.4%)`, 'info');
+                        
+                        state.activePositions.push({ symbol, buyPrice: currentPrice, pending: true, targetPrice: target });
                         await executeRealBuy(username, symbol, currentPrice);
                     }
+
                 }
             }
         }
@@ -214,12 +219,27 @@ startBinanceWS();
 async function startMarketLoop() {
     try {
         const t1 = Date.now();
-        // Apenas ping de latência e monitoramento de saúde, o ranking agora é WS real-time
         await axios.get('https://api.binance.com/api/v3/ping', { timeout: 2000 });
         globalMarket.lastLatency = Date.now() - t1;
 
-        // Executar Scanners
+        // Loop Redundante de Venda (Segurança Alfa)
         for (const [username, state] of userStates.entries()) {
+            if (state.isLoopActive && state.activePositions.length > 0) {
+                for (const pos of state.activePositions) {
+                    if (pos.pending || pos.selling) continue;
+                    
+                    // Busca preço ultra-fresco do cache global
+                    const ticker = globalMarket.top10.find(t => t.symbol === pos.symbol);
+                    if (ticker) {
+                        const target = pos.buyPrice * 1.004;
+                        if (ticker.price >= target) {
+                            pos.selling = true;
+                            addLog(username, `🎯 Sniper RE-CHECK: Alvo 0.4% Alcançado -> [${pos.symbol}] ($${ticker.price} >= $${target.toFixed(6)})`, 'sell');
+                            await executeRealSell(username, pos.symbol, 'REDUNDANT_LOOP_SELL');
+                        }
+                    }
+                }
+            }
             if (state.isLoopActive) {
                 if (state.mode === 'ALFA_USDC') await runAlfaUSDCScanner(username);
                 else await runFluxoAlfaScanner(username);
@@ -229,6 +249,7 @@ async function startMarketLoop() {
     setTimeout(startMarketLoop, 2000);
 }
 startMarketLoop();
+
 
 // ------------------------------------------------------------
 // MOTORES DE VARREDURA

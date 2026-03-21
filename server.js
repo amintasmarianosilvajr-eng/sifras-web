@@ -116,7 +116,7 @@ function startBinanceWS() {
         const tickers = JSON.parse(data);
         const now = Date.now();
         
-        // PAREAMENTO FIEL AO RANKING SPOT BINANCE
+        // PAREAMENTO FIEL AO RANKING SPOT BINANCE (Sincronia com App/Web)
         const usdtValid = tickers
             .filter(t => t.s.endsWith('USDT'))
             .map(t => ({
@@ -125,9 +125,10 @@ function startBinanceWS() {
                 change: parseFloat(t.P),
                 volume: parseFloat(t.q)
             }))
-            .filter(t => t.volume >= 30000000 && !symbolRules[t.symbol]?.blacklisted)
-            .filter(t => !['USDC','FDUSD','TUSD','DAI','EUR','TRY','BRL','PAXG'].some(stable => t.symbol.includes(stable))) // Remove Stable/FIAT
+            .filter(t => t.volume >= 1000000 && !symbolRules[t.symbol]?.blacklisted) // 1M+ Vol para capturar Top Gainers
+            .filter(t => !['USDC','FDUSD','TUSD','DAI','EUR','TRY','BRL','PAXG'].some(stable => t.symbol.includes(stable)))
             .sort((a,b) => b.change - a.change);
+
         
         globalMarket.top10 = usdtValid.slice(0, 50);
         

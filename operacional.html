@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa - Operacional PRO (Estratégia Sniper 2-10)</title>
+    <title>Sifras Alfa - Operacional Sniper PRO</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
             --alert-red: #ff3366;
             --cyber-green: #39FF14;
             --text-main: #e8f0ff;
-            --glass-panel: rgba(10, 15, 25, 0.85);
+            --glass-panel: rgba(10, 15, 25, 0.95);
             --border-glow: rgba(0, 255, 200, 0.2);
         }
         body {
@@ -36,7 +36,7 @@
             background: var(--glass-panel);
             backdrop-filter: blur(24px);
             border: 1px solid var(--border-glow);
-            border-radius: 20px;
+            border-radius: 12px;
             box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
 
@@ -45,29 +45,29 @@
             border-radius: 50%;
             transition: 0.3s;
         }
-        .pulse-active { background: var(--cyber-green); box-shadow: 0 0 15px var(--cyber-green); animation: pulse 1.5s infinite; }
+        .pulse-active { background: var(--cyber-green); box-shadow: 0 0 15px var(--cyber-green); animation: pulse 1s infinite; }
         .pulse-inactive { background: #666; box-shadow: 0 0 5px #333; }
 
         @keyframes pulse {
             0% { transform: scale(0.95); opacity: 0.8; }
-            70% { transform: scale(1.1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 1; }
             100% { transform: scale(0.95); opacity: 0.8; }
         }
 
         .rank-card {
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.2s ease;
             border: 1px solid rgba(255,255,255,0.05);
             position: relative;
             overflow: hidden;
         }
-        .rank-card:hover { transform: translateY(-5px); border-color: var(--cyber-blue); }
-        .rank-card.trigger-enabled { border-color: var(--cyber-blue); background: rgba(0, 255, 200, 0.03); }
+        .rank-card:hover { transform: translateY(-3px); border-color: var(--cyber-blue); }
+        .rank-card.trigger-enabled { border-color: var(--cyber-blue); background: rgba(0, 255, 200, 0.05); }
         
         .trigger-indicator {
             position: absolute; top: 0; right: 0;
-            padding: 2px 8px; font-size: 0.6rem; font-weight: bold;
+            padding: 2px 6px; font-size: 0.55rem; font-weight: bold;
             background: var(--cyber-blue); color: #000;
-            border-bottom-left-radius: 8px;
+            border-bottom-left-radius: 6px;
             text-transform: uppercase;
         }
 
@@ -75,144 +75,140 @@
         .log-container::-webkit-scrollbar-thumb { background: var(--cyber-blue); opacity: 0.3; border-radius: 2px; }
 
         .btn-action {
-            padding: 12px 24px;
-            border-radius: 12px;
+            height: 42px;
+            padding: 0 20px;
+            border-radius: 8px;
             font-weight: bold;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             transition: 0.3s;
             display: flex; align-items: center; gap: 8px;
+            font-size: 0.8rem;
         }
-        .btn-start { background: var(--cyber-blue); color: #000; box-shadow: 0 0 20px rgba(0, 255, 200, 0.3); }
+        .btn-start { background: var(--cyber-blue); color: #000; box-shadow: 0 0 15px rgba(0, 255, 200, 0.2); }
         .btn-stop { background: rgba(255, 51, 102, 0.1); border: 1px solid var(--alert-red); color: var(--alert-red); }
-        .btn-start:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(0, 255, 200, 0.5); }
-        .btn-stop:hover { background: var(--alert-red); color: #fff; }
+        .btn-start:hover { box-shadow: 0 0 25px rgba(0, 255, 200, 0.4); }
+
+        input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            outline: none;
+            transition: 0.2s;
+        }
+        input:focus { border-color: var(--cyber-blue); background: rgba(255, 255, 255, 0.1); }
 
         .active-trade-card {
-            background: rgba(255, 255, 255, 0.03);
-            border-left: 4px solid var(--cyber-green);
-            padding: 12px;
+            background: rgba(0, 255, 200, 0.05);
+            border: 1px solid rgba(0, 255, 200, 0.1);
+            padding: 10px;
             border-radius: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-6 lg:p-8">
 
-    <div class="max-w-7xl mx-auto space-y-6">
+    <div class="max-w-[1600px] mx-auto space-y-6">
         
-        <!-- Header Section -->
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <div class="space-y-1">
-                <h1 class="text-4xl font-bold tracking-tight flex items-center gap-3">
-                    <i data-lucide="zap" class="text-[#00ffc8] w-10 h-10"></i>
-                    Sifras Alfa <span class="text-[#00ffc8]">Operacional PRO</span>
-                </h1>
-                <p class="mono text-gray-500 text-sm flex items-center gap-2">
-                    <span id="statusPulse" class="status-pulse pulse-inactive"></span>
-                    Estratégia Sniper: Ranks [2, 4, 6, 8, 10] | Gatilho: 0.2%/20s | Alvo: 0.4%
-                </p>
+        <!-- API Control Center (Top Bar) -->
+        <div class="glass-card p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-[#00ffc8]/10 p-2 rounded-lg">
+                    <i data-lucide="shield" class="text-[#00ffc8] w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Sifras <span class="text-[#00ffc8]">PRO Sniper</span></h1>
+                    <p class="text-[0.6rem] text-gray-500 uppercase font-bold mono">Operação Spot Binance 1.5% Target</p>
+                </div>
             </div>
-            
-            <div class="flex gap-3">
-                <button id="btnStart" onclick="toggleMotor(true)" class="btn-action btn-start">
-                    <i data-lucide="play"></i> Iniciar Motor
+
+            <div class="flex flex-wrap items-center gap-3">
+                <input type="password" id="inputApiKey" placeholder="API KEY BINANCE" class="w-48 mono">
+                <input type="password" id="inputApiSecret" placeholder="API SECRET BINANCE" class="w-48 mono">
+                <input type="text" id="inputClientName" placeholder="CLIENT NAME" class="w-32 uppercase font-bold">
+                
+                <div class="h-8 w-px bg-white/10 mx-2"></div>
+
+                <button id="btnStart" onclick="saveAndStart()" class="btn-action btn-start">
+                    <i data-lucide="zap" class="w-4 h-4"></i> ATIVAR GATILHO
                 </button>
                 <button id="btnStop" onclick="toggleMotor(false)" class="btn-action btn-stop" style="display:none;">
-                    <i data-lucide="square"></i> Parar Motor
+                    <i data-lucide="power" class="w-4 h-4"></i> DISCONECTAR
                 </button>
-            </div>
-        </header>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            <!-- Main Ranking Panel -->
-            <div class="lg:col-span-2 space-y-4">
-                <div class="glass-card p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-bold mono flex items-center gap-2">
-                            <i data-lucide="bar-chart-3" class="text-[#00ffc8]"></i> 
-                            Ranking Spot Binance (USDT)
-                        </h2>
-                        <span id="updateTimer" class="text-xs text-gray-600 mono uppercase tracking-widest">Sinc: 1s</span>
-                    </div>
-
-                    <div id="rankingGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <!-- Ranks 1 to 10 will be injected here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sidebar Panel: Active Trades & Logs -->
-            <div class="space-y-6">
-                
-                <!-- Active Trades Panel -->
-                <div class="glass-card p-6">
-                    <h2 class="text-lg font-bold mono mb-4 flex items-center gap-2">
-                        <i data-lucide="layers" class="text-[#39FF14]"></i> 
-                        Posições Ativas (<span id="activeCount">0</span>/10)
-                    </h2>
-                    <div id="activeTradesList" class="space-y-3 max-h-[300px] overflow-y-auto pr-2 log-container">
-                        <!-- Active trades injected here -->
-                        <p class="text-gray-600 text-center text-sm py-4 italic">Nenhuma posição aberta</p>
-                    </div>
-                </div>
-
-                <!-- Live Log Panel -->
-                <div class="glass-card p-6 flex flex-col h-[400px]">
-                    <h2 class="text-lg font-bold mono mb-4 flex items-center gap-2">
-                        <i data-lucide="terminal" class="text-gray-400"></i> 
-                        Log de Auditoria
-                    </h2>
-                    <div id="logConsole" class="flex-1 overflow-y-auto space-y-2 text-[0.7rem] mono p-3 bg-black/40 rounded-xl log-container">
-                        <p class="text-gray-700">[SYSTEM] Aguardando conexão...</p>
-                    </div>
-                </div>
-
             </div>
         </div>
 
-    </div>
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            
+            <!-- RANKING SPOT BINANCE -->
+            <div class="xl:col-span-3 space-y-4">
+                <div class="glass-card p-6 min-h-[700px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-3">
+                            <span id="statusPulse" class="status-pulse pulse-inactive"></span>
+                            <h2 class="text-xl font-bold mono uppercase tracking-wider">Ranking Spot Binance Real-Time</h2>
+                        </div>
+                        <div class="flex items-center gap-4 text-[0.6rem] mono text-gray-500 font-bold uppercase">
+                            <span>Vol > 30M USDT</span>
+                            <span>Target: 1.5%</span>
+                            <span id="updateTimer">Sinc: 1s</span>
+                        </div>
+                    </div>
 
-    <!-- API Keys Modal (Overlay) -->
-    <div id="keysModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-md p-8 relative">
-            <h3 class="text-2xl font-bold mb-6 text-center text-[#00ffc8]">Configurar Sniper Alfa</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs uppercase text-gray-500 mb-1 font-bold">Binance API Key</label>
-                    <input type="password" id="inputApiKey" placeholder="..." class="w-full bg-black/50 border border-white/10 p-3 rounded-lg text-sm mono text-white focus:border-[#00ffc8] outline-none">
+                    <div id="rankingGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4">
+                        <!-- Rankings 1-50 injected here -->
+                        <div class="col-span-full h-64 flex items-center justify-center opacity-20">
+                            <p class="mono text-2xl">Aguardando WebSocket...</p>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs uppercase text-gray-500 mb-1 font-bold">Binance API Secret</label>
-                    <input type="password" id="inputApiSecret" placeholder="..." class="w-full bg-black/50 border border-white/10 p-3 rounded-lg text-sm mono text-white focus:border-[#00ffc8] outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs uppercase text-gray-500 mb-1 font-bold">Nome do Operador</label>
-                    <input type="text" id="inputClientName" placeholder="Ex: Master Silva" class="w-full bg-black/50 border border-white/10 p-3 rounded-lg text-sm mono text-white focus:border-[#00ffc8] outline-none">
-                </div>
-                <button onclick="saveAndStart()" class="w-full btn-start p-4 rounded-xl font-bold mt-4 uppercase">Ativar Robô</button>
             </div>
-            <p class="text-[0.6rem] text-center text-gray-600 mt-6 uppercase tracking-widest">As chaves são armazenadas localmente no seu navegador para segurança.</p>
+
+            <!-- RIGHT SIDEBAR (ACTIVE & LOGS) -->
+            <div class="space-y-6">
+                
+                <!-- POSITIONS -->
+                <div class="glass-card p-6 flex flex-col max-h-[400px]">
+                    <h2 class="text-sm font-bold mono mb-4 uppercase flex items-center gap-2 text-[#39FF14]">
+                        <i data-lucide="circle-dot" class="w-4 h-4"></i> Posições Sniper (<span id="activeCount">0</span>/10)
+                    </h2>
+                    <div id="activeTradesList" class="flex-1 overflow-y-auto space-y-2 pr-2 log-container">
+                        <p class="text-gray-600 text-center text-[0.7rem] py-8 italic uppercase">Nenhum alvo em radar</p>
+                    </div>
+                </div>
+
+                <!-- AUDIT LOG -->
+                <div class="glass-card p-6 flex flex-col h-[400px]">
+                    <h2 class="text-sm font-bold mono mb-4 uppercase flex items-center gap-2 text-gray-400">
+                        <i data-lucide="activity" class="w-4 h-4"></i> Auditoria Real (Spot Ranking)
+                    </h2>
+                    <div id="logConsole" class="flex-1 overflow-y-auto space-y-1 text-[0.65rem] mono p-3 bg-black/40 rounded-lg log-container border border-white/5">
+                        <p class="text-gray-700">Iniciando sistema operacional...</p>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 
     <script>
         lucide.createIcons();
         
-        let isRunning = false;
         const targetRanks = [2, 4, 6, 8, 10];
         
-        // Auto-load keys if existing
         window.onload = () => {
             const k = localStorage.getItem('alfa_k');
             const s = localStorage.getItem('alfa_s');
-            if(k && s) {
-                document.getElementById('inputApiKey').value = k;
-                document.getElementById('inputApiSecret').value = s;
-                document.getElementById('inputClientName').value = localStorage.getItem('alfa_n') || '';
-                // No auto-start, wait for user click
-            }
+            const n = localStorage.getItem('alfa_n');
+            if(k) document.getElementById('inputApiKey').value = k;
+            if(s) document.getElementById('inputApiSecret').value = s;
+            if(n) document.getElementById('inputClientName').value = n;
+            
             setInterval(updateData, 1000);
         };
 
@@ -221,131 +217,109 @@
                 const res = await fetch('/status');
                 if(!res.ok) return;
                 const data = await res.json();
-                
                 updateUI(data);
             } catch(e) {}
         }
 
         function updateUI(data) {
-            // 1. Status Pulse & Buttons
             const pulse = document.getElementById('statusPulse');
             const btnS = document.getElementById('btnStart');
             const btnT = document.getElementById('btnStop');
-            const modal = document.getElementById('keysModal');
 
             if (data.isLoopActive) {
                 pulse.className = 'status-pulse pulse-active';
                 btnS.style.display = 'none';
                 btnT.style.display = 'flex';
-                modal.style.display = 'none';
-                isRunning = true;
             } else {
                 pulse.className = 'status-pulse pulse-inactive';
                 btnS.style.display = 'flex';
                 btnT.style.display = 'none';
-                isRunning = false;
             }
 
-            // 2. Ranking Grid
+            // Ranking
             const grid = document.getElementById('rankingGrid');
-            const top10 = data.top10 || [];
-            
-            // Only update if we have data
-            if (top10.length > 0) {
-                grid.innerHTML = top10.slice(0, 10).map((coin, index) => {
+            const top = data.top10 || [];
+            if (top.length > 0) {
+                grid.innerHTML = top.slice(0, 50).map((coin, index) => {
                     const rank = index + 1;
                     const isTarget = targetRanks.includes(rank);
-                    const isBuying = isTarget && data.isLoopActive;
-                    
                     return `
-                        <div class="rank-card glass-card p-4 flex flex-col gap-2 ${isTarget ? 'trigger-enabled' : ''}">
+                        <div class="rank-card glass-card p-4 flex flex-col gap-1 ${isTarget ? 'trigger-enabled' : ''}">
                             ${isTarget ? '<div class="trigger-indicator">Sniper Habilitado</div>' : ''}
-                            <div class="flex justify-between items-center">
-                                <span class="mono text-2xl font-bold ${rank === 1 ? 'text-[#00ffc8]' : 'text-gray-400'}">#${rank < 10 ? '0' : ''}${rank}</span>
-                                <span class="font-bold text-white tracking-widest text-lg">${coin.symbol.replace('USDT', '')}<span class="text-xs opacity-30 ml-1">USDT</span></span>
+                            <div class="flex justify-between items-start">
+                                <span class="mono text-xl font-bold ${rank <= 3 ? 'text-[#00ffc8]' : 'text-gray-600'}">#${rank}</span>
+                                <span class="font-bold text-white text-md tracking-tighter">${coin.symbol.replace('USDT', '/USDT')}</span>
                             </div>
-                            <div class="flex justify-between items-end mt-2">
+                            <div class="flex justify-between items-end mt-1">
                                 <div class="flex flex-col">
-                                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold">Preço</span>
-                                    <span class="mono text-white text-sm">$${parseFloat(coin.price).toFixed(4)}</span>
+                                    <span class="mono text-[0.7rem] text-gray-500">$${parseFloat(coin.price).toFixed(coin.price < 1 ? 6 : 4)}</span>
+                                    <span class="text-[0.5rem] opacity-20 mono">VOL: $${(coin.volume/1000000).toFixed(1)}M</span>
                                 </div>
-                                <div class="text-right">
-                                    <span class="text-[0.61rem] text-gray-500 uppercase font-bold block">Var 24h</span>
-                                    <span class="mono font-bold text-lg ${coin.change >=0 ? 'text-[#39FF14]' : 'text-[#ff3366]'}">${coin.change >= 0 ? '+' : ''}${coin.change.toFixed(2)}%</span>
-                                </div>
+                                <span class="mono font-bold text-sm ${coin.change >= 0 ? 'text-[#39FF14]' : 'text-[#ff3366]'}">${coin.change >= 0 ? '+' : ''}${coin.change.toFixed(2)}%</span>
                             </div>
                         </div>
                     `;
                 }).join('');
+
             }
 
-            // 3. Active Positions
+            // Active Trades
             const activeList = document.getElementById('activeTradesList');
             const pos = data.activePositions || [];
             document.getElementById('activeCount').innerText = pos.length;
-            
             if (pos.length > 0) {
                 activeList.innerHTML = pos.map(p => `
-                    <div class="active-trade-card flex justify-between items-center">
+                    <div class="active-trade-card flex justify-between items-center border-l-2 border-[#39FF14]">
                         <div class="flex flex-col">
-                            <span class="font-bold text-white">${p.symbol}</span>
-                            <span class="text-[0.65rem] text-gray-500 mono">Compra: $${p.buyPrice.toFixed(4)}</span>
+                            <span class="font-bold text-sm text-white">${p.symbol}</span>
+                            <span class="text-[0.6rem] text-gray-500 mono">ENTRADA: $${p.buyPrice.toFixed(4)}</span>
                         </div>
-                        <div class="text-right flex flex-col">
-                            <span class="text-[0.65rem] uppercase font-bold text-[#39FF14]">Alvo: $${p.targetPrice.toFixed(4)}</span>
-                            <span class="text-[0.6rem] text-gray-600 uppercase">PNL: Aguardando data...</span>
+                        <div class="text-right">
+                            <span class="text-[0.7rem] font-bold text-[#00ffc8] block mono">+1.50%</span>
+                            <span class="text-[0.55rem] text-gray-600 mono uppercase tracking-tighter">Target: $${p.targetPrice.toFixed(4)}</span>
                         </div>
                     </div>
                 `).join('');
             } else if (data.isLoopActive) {
-                activeList.innerHTML = '<p class="text-gray-600 text-center text-sm py-4 italic">Buscando gatilho nos ranks pares...</p>';
+                activeList.innerHTML = '<p class="text-gray-600 text-center text-[0.6rem] py-8 italic uppercase animate-pulse">Monitorando Ranks Pares...</p>';
             }
 
-            // 4. Logs
+            // Logs
             if (data.logs && data.logs.length > 0) {
                 const logEl = document.getElementById('logConsole');
-                logEl.innerHTML = data.logs.map(l => {
-                    let col = 'text-gray-400';
-                    if (l.type === 'success' || l.type === 'buy') col = 'text-[#39FF14] font-bold';
-                    if (l.type === 'sell') col = 'text-[#00b4ff] font-bold';
-                    if (l.type === 'error') col = 'text-red-500';
-                    return `<p class="${col}">[${l.time}] ${l.msg}</p>`;
+                logEl.innerHTML = data.logs.slice(-50).map(l => {
+                    let col = 'text-gray-500';
+                    if (l.type === 'success' || l.type === 'buy') col = 'text-white border-l border-white/20 pl-2 bg-white/5';
+                    if (l.type === 'sell') col = 'text-[#00ffc8] font-bold bg-[#00ffc8]/5 pl-2';
+                    return `<div class="mb-1 py-1 ${col}">[${l.time}] ${l.msg}</div>`;
                 }).join('');
+                logEl.scrollTop = logEl.scrollHeight;
             }
         }
 
         function saveAndStart() {
-            const apiKey = document.getElementById('inputApiKey').value;
-            const apiSecret = document.getElementById('inputApiSecret').value;
-            const name = document.getElementById('inputClientName').value;
-            
-            if(!apiKey || !apiSecret) return alert("Insira as chaves!");
-            
-            localStorage.setItem('alfa_k', apiKey);
-            localStorage.setItem('alfa_s', apiSecret);
-            localStorage.setItem('alfa_n', name);
-            
+            const k = document.getElementById('inputApiKey').value;
+            const s = document.getElementById('inputApiSecret').value;
+            const n = document.getElementById('inputClientName').value;
+            if(!k || !s) return alert("API Key/Secret Obrigatórios!");
+            localStorage.setItem('alfa_k', k);
+            localStorage.setItem('alfa_s', s);
+            localStorage.setItem('alfa_n', n);
             toggleMotor(true);
         }
 
         async function toggleMotor(start) {
-            const url = start ? '/start' : '/stop';
             const k = localStorage.getItem('alfa_k');
             const s = localStorage.getItem('alfa_s');
             const n = localStorage.getItem('alfa_n');
-
             try {
-                const res = await fetch(url, {
+                const res = await fetch(start ? '/start' : '/stop', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ apiKey: k, apiSecret: s, clientName: n, mode: 'ALFA_USDT' })
                 });
-                if(res.ok) {
-                    if(!start) document.getElementById('keysModal').style.display = 'flex';
-                }
-            } catch(e) {
-                alert("Erro de conexão com o servidor!");
-            }
+                if(res.ok) isRunning = start;
+            } catch(e) { alert("ERRO DE CONEXÃO!"); }
         }
     </script>
 </body>

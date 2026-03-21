@@ -12,8 +12,8 @@ const CONFIG = {
     GROWTH_THRESHOLD: 0.15,      // Novo gatilho: 0.15%
     GROWTH_WINDOW: 20000,        // Janela de 20 segundos
     COOLDOWN_OPERATIONS: 5,
-    TARGET_PROFIT: 0.1,         // Acelerado para teste
-    STOP_LOSS: 1.0,             // Rede de segurança
+    TARGET_PROFIT: 0.4,         // Ajuste Test Drive (1h)
+    STOP_LOSS: 4.0,             // Proteção alargada
     BLACKLIST: [
         'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG',
         'JASMY', 'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF'
@@ -408,7 +408,7 @@ function updateActiveTradeMonitor(currentPrice) {
     if (!currentTrade) return;
 
     const pnl = ((currentPrice - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
-    const progress = Math.max(0, Math.min(100, ((pnl - (-1.0)) / (CONFIG.TARGET_PROFIT + 1.0)) * 100));
+    const progress = Math.max(0, Math.min(100, ((pnl - (-CONFIG.STOP_LOSS)) / (CONFIG.TARGET_PROFIT + CONFIG.STOP_LOSS)) * 100));
 
     // Atualização forçada dos elementos da interface
     const elPl = document.getElementById('monitoring-pl');

@@ -12,7 +12,8 @@ const CONFIG = {
     GROWTH_THRESHOLD: 0.15,      // Novo gatilho: 0.15%
     GROWTH_WINDOW: 20000,        // Janela de 20 segundos
     COOLDOWN_OPERATIONS: 5,
-    TARGET_PROFIT: 0.9,
+    TARGET_PROFIT: 0.1,         // Acelerado para teste
+    STOP_LOSS: 1.0,             // Rede de segurança
     BLACKLIST: [
         'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG',
         'JASMY', 'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF'
@@ -425,6 +426,10 @@ function updateActiveTradeMonitor(currentPrice) {
         closingTrade = true; // travar para não disparar duas vezes
         addLog(`🎯 META ALCANÇADA: +${pnl.toFixed(2)}% — Comprando USDT e reposicionando!`, 'sell');
         buyUsdtAndReposition();
+    } else if (pnl <= -CONFIG.STOP_LOSS && !closingTrade) {
+        closingTrade = true;
+        addLog(`🛑 STOP LOSS: ${pnl.toFixed(2)}% — Protegendo capital e mudando de alvo!`, 'error');
+        buyUsdtAndReposition();
     }
 }
 
@@ -438,7 +443,7 @@ async function buyUsdtAndReposition() {
     currentTrade = null;
     document.getElementById('active-trade-card').classList.add('hidden');
 
-    addLog(`💹 META ATINGIDA! Vendendo ${prevCoin.symbol} para obter USDT...`, 'sell');
+    addLog(`💹 SAÍDA OPERACIONAL! Vendendo ${prevCoin.symbol} para obter USDT...`, 'sell');
 
     // 1. Determinar quantidade a vender (Fiel ao LOT_SIZE)
     const FEE_SAFETY = 0.998;

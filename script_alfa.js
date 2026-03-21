@@ -49,9 +49,35 @@ document.addEventListener('DOMContentLoaded', () => {
     addLog("Bypassing security filters... Connected.", 'system');
 
     loadSavedData();
+    syncWithCloud();
     startMonitoring();
     setupPDF();
 });
+
+async function syncWithCloud() {
+    try {
+        const res = await fetch('/alfa/active-trades');
+        const active = await res.json();
+        const slots = Object.keys(active);
+        if (slots.length > 0) {
+            const trade = active[slots[0]];
+            if (!trade) return;
+            currentTrade = {
+                symbol: trade.symbol,
+                fullSymbol: trade.fullSymbol,
+                buyPrice: trade.buyPrice,
+                targetPrice: trade.buyPrice * (1 + (trade.targetProfit / 100)),
+                qty: trade.qty,
+                spentUsdt: {}
+            };
+            document.getElementById('active-trade-card').classList.remove('hidden');
+            document.getElementById('monitoring-symbol').textContent = trade.symbol;
+            document.getElementById('monitoring-buy-price').textContent = `$${trade.buyPrice.toFixed(4)}`;
+            document.getElementById('monitoring-target-price').textContent = `$${currentTrade.targetPrice.toFixed(4)}`;
+            addLog(`☁️ SINCRONIZADO: Operação recuperada do servidor (${trade.symbol})`, 'system');
+        }
+    } catch (e) { }
+}
 
 function loadSavedData() {
     [1, 2].forEach(id => {
@@ -337,6 +363,28 @@ async function executeTrade(coin, isReposition = false) {
         } else {
             addLog(`⚠️ Qty não retornada pela API. Usará saldo real na venda.`, 'system');
         }
+
+        // REGISTRO EM NUVEM (PARA 24H): Envia para o servidor monitorar em background
+        try {
+            const monitoringId = monitoringSlots[0];
+            const cloudData = {
+                symbol: symbolShort,
+                fullSymbol: coin.symbol,
+                buyPrice: coin.price,
+                qty: currentTrade.qty,
+                targetProfit: CONFIG.TARGET_PROFIT,
+                stopLoss: CONFIG.STOP_LOSS,
+                apiKey: activeSlots[monitoringId].key,
+                apiSecret: activeSlots[monitoringId].secret
+            };
+            fetch('/alfa/register-trade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slotId: monitoringId, tradeData: cloudData })
+            });
+            addLog(`☁️ BACKUP EM NUVEM ATIVO: Servidor vigiando operação 24h.`, 'system');
+        } catch (e) { }
+
         addLog(`🎯 POSICIONADO em ${symbolShort} | Op ${cycleCount + 1}/${MAX_CYCLE_OPS}. Monitorando alvo...`, 'buy');
     } else {
         addLog(`❌ PAINEL: Ordem Rejeitada. Confira 'Spot Trading' na Binance.`, 'error');
@@ -459,6 +507,15 @@ async function buyUsdtAndReposition(pnlValue = 0) {
     document.getElementById('active-trade-card').classList.add('hidden');
 
     addLog(`💹 SAÍDA OPERACIONAL! Vendendo ${prevCoin.symbol} para obter USDT...`, 'sell');
+    
+    // Limpar sinal da nuvem (Servidor)
+    try {
+        fetch('/alfa/clear-trade', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slotId: monitoringSlots[0] })
+        });
+    } catch (e) { }
 
     // 1. Determinar quantidade a vender (Fiel ao LOT_SIZE)
     const FEE_SAFETY = 0.998;

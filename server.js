@@ -9,28 +9,123 @@ const path = require('path');
 const app = express();
 const serverStartTime = Date.now();
 let lastGlobalLatency = 0;
+const DATA_DIR = path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+
+let activeTrades = {}; // { slotId: tradeData }
+const TRADES_FILE = path.join(DATA_DIR, 'active_trades.json');
+
+// Carregar trades salvos do disco
+if (fs.existsSync(TRADES_FILE)) {
+    try {
+        activeTrades = JSON.parse(fs.readFileSync(TRADES_FILE));
+    } catch (e) {
+        console.error("Falha ao carregar trades salvos.");
+    }
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// Forçar limpeza de cache
-app.use((req, res, next) => {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-    next();
+// ------------------------------------------------------------
+// ALFA: PERSISTÊNCIA E MONITORAMENTO EM NUVEM (SERVER-SIDE)
+// ------------------------------------------------------------
+
+app.post('/alfa/register-trade', (req, res) => {
+    const { slotId, tradeData } = req.body;
+    if (!slotId || !tradeData) return res.status(400).json({ error: 'Dados incompletos' });
+    
+    activeTrades[slotId] = tradeData;
+    fs.writeFileSync(TRADES_FILE, JSON.stringify(activeTrades, null, 2));
+    console.log(`[ALFA CLOUD] Trade registrado Slot #${slotId}: ${tradeData.symbol}`);
+    res.json({ ok: true });
 });
 
-// Caminhos compatíveis com PKG (Busca arquivos na mesma pasta do EXE)
-app.use(express.static(process.cwd()));
+app.get('/alfa/active-trades', (req, res) => {
+    res.json(activeTrades);
+});
+
+app.post('/alfa/clear-trade', (req, res) => {
+    const { slotId } = req.body;
+    if (activeTrades[slotId]) {
+        console.log(`[ALFA CLOUD] Trade removido Slot #${slotId}`);
+        delete activeTrades[slotId];
+        fs.writeFileSync(TRADES_FILE, JSON.stringify(activeTrades, null, 2));
+    }
+    res.json({ ok: true });
+});
+
+async function startMonitoringLoop() {
+    console.log("[ALFA CLOUD] Iniciando Vigilante 24h...");
+    while (true) {
+        try {
+            const slots = Object.keys(activeTrades);
+            if (slots.length > 0) {
+                for (const slotId of slots) {
+                    const trade = activeTrades[slotId];
+                    if (!trade) continue;
+
+                    // 1. Pegar preço atual
+                    const priceRes = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${trade.fullSymbol}`);
+                    const currentPrice = parseFloat(priceRes.data.price);
+                    const pnl = ((currentPrice - trade.buyPrice) / trade.buyPrice) * 100;
+
+                    // 2. Checar alvos
+                    if (pnl >= trade.targetProfit || pnl <= -trade.stopLoss) {
+                        const reason = pnl >= trade.targetProfit ? 'TAKE PROFIT' : 'STOP LOSS';
+                        console.log(`[ALFA CLOUD] EXECUTANDO ${reason} p/ ${trade.symbol} (${pnl.toFixed(2)}%) slot #${slotId}`);
+                        
+                        await executeServerSell(slotId, trade, currentPrice);
+                        delete activeTrades[slotId];
+                        fs.writeFileSync(TRADES_FILE, JSON.stringify(activeTrades, null, 2));
+                    }
+                }
+            }
+        } catch (e) {
+            // Silêncio em caso de erro de rede temporário
+        }
+        await new Promise(r => setTimeout(r, 4000)); // Checar a cada 4 segundos
+    }
+}
+
+async function executeServerSell(slotId, trade, currentPrice) {
+    try {
+        const timestamp = Date.now();
+        const recvWindow = 60000;
+        const params = new URLSearchParams({
+            symbol: trade.fullSymbol,
+            side: 'SELL',
+            type: 'MARKET',
+            quantity: trade.qty,
+            timestamp: timestamp,
+            recvWindow: recvWindow
+        });
+
+        const signature = crypto.createHmac('sha256', trade.apiSecret).update(params.toString()).digest('hex');
+        params.append('signature', signature);
+
+        const response = await axios.post(`https://api.binance.com/api/v3/order`, params.toString(), {
+            headers: {
+                'X-MBX-APIKEY': trade.apiKey,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
+
+        console.log(`[ALFA CLOUD] VENDA EXECUTADA Slot #${slotId}:`, response.data.orderId);
+    } catch (e) {
+        console.error(`[ALFA CLOUD] FALHA NA VENDA Slot #${slotId}:`, e.response ? e.response.data : e.message);
+    }
+}
+
+startMonitoringLoop();
 
 // GLOBAL ERROR HANDLERS
 process.on('uncaughtException', (err) => console.error('[CRITICAL] Uncaught Exception:', err.message));
 process.on('unhandledRejection', (reason, promise) => console.error('[CRITICAL] Unhandled Rejection:', reason));
 
 // CONFIGURAÇÃO E PERSISTÊNCIA
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
+// (DATA_DIR já definido no topo)
 const userStates = new Map();
 
 function createInitialState(username) {

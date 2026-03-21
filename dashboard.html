@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa 1.0 — Painel Operacional</title>
+    <title>ALFA USDC MASTER — Painel Operacional</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap"
         rel="stylesheet">
@@ -17,7 +17,8 @@
             --cyber-blue: #ccff00;
             --cyber-gold: #f3ba2f;
             --alert-red: #ff3366;
-            --cyber-green: #ccff00;
+            --cyber-green: #39FF14; /* VERDE NEON */
+            --neon-orange: #FF5F1F; /* LARANJA NEON */
             --text-main: #ffffff;
             --glass-panel: rgba(18, 18, 18, 0.95);
             --border-glow: rgba(204, 255, 0, 0.3);
@@ -321,9 +322,9 @@
 
     <div class="profit-overlay" id="profitOverlay">
         <div class="profit-box">
-            <img src="logo.png" alt="Fluxo Alfa" class="logo-pulse">
+            <img src="logo.png" alt="ALFA USDC MASTER" class="logo-pulse">
             <h2 class="orbitron">ALVO ALCANÇADO!</h2>
-            <p>Sifras Alfa Operando com Sucesso</p>
+            <p>Sifras ALFA USDC Operando com Sucesso</p>
         </div>
     </div>
 
@@ -331,7 +332,7 @@
         <header>
             <div class="logo-box" style="display: flex; align-items: center; gap: 12px;">
                 <img src="logo.png" alt="Logo" style="width: 40px; border-radius: 8px;">
-                <h1 class="orbitron">FLUXO <span class="logo-alfa">ALFA 1.0</span></h1>
+                <h1 class="orbitron">ALFA <span class="logo-alfa">USDC MASTER</span></h1>
             </div>
             <div class="toggle-container" style="margin-left: 15px;">
                 <span style="font-size: 0.7rem; color: #888; font-weight: bold; letter-spacing: 1px;">MODO LEITURA</span>
@@ -379,14 +380,43 @@
                     <input type="password" id="apiSecret" placeholder="Cole sua chave Secreta aqui">
                 </div>
 
+                <div class="input-group" style="margin-top:20px;">
+                    <label>Estratégia do Motor</label>
+                    <div style="display: flex; gap: 10px; margin-top: 5px;">
+                        <button id="modeAlfaUSDT" class="btn-mode active" onclick="selectMode('ALFA_USDT', this)" style="flex: 1;">ALFA USDT</button>
+                        <button id="modeAlfaUSDC" class="btn-mode" onclick="selectMode('ALFA_USDC', this)" style="flex: 1;">ALFA USDC</button>
+                    </div>
+                </div>
+
+                <style>
+                    .btn-mode {
+                        background: rgba(255,255,255,0.05);
+                        border: 1px solid rgba(255,255,255,0.1);
+                        color: #888;
+                        padding: 10px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-family: 'Orbitron';
+                        font-size: 0.75rem;
+                        transition: 0.3s;
+                    }
+                    .btn-mode.active {
+                        background: rgba(204, 255, 0, 0.1);
+                        border-color: var(--cyber-blue);
+                        color: var(--cyber-blue);
+                        box-shadow: 0 0 15px rgba(204, 255, 0, 0.2);
+                    }
+                </style>
+
                 <div class="input-group" style="display: flex; align-items: center; gap: 10px; margin-top:20px;">
                     <input type="checkbox" id="chkLoop" checked
                         style="width: 20px; height: 20px; accent-color: var(--cyber-blue);">
                     <label style="margin: 0; color: #fff;">Operação Contínua (Sem Pausas)</label>
                 </div>
 
+
                 <button class="btn btn-start" id="btnStart" onclick="startSystem()">
-                    <i class="ph-fill ph-power"></i> INICIAR FLUXO ALFA
+                    <i class="ph-fill ph-power"></i> INICIAR MOTOR MASTER
                 </button>
 
                 <div class="input-group" style="margin-top: 10px; margin-bottom: 5px;">
@@ -441,17 +471,17 @@
                         <div style="color: #a0aab5; font-size: 0.85rem;" id="valDistances">D2: 0% | D6: 0%</div>
                     </div>
 
-                    <div class="stat-card">
+                    <div class="stat-card" id="cardCycle">
                         <div class="stat-label">Ciclo Atual</div>
                         <div class="stat-value" id="valOpsCount">0 / 5</div>
                         <div style="color: #a0aab5; font-size: 0.85rem;" id="valCooldown">Nenhum Cooldown</div>
                     </div>
 
                     <div class="stat-card" style="display:flex; flex-direction:column; justify-content:center; border-color: var(--cyber-gold);">
-                        <div class="stat-label">PNL Alfa Líquido (USDT)</div>
-                        <div class="stat-value" id="valRealizedBRL" style="font-size: 1.5rem; margin:5px 0; color: var(--cyber-gold);">$ 0.00</div>
+                        <div class="stat-label">PNL MÉDIO (USDC/USDT)</div>
+                        <div class="stat-value" id="valRealizedBRL" style="font-size: 1.5rem; margin:5px 0;">$ 0.00</div>
                         <div style="color: #a0aab5; font-size: 0.85rem;" id="valProfitPool">
-                            Meta BRL: $0.00 / $20.00
+                            Meta Reforço: 0% / 50%
                         </div>
                     </div>
 
@@ -461,8 +491,27 @@
                         <div style="font-size: 0.9rem; margin-top:5px; text-align:left; display:inline-block; margin-left:auto; margin-right:auto;" id="valTradeTarget">
                             <span style="color:#a0aab5">📥 Compra:</span> ---<br>
                             <span style="color:#fff">🔄 Atual:</span> ---<br>
-                            <span>Alvo: <span style="color:var(--cyber-gold)">+0.5%</span></span>
+                            <span>Alvo: <span style="color:var(--cyber-green)">+0.4%</span></span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- NOVO: BARRA DE PROGRESSO ALFA USDC (CONTAGEM 10 A 1) -->
+                <div class="panel" id="ALFA USDCProgressPanel" style="display: none; padding: 20px; background: rgba(0,0,0,0.4); border: 1px solid var(--cyber-blue);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 class="orbitron" style="font-size: 0.9rem; color: var(--cyber-blue);">CONTAGEM REGRESSIVA ALFA USDC</h3>
+                        <div id="ALFA USDCTimeEst" style="font-size: 0.8rem; color: #888;">Previsão: Calculando...</div>
+                    </div>
+                    <div class="progress-container" style="height: 12px; background: rgba(255,255,255,0.05);">
+                        <div id="ALFA USDCProgressBar" class="progress-bar" style="width: 0%; background: linear-gradient(90deg, var(--alert-red) 0%, var(--cyber-gold) 50%, var(--cyber-green) 100%);"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 10px; font-family: 'Orbitron'; font-size: 0.7rem; color: #666;">
+                        <span>RANK 10</span>
+                        <span>RANK 8</span>
+                        <span>RANK 6</span>
+                        <span>RANK 4</span>
+                        <span>RANK 2</span>
+                        <span style="color: var(--cyber-green)">RANK 1</span>
                     </div>
                 </div>
 
@@ -564,17 +613,37 @@
             return localStorage.getItem('sifras_token') || localStorage.getItem('sifrasToken') || '';
         }
 
+        let selectedMode = 'ALFA_USDT';
+
+        function selectMode(mode, btn) {
+            selectedMode = mode;
+            document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            // Resetar telemetria visual ao trocar modo
+            document.getElementById('telemetryCard').classList.remove('active');
+            fetchStatus(); // Atualizar UI imediatamente
+        }
+
         async function authFetch(url, options = {}) {
             const token = getToken();
-            const headers = { ...(options.headers || {}), 'Authorization': `Bearer ${token}` };
+            if (!token) {
+                window.location.href = '/login.html';
+                return new Promise(() => {}); // Stop execution
+            }
+            const headers = { 
+                ...(options.headers || {}), 
+                'Authorization': `Bearer ${token}`,
+                'x-mode': selectedMode
+            };
             const res = await fetch(url, { ...options, headers });
-            // 401 = token inválido/expirado | 403 = não aprovado pelo admin
+            
+            // PADRONIZAÇÃO RIGOROSA: 401 = Token Inválido | 403 = Não aprovado
             if (res.status === 401 || res.status === 403) {
                 localStorage.removeItem('sifrasToken');
                 localStorage.removeItem('sifras_token');
                 sessionStorage.removeItem('gatewayOk');
                 window.location.href = '/login.html';
-                throw new Error('Acesso negado');
+                return new Promise(() => {}); // Stop execution
             }
             return res;
         }
@@ -696,7 +765,7 @@
                 document.getElementById('valTradeTarget').innerHTML = `
                     <span style="color:#a0aab5">📥 Compra:</span> $${buyP}<br>
                     <span style="color:#fff">🔄 Atual:</span> $${currP}<br>
-                    <span style="color:var(--cyber-gold)">🎯 Alvo:</span> $${tgtP} (+0.5%)
+                    <span style="color:var(--cyber-green)">🎯 Alvo:</span> $${tgtP} (+0.4%)
                 `;
 
                 document.getElementById('telemetryCard').classList.add('active');
@@ -705,38 +774,67 @@
                 let currentProfitPct = 0;
                 if (state.buyPrice > 0 && state.currentPrice > 0) {
                     currentProfitPct = ((state.currentPrice - state.buyPrice) / state.buyPrice) * 100;
-                } else if (state.buyPrice > 0) {
-                    currentProfitPct = 0; // Se o servidor retornar 0, mostramos 0%, não -100%
                 }
 
                 document.getElementById('telemetryPct').innerText = `${currentProfitPct >= 0 ? '+' : ''}${currentProfitPct.toFixed(2)}%`;
+                
+                // CORES NEON NO TERMINAL E TELEMETRIA
+                if (currentProfitPct >= 0) {
+                    document.getElementById('telemetryPct').style.color = 'var(--cyber-green)';
+                    document.getElementById('telemetryPct').style.textShadow = '0 0 20px var(--cyber-green)';
+                } else {
+                    document.getElementById('telemetryPct').style.color = 'var(--neon-orange)';
+                    document.getElementById('telemetryPct').style.textShadow = '0 0 20px var(--neon-orange)';
+                }
 
                 const minR = -6.0;
-                const maxR = 0.6;
+                const maxR = 0.4;
                 let barWidth = ((currentProfitPct - minR) / (maxR - minR)) * 100;
                 if (barWidth < 0) barWidth = 0;
                 if (barWidth > 100) barWidth = 100;
                 document.getElementById('telemetryBar').style.width = `${barWidth}%`;
 
-                if (currentProfitPct <= -1.5) {
-                    document.getElementById('telemetryPct').style.color = '#ff3366';
-                } else if (currentProfitPct >= 0.6) {
-                    document.getElementById('telemetryPct').style.color = '#ccff00';
-                } else {
-                    document.getElementById('telemetryPct').style.color = '#fff';
-                }
-
             } else {
-                state.activeSymbol = null; // Forçar limpeza local
+                state.activeSymbol = null;
                 document.getElementById('telemetryCard').classList.remove('active');
                 document.getElementById('valActiveTrade').innerText = 'Nenhum';
                 document.getElementById('valTradeTarget').innerHTML = `
                     <span style="color:#a0aab5">📥 Compra:</span> ---<br>
                     <span style="color:#fff">🔄 Atual:</span> ---<br>
-                    <span style="color:var(--cyber-gold)">🎯 Alvo:</span> ---
+                    <span style="color:var(--cyber-green)">🎯 Alvo:</span> ---
                 `;
-                document.getElementById('telemetryCard').classList.remove('active');
             }
+
+            // ATUALIZAR BARRA PROGRESSO ALFA (CONTAGEM 10 A 1)
+            if (state.mode === 'ALFA_USDC') {
+                document.getElementById('ceoProgressPanel').style.display = 'block';
+                const step = state.alfaStep || 10;
+                const phase = state.alfaPhase || 'COUNTDOWN';
+                
+                if (phase === 'COUNTDOWN') {
+                    const progress = ((10 - step) / 10) * 100;
+                    document.getElementById('ceoProgressBar').style.width = `${progress}%`;
+                    document.getElementById('ceoTimeEst').innerText = `Fase: Contagem Rank ${step}`;
+                } else {
+                    document.getElementById('ceoProgressBar').style.width = `100%`;
+                    document.getElementById('ceoTimeEst').innerText = `Fase: Caça Ativa (Top 30 USDC)`;
+                }
+            } else {
+                document.getElementById('ceoProgressPanel').style.display = 'none';
+            }
+
+            // PNL NEON NO VALOR CENTRAL
+            const pnlValue = state.totalProfitPct || 0;
+            const pnlEl = document.getElementById('valRealizedBRL');
+            pnlEl.innerText = `${pnlValue >= 0 ? '+' : ''}${pnlValue.toFixed(2)}%`;
+            if (pnlValue >= 0) {
+                pnlEl.style.color = 'var(--cyber-green)';
+                pnlEl.style.textShadow = '0 0 15px var(--cyber-green)';
+            } else {
+                pnlEl.style.color = 'var(--neon-orange)';
+                pnlEl.style.textShadow = '0 0 15px var(--neon-orange)';
+            }
+            document.getElementById('valProfitPool').innerText = `Meta Reforço: ${pnlValue.toFixed(2)}% / 50%`;
 
             const logContainer = document.getElementById('terminalLogs');
             logContainer.innerHTML = state.logs.map((log, index) => {
@@ -809,6 +907,16 @@
             localStorage.setItem('sifrasClientName', clientName);
             localStorage.setItem('sifrasApiKey', apiKey);
             localStorage.setItem('sifrasApiSecret', apiSecret);
+
+            const body = {
+                clientName, apiKey, apiSecret,
+                buyPercentage: selectedBuyRatio,
+                mode: selectedMode // Novo: Enviar modo escolhido
+            };
+
+            const btn = document.getElementById('btnStart');
+            btn.innerHTML = '<i class="ph-fill ph-spinner-gap"></i> PROCESSANDO...';
+            btn.disabled = true;
 
             try {
                 // Controller para timeout manual do fetch

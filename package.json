@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "description": "Sifras Alfa - Web Dashboard com Autenticação",
     "main": "server.js",
+  "bin": "server.js",
     "scripts": {
         "start": "node server.js"
     },
@@ -15,5 +16,11 @@
     },
     "engines": {
         "node": ">=18.0.0"
+    },
+    "pkg": {
+        "targets": ["node18-win-x64"]
+    },
+    "devDependencies": {
+        "pkg": "^5.8.1"
     }
 }

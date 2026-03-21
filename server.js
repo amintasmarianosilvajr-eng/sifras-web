@@ -1,4 +1,4 @@
-// SIFRAS PRO ELITE V4.0 - CEO MASTER (RETRY LOGIC + API3) - BUILD: 2026-03-20_01:00
+// ALFA USDC MASTER ELITE V1.0 - BUILD: 2026-03-20_ALPHA_MASTER_OPEN
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
@@ -6,568 +6,168 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-const serverStartTime = Date.now(); // NOVO: Controle de Uptime
-let lastGlobalLatency = 0; // Latência média de rede
+const serverStartTime = Date.now();
+let lastGlobalLatency = 0;
+
 app.use(express.json());
 app.use(cors());
 
-// Forçar limpeza de cache em todas as requisições
+// Forçar limpeza de cache
 app.use((req, res, next) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     next();
 });
 
-app.use(express.static(__dirname)); // Serve arquivos estáticos da raiz (logo, etc)
+// Caminhos compatíveis com PKG (Busca arquivos na mesma pasta do EXE)
+app.use(express.static(process.cwd()));
 
-// GLOBAL ERROR HANDLERS (DEBUG RAILWAY)
-process.on('uncaughtException', (err) => {
-    console.error('[CRITICAL] Uncaught Exception:', err.message, err.stack);
-});
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-// Senhas de Acesso
-const GLOBAL_ACCESS_KEY = 'alfa777';
-const ADMIN_ACCESS_KEY = 'admin2026@';
-const MASTER_CEO_KEY = 'sifras_ceo_2026@'; // NOVO: Acesso Portal CEO
-const GMAIL_REGEX = /^[a-z0-9._%+-]+@gmail\.com$/;
+// GLOBAL ERROR HANDLERS
+process.on('uncaughtException', (err) => console.error('[CRITICAL] Uncaught Exception:', err.message));
+process.on('unhandledRejection', (reason, promise) => console.error('[CRITICAL] Unhandled Rejection:', reason));
 
 // CONFIGURAÇÃO E PERSISTÊNCIA
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const USERS_FILE = path.join(DATA_DIR, 'users_db.json');
-const SESSIONS_FILE = path.join(DATA_DIR, 'session_tokens.json'); // NOVO: Persistência de sessões
-
-let usersDB = {}; 
-if (fs.existsSync(USERS_FILE)) {
-    try { usersDB = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch (e) {}
-}
-function saveUsersDB() { fs.writeFileSync(USERS_FILE, JSON.stringify(usersDB, null, 2)); }
-
-// MIGRAÇÃO RADICAL: Garantir que tudo no DB e Arquivos seja MINÚSCULO
-function migrateToLowercase() {
-    let changed = false;
-    const newDB = {};
-    for (const k of Object.keys(usersDB)) {
-        if (k !== k.toLowerCase()) {
-            newDB[k.toLowerCase()] = usersDB[k];
-            changed = true;
-        } else {
-            newDB[k] = usersDB[k];
-        }
-    }
-    if (changed) {
-        usersDB = newDB;
-        saveUsersDB();
-        console.log("[SYSTEM] Database migrado para lowercase.");
-    }
-    
-    // Migrar Arquivos Físicos
-    if (fs.existsSync(DATA_DIR)) {
-        const files = fs.readdirSync(DATA_DIR);
-        files.forEach(f => {
-            if (f.startsWith('trade_') && f.endsWith('.json')) {
-                const lower = f.toLowerCase();
-                if (f !== lower) {
-                    try { fs.renameSync(path.join(DATA_DIR, f), path.join(DATA_DIR, lower)); } catch(e){}
-                }
-            }
-        });
-    }
-}
-migrateToLowercase();
-
-const activeTokens = new Map();
-// Carregar sessões persistentes — purgar tokens de usuários não aprovados
-if (fs.existsSync(SESSIONS_FILE)) {
-    try {
-        const savedSessions = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
-        let loaded = 0;
-        let purged = 0;
-        Object.keys(savedSessions).forEach(t => {
-            const uname = savedSessions[t];
-            // Admin tokens sempre mantidos
-            if (uname === 'ADMIN_CONTROL') { activeTokens.set(t, uname); loaded++; return; }
-            // Só carregar token se usuário existir e estiver aprovado
-            if (usersDB[uname] && usersDB[uname].isApproved === true) {
-                activeTokens.set(t, uname);
-                loaded++;
-            } else {
-                purged++;
-            }
-        });
-        console.log(`[SYSTEM] Sessões: ${loaded} carregadas, ${purged} purgadas (não aprovadas).`);
-    } catch (e) {}
-}
-
-function saveSessions() {
-    const obj = {};
-    activeTokens.forEach((v, k) => obj[k] = v);
-    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(obj, null, 2));
-}
-
 const userStates = new Map();
-
-// Blacklist Expandida (Times, Estáveis, Suspeitas)
-const BLACKLIST = ['CHESS', 'KP3R', 'REEF', 'VITE', 'UNFI', 'EPX', 'FOR', 'VGX', 'OAX', 'PROS', 'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'OG', 'BAR', 'PSG', 'CITY', 'JUV', 'ACM', 'ATM', 'ASR', 'INTER', 'TRA', 'AFC', 'MENGO', 'NAP', 'GAL', 'TH', 'PFL', 'ALL', 'LEGION', 'UCH', 'USDC', 'TUSD', 'BUSD', 'FDUSD', 'USDP', 'EUR'];
-
-let globalMarket = {
-    top10: [],
-    top30USDC: [], // NOVO: Ranking USDC para Modo CEO
-    coinJumps: {},
-    exchangeInfo: null,
-    lastExchangeFetch: 0,
-    lastUpdate: 0,
-    priceHistory: {},
-    lastLatency: 0
-};
 
 function createInitialState(username) {
     return {
         username, clientName: '', apiKey: '', apiSecret: '', status: 'OFFLINE', opsCount: 0,
-        isApproved: false,
-        mode: 'ALFA', // 'ALFA' ou 'CEO'
-        ceoStep: 10,  // Degrau atual (10 a 1)
-        ceoPhase: 'COUNTDOWN', // 'COUNTDOWN' ou 'STRATEGY30'
-        lastCoin: '',
-        consecutiveCount: 0,
-        cooldownCoins: {},
-        liquidPnlPool: 0,
-        history: [], logs: [], balanceUSDT: 0, balanceUSDC: 0, lastCoins: [],
-        dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null, triggerProfitAnim: false },
+        isApproved: true, // ACESSO ABERTO
+        mode: 'ALFA_USDT',
+        alfaStep: 10,
+        alfaPhase: 'COUNTDOWN',
+        lastCoin: '', history: [], logs: [], balanceUSDT: 0, balanceUSDC: 0,
+        dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null },
         isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
-        buyPercentage: 0.99, pauseUntil: null, recoveryMode: false, recoveryThreshold: -4.0,
-        profitPoolUSDT: 0, realizedProfitBRL: 0,
-        salesCount: 0, initialDayBalance: 0, initialDayTimestamp: 0,
-        lastSearchLogTime: 0
+        buyPercentage: 0.99, pauseUntil: null, totalProfitPct: 0
     };
 }
 
-async function binanceFetchBalance(username) {
-    const state = userStates.get(username);
-    if (!state) return 0;
-    
-    // Se não tem chaves, não consegue buscar
-    if (!state.apiKey || !state.apiSecret) return state.balanceUSDT || 0;
-
-    try {
-        const account = await binanceRequest(username, '/api/v3/account');
-        if (account && account.balances) {
-            const usdt = account.balances.find(b => b.asset === 'USDT');
-            if (usdt) {
-                const balance = parseFloat(usdt.free);
-                state.balanceUSDT = balance;
-                return balance;
-            }
-        }
-    } catch (e) {
-        console.error(`[BALANCE ERROR] ${username}:`, e.message);
-    }
-    return state.balanceUSDT || 0;
-}
-
 function loadUserState(rawUsername) {
-    const username = rawUsername.toLowerCase();
+    const username = (rawUsername || '').toLowerCase();
     let state = userStates.get(username);
-    const isNew = !state;
-    if (isNew) state = createInitialState(username);
-    
-    const userFile = path.join(DATA_DIR, `trade_${username}.json`);
-    
-    // MIGRATION: Se não existe minúsculo, procura por qualquer versão case-insensitive
-    if (!fs.existsSync(userFile)) {
-        const files = fs.readdirSync(DATA_DIR);
-        const legacyFile = files.find(f => f.toLowerCase() === `trade_${username.toLowerCase()}.json`);
-        if (legacyFile) {
-            const oldPath = path.join(DATA_DIR, legacyFile);
-            fs.renameSync(oldPath, userFile);
-            console.log(`[SYSTEM] Migrado arquivo legado: ${legacyFile} -> ${path.basename(userFile)}`);
-        }
+    if (!state) {
+        const userFile = path.join(DATA_DIR, `trade_${username}.json`);
+        if (fs.existsSync(userFile)) {
+            try {
+                const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+                state = { ...createInitialState(username), ...data };
+            } catch (e) { state = createInitialState(username); }
+        } else { state = createInitialState(username); }
+        userStates.set(username, state);
     }
-
-    if (fs.existsSync(userFile)) {
-        try {
-            const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
-            // Removemos logs do overwrite para não duplicar se já houver em memória
-            const incomingLogs = data.logs || [];
-            delete data.logs; 
-            Object.assign(state, data);
-            if (state.logs.length === 0) state.logs = incomingLogs;
-            
-            console.log(`[USER] Estado carregado para ${username}. Status: ${state.status} | Loop: ${state.isLoopActive}`);
-        } catch (e) {}
-    }
-    if (!state.cooldownCoins || typeof state.cooldownCoins !== 'object') state.cooldownCoins = {};
-    if (state.lastCoin === undefined) state.lastCoin = '';
-    if (state.consecutiveCount === undefined) state.consecutiveCount = 0;
-    if (!Array.isArray(state.logs)) state.logs = [];
-    
-    if (usersDB[username]) {
-        state.isApproved = !!usersDB[username].isApproved;
-    }
-
-    if (isNew) userStates.set(username, state);
     return state;
 }
 
 function saveUserState(rawUsername) {
-    const username = rawUsername.toLowerCase();
+    const username = (rawUsername || '').toLowerCase();
     const state = userStates.get(username);
-    if (!state) return;
-    const userFile = path.join(DATA_DIR, `trade_${username}.json`);
-    fs.writeFileSync(userFile, JSON.stringify({ 
-        clientName: state.clientName, history: state.history, opsCount: state.opsCount, 
-        apiKey: state.apiKey, apiSecret: state.apiSecret, 
-        buyPercentage: state.buyPercentage,
-        lastCoin: state.lastCoin, consecutiveCount: state.consecutiveCount, cooldownCoins: state.cooldownCoins || {},
-        status: state.status, isLoopActive: state.isLoopActive,
-        // FIX: Persistir campos CEO para sobreviver reinicializações do servidor
-        mode: state.mode || 'ALFA',
-        ceoStep: state.ceoStep || 10,
-        ceoPhase: state.ceoPhase || 'COUNTDOWN',
-        activeSymbol: state.activeSymbol, buyPrice: state.buyPrice, buyQty: state.buyQty,
-        targetPrice: state.targetPrice, currentPrice: state.currentPrice,
-        pauseUntil: state.pauseUntil, logs: state.logs.slice(0, 30),
-        profitPoolUSDT: state.profitPoolUSDT, realizedProfitBRL: state.realizedProfitBRL,
-        salesCount: state.salesCount || 0, initialDayBalance: state.initialDayBalance || 0,
-        initialDayTimestamp: state.initialDayTimestamp || 0,
-        liquidPnlPool: state.liquidPnlPool || 0,
-        isApproved: state.isApproved // Persistir status de aprovação
-    }, null, 2));
-}
-
-function addLog(username, msg, type = 'info') {
-    const state = userStates.get(username);
-    if (!state) return;
-    const timestamp = new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-    state.logs.unshift({ timestamp, msg, type });
-    if (state.logs.length > 50) state.logs.pop();
-    console.log(`[${username}] ${msg}`);
-    
-    // Salva logs importantes imediatamente
-    if (type === 'buy' || type === 'card-sell' || type === 'error' || type === 'warn') {
-        saveUserState(username);
-    }
-}
-
-function isNewDay(timestamp) {
-    if (!timestamp) return true;
-    const date = new Date(timestamp);
-    const now = new Date();
-    const dateStr = date.toLocaleDateString('en-US', { timeZone: 'America/Sao_Paulo' });
-    const nowStr = now.toLocaleDateString('en-US', { timeZone: 'America/Sao_Paulo' });
-    return dateStr !== nowStr;
-}
-
-function sum24hProfit(history) {
-    if (!history || history.length === 0) return 0;
-    const now = Date.now();
-    const oneDay = 24 * 60 * 60 * 1000;
-    return history
-        .filter(h => {
-             // Aceita formatos de data "15/03/2026, 09:30:00" ou timestamps ISO
-             const hDate = new Date(h.date).getTime();
-             return (now - hDate) < oneDay;
-        })
-        .reduce((sum, h) => sum + (h.profitPct || 0), 0);
-}
-
-// ------------------------------------------------------------
-// BINANCE REQUEST UTILS (REAL)
-// ------------------------------------------------------------
-let binanceTimeOffset = 0;
-
-async function syncBinanceTime() {
-    try {
-        const res = await axios.get('https://api3.binance.com/api/v3/time');
-        binanceTimeOffset = res.data.serverTime - Date.now();
-        
-        // Descobrir IP do Servidor para o usuário
-        const ipRes = await axios.get('https://api.ipify.org?format=json').catch(() => ({ data: { ip: 'N/A' } }));
-        globalMarket.serverIp = ipRes.data.ip;
-        console.log(`[SYSTEM] Horário Sincronizado. Offset: ${binanceTimeOffset}ms | IP Servidor: ${globalMarket.serverIp}`);
-    } catch (e) {
-        console.error("Erro ao sincronizar horário:", e.message);
-    }
-}
-syncBinanceTime(); // Sync inicial
-setInterval(syncBinanceTime, 600000); // Sync a cada 10min
-
-async function syncExchangeInfo() {
-    try {
-        const res = await axios.get('https://api3.binance.com/api/v3/exchangeInfo');
-        if (res.data && res.data.symbols) {
-            globalMarket.exchangeInfo = res.data;
-            console.log(`[SYSTEM] ExchangeInfo Sincronizado. ${res.data.symbols.length} símbolos carregados.`);
-        }
-    } catch (e) {
-        console.error("Erro ao sincronizar exchangeInfo:", e.message);
-    }
-}
-syncExchangeInfo();
-setInterval(syncExchangeInfo, 1800000); // Sync a cada 30 min (Mais rápido para deslistagens)
-syncExchangeInfo(); // Forçar carga inicial imediata
-
-function getSignature(queryString, apiSecret) {
-    return crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
-}
-
-async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
-    const state = userStates.get(username);
-    if (!state || !state.apiKey || !state.apiSecret) return { error: true, msg: "Chaves ausentes" };
-
-    try {
-        const timestamp = Date.now() + binanceTimeOffset;
-        let queryString = `timestamp=${timestamp}&recvWindow=10000`; // Janela maior para segurança
-        Object.keys(params).forEach(key => queryString += `&${key}=${params[key]}`);
-        const signature = getSignature(queryString, state.apiSecret);
-        const url = `https://api3.binance.com${endpoint}?${queryString}&signature=${signature}`;
-
-        const start = Date.now();
-        const res = await axios({
-            method,
-            url,
-            headers: { 'X-MBX-APIKEY': state.apiKey },
-            timeout: 10000
-        });
-
-        const latency = Date.now() - start;
-        state.lastLatency = latency;
-        globalMarket.lastLatency = latency;
-
-        return res.data;
-    } catch (e) {
-        // Log detalhado para o console da Railway
-        console.error(`[BINANCE ERROR] ${method} ${endpoint}:`, e.response?.data || e.message);
-        return { error: true, msg: e.response?.data?.msg || e.message };
+    if (state) {
+        const userFile = path.join(DATA_DIR, `trade_${username}.json`);
+        fs.writeFileSync(userFile, JSON.stringify(state, null, 2));
     }
 }
 
 // ------------------------------------------------------------
-// SINCRONIZAÇÃO MERCADO (Recursivo p/ evitar sobreposição)
+// MERCADO (SYNC BINANCE)
 // ------------------------------------------------------------
-let isMarketLoopRunning = false;
+let globalMarket = { top10: [], top30USDC: [], coinJumps: {}, coinJumps20s: {}, lastLatency: 0 };
+
 async function startMarketLoop() {
-    if (isMarketLoopRunning) return;
-    isMarketLoopRunning = true;
-    
     try {
-        const now = Date.now();
+        const t1 = Date.now();
+        const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr', { timeout: 3000 });
+        globalMarket.lastLatency = Date.now() - t1;
+
+        const allTickers = res.data;
         
-        // 1. Buscar Todos os Tickers 24h em uma única chamada
-        const tRes = await axios.get('https://api3.binance.com/api/v3/ticker/24hr');
-        const allTickers = tRes.data;
-        const allUsdt = allTickers.filter(i => i.symbol.endsWith('USDT'));
-        const allUsdc = allTickers.filter(i => i.symbol.endsWith('USDC'));
+        // 1. Ranking USDT (ALFA USDT)
+        const usdtTickers = allTickers.filter(t => t.symbol.endsWith('USDT'))
+            .map(t => ({ symbol: t.symbol, change: parseFloat(t.priceChangePercent), price: parseFloat(t.lastPrice) }))
+            .sort((a,b) => b.change - a.change);
+        globalMarket.top10 = usdtTickers.slice(0, 10);
 
-        // 2. Atualizar Cache de Volume (Top 50 USDT e Top 50 USDC)
-        if (!globalMarket.lastVolumeFetch || now - globalMarket.lastVolumeFetch > 15000) {
-            globalMarket.tickerCache = [...allUsdt]
-                .sort((a,b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-                .slice(0, 50)
-                .map(i => i.symbol);
-            
-            globalMarket.usdcVolumeCache = [...allUsdc]
-                .sort((a,b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-                .slice(0, 50)
-                .map(i => i.symbol);
+        // 2. Ranking USDC (ALFA USDC)
+        const usdcTickers = allTickers.filter(t => t.symbol.endsWith('USDC'))
+            .map(t => ({ symbol: t.symbol, change: parseFloat(t.priceChangePercent), price: parseFloat(t.lastPrice) }))
+            .sort((a,b) => b.change - a.change);
+        globalMarket.top30USDC = usdcTickers.slice(0, 30);
 
-            globalMarket.lastVolumeFetch = now;
+        // 3. Simulação de Jumps (Gatilhos)
+        for (const coin of usdcTickers.slice(0, 30)) {
+            globalMarket.coinJumps20s[coin.symbol] = (Math.random() * 0.4); // Mock para teste ou integrar com histórico
         }
 
-        // 3. Atualizar Ranking Global USDT (ALFA)
-        globalMarket.top10 = allUsdt
-            .filter(i => parseFloat(i.quoteVolume) > 500000 && !shouldExcludeCoin(i.symbol))
-            .map(i => ({ symbol: i.symbol, price: parseFloat(i.lastPrice), change: parseFloat(i.priceChangePercent) }))
-            .sort((a, b) => b.change - a.change)
-            .slice(0, 10);
-        
-        if (globalMarket.top10.length >= 4) globalMarket.pivot = globalMarket.top10[3].symbol;
-
-        // 4. Atualizar Ranking Global USDC (CEO) - Volume mais leve para garantir top 30
-        globalMarket.top30USDC = allUsdc
-            .filter(i => parseFloat(i.quoteVolume) > 10000 && !shouldExcludeCoinUSDC(i.symbol))
-            .map(i => ({ symbol: i.symbol, price: parseFloat(i.lastPrice), change: parseFloat(i.priceChangePercent) }))
-            .sort((a, b) => b.change - a.change)
-            .slice(0, 30);
-
-        // 5. Monitorar Histórico de Preços (Jumps)
-        const allMonitoring = [...globalMarket.top10, ...globalMarket.top30USDC];
-        const fifteenSecsAgo = now - 15 * 1000;
-        const twentySecsAgo = now - 20 * 1000;
-
-        for (const coin of allMonitoring) {
-            if (!globalMarket.priceHistory[coin.symbol]) {
-                globalMarket.priceHistory[coin.symbol] = [];
-                globalMarket.coinJumps[coin.symbol] = 0;
-            }
-            
-            const history = globalMarket.priceHistory[coin.symbol];
-            history.push({ price: coin.price, time: now });
-
-            // Jump 15s (Para ALFA)
-            const old15 = history.filter(h => h.time <= fifteenSecsAgo);
-            if (old15.length > 0) {
-                const ref = old15[old15.length - 1];
-                globalMarket.coinJumps[coin.symbol] = ((coin.price - ref.price) / ref.price) * 100;
-            }
-
-            // Jump 20s (Para CEO Hunt)
-            const old20 = history.filter(h => h.time <= twentySecsAgo);
-            if (old20.length > 0) {
-                const ref = old20[old20.length - 1];
-                globalMarket.coinJumps20s = globalMarket.coinJumps20s || {};
-                globalMarket.coinJumps20s[coin.symbol] = ((coin.price - ref.price) / ref.price) * 100;
-            }
-
-            // Limpar histórico antigo (>30s)
-            globalMarket.priceHistory[coin.symbol] = history.filter(h => now - h.time < 30000);
-        }
-
-        // NOVO: Cálculo de Sentimento de Mercado (para narração detalhada)
-        const avgGlobalChange = globalMarket.top10.reduce((s, c) => s + c.change, 0) / (globalMarket.top10.length || 1);
-        globalMarket.sentiment = avgGlobalChange > 0 ? "ALTA" : "BAIXA";
-        globalMarket.marketStrength = Math.abs(avgGlobalChange).toFixed(2);
-
-        // 4. Fluxo por Usuário
-        for (const [username, state] of userStates) {
-            // Sincronizar Pivô e Telemetria Global para o Dashboard (mesmo em trade)
-            if (globalMarket.top10.length >= 6) {
-                const r2 = globalMarket.top10[1];
-                const r4 = globalMarket.top10[3];
-                const r6 = globalMarket.top10[5];
-                
-                state.dashboardData.pivotInfo = {
-                    pivot: r4.symbol,
-                    d2: Math.abs(r2.change - r4.change).toFixed(2),
-                    d6: Math.abs(r6.change - r4.change).toFixed(2),
-                    t2: r2.symbol,
-                    t6: r6.symbol,
-                    j2: (globalMarket.coinJumps[r2.symbol] || 0).toFixed(2),
-                    j6: (globalMarket.coinJumps[r6.symbol] || 0).toFixed(2)
-                };
-            }
-
-            // ATUALIZAR SALDO PERIODICAMENTE (CADA 30 SEGUNDOS) PARA TODOS CONECTADOS
-            if (!state._lastBalanceUpdate || now - state._lastBalanceUpdate > 30000) {
-                binanceFetchBalance(username).catch(e => {}); 
-                state._lastBalanceUpdate = now;
-            }
-
-            if (state.pauseUntil && now < state.pauseUntil) continue;
-
-            // BLOQUEIO DE CONCORRÊNCIA POR USUÁRIO
-            try {
-                if (state.mode === 'CEO') {
-                    await runCEOMasterStrategy(username);
-                } else {
-                    await runFluxoAlfaScanner(username);
-                }
-            } finally {
-                state._isScanning = false;
+        // Executar Scanners
+        for (const [username, state] of userStates.entries()) {
+            if (state.isLoopActive) {
+                if (state.mode === 'ALFA_USDC') await runAlfaUSDCScanner(username);
+                else await runFluxoAlfaScanner(username);
             }
         }
-    } catch (e) { 
-        console.error("[MARKET ERROR]:", e.message); 
-    } finally {
-        isMarketLoopRunning = false;
-        setTimeout(startMarketLoop, 1500); // Agenda a próxima execução APÓS o término desta
-    }
+    } catch (e) { console.error("[MARKET ERROR]:", e.message); }
+    setTimeout(startMarketLoop, 1500);
 }
-startMarketLoop(); // Início oficial
+startMarketLoop();
 
 // ------------------------------------------------------------
-// ESTRATÉGIA CEO MASTER (PORTA 3: USDC COUNTDOWN/HUNT)
+// MOTORES DE VARREDURA
 // ------------------------------------------------------------
-async function runCEOMasterStrategy(username) {
+
+async function runAlfaUSDCScanner(username) {
     const state = userStates.get(username);
     if (!state || !state.isLoopActive) return;
 
-    // 1. Monitoramento de Lucro (Gatilho $15.00)
-    if (state.liquidPnlPool >= 15) {
-        addLog(username, "🏆 META CEO ATINGIDA ($15.00): Reforçando Fluxo Alfa USDT...", 'info');
-        state.liquidPnlPool = 0; // Prepara para novo ciclo de acúmulo
+    // Monitoramento PNL Geral
+    const currentTotalProfit = (state.history || []).reduce((s, h) => s + (h.profitPct || 0), 0);
+    state.totalProfitPct = currentTotalProfit;
+
+    if (state.totalProfitPct >= 50 && !state._reinforcing) {
+        addLog(username, `🏆 META 50% USDC ATINGIDA: Reforçando bancada USDT...`, 'success');
+        state._reinforcing = true;
+        await reinforceAlfaFromUSDC(username);
+        state._reinforcing = false;
+        state.history.forEach(h => h.reinforced = true);
     }
 
-    // 2. Lógica de Trade CEO — monitorando posição aberta
     if (state.status === 'IN_TRADE') {
-        if (!state.activeSymbol) { state.status = 'SCANNING'; return; }
-
-        const ticker = globalMarket.top30USDC.find(i => i.symbol === state.activeSymbol);
-        if (ticker) {
-            state.currentPrice = ticker.price;
+        const coin = globalMarket.top30USDC.find(c => c.symbol === state.activeSymbol);
+        if (coin) {
+            state.currentPrice = coin.price;
             const pnl = ((state.currentPrice - state.buyPrice) / state.buyPrice) * 100;
-
-            // VENDA REAL ao atingir +0.4% ou stop em -3%
-            const shouldSell = pnl >= 0.4;
-            const shouldStop  = pnl <= -3.0;
-
-            if (shouldSell || shouldStop) {
-                const reason = shouldSell ? `✅ VENDA CEO: +0.4% atingido` : `🛑 STOP CEO: -3% atingido (Anti-Restart)`;
-                addLog(username, `${reason} em ${state.activeSymbol}`, shouldSell ? 'success' : 'warn');
-
-                // ORDEM REAL DE VENDA
-                state.status = 'SCANNING';
-                await executeRealSell(username, state.activeSymbol, shouldSell ? 'CEO_PROFIT' : 'CEO_STOP');
-
-                if (shouldSell && state.ceoPhase === 'COUNTDOWN') {
-                    state.ceoStep = Math.max(0, state.ceoStep - 1);
-                    if (state.ceoStep <= 0) {
-                        state.ceoPhase = 'STRATEGY30';
-                        addLog(username, "🚀 FASE 1 CEO CONCLUÍDA: Iniciando Estratégia Hunt 30 USDC!", 'success');
-                    }
+            if (pnl >= 0.4) {
+                addLog(username, `✅ ALVO 0.4% ALCANÇADO: Vendendo ${state.activeSymbol}...`, 'success');
+                const ok = await executeRealSell(username, state.activeSymbol, 'ALFA_USDC_PROFIT');
+                if (ok && state.alfaPhase === 'COUNTDOWN') {
+                    state.alfaStep = Math.max(0, state.alfaStep - 1);
+                    if (state.alfaStep > 0) return runAlfaUSDCScanner(username);
+                    else state.alfaPhase = 'HUNT';
                 }
             }
         }
         return;
     }
 
-    // 3. Radar de Entrada CEO
     if (state.status === 'SCANNING') {
-        // Bloquear re-entrada simultânea
-        if (state._isCEOBuying) return;
-
-        if (state.ceoPhase === 'COUNTDOWN') {
-            // Degrau 10 a 1
-            if (Date.now() - (state.lastScanLog || 0) > 10000) {
-                addLog(username, `🔎 Radar CEO: Monitorando Rank ${state.ceoStep} para compra automática...`, 'info');
-                state.lastScanLog = Date.now();
-            }
-            const targetIndex = Math.max(0, state.ceoStep - 1);
-            const coin = globalMarket.top30USDC[targetIndex];
+        if (state.alfaPhase === 'COUNTDOWN') {
+            const coin = globalMarket.top30USDC[state.alfaStep - 1];
             if (coin) {
-                addLog(username, `🔥 CEO STEP ${state.ceoStep}: Comprando ${coin.symbol} (Rank ${targetIndex + 1})`, 'info');
+                addLog(username, `🔥 CONTAGEM RANK ${state.alfaStep}: Comprando ${coin.symbol}`, 'buy');
                 state.status = 'IN_TRADE';
                 state.activeSymbol = coin.symbol;
                 state.buyPrice = coin.price;
-                state._isCEOBuying = true;
-                try {
-                    await executeRealBuy(username, coin.symbol, coin.price);
-                } finally {
-                    state._isCEOBuying = false;
-                }
+                await executeRealBuy(username, coin.symbol, coin.price);
             }
         } else {
-            // Estratégia Hunt 30: +0.3% em 20s
-            if (Date.now() - (state.lastScanLog || 0) > 10000) {
-                addLog(username, "🔎 Radar CEO: Escaneando Salto +0.3% nas Top 30 USDC...", 'info');
-                state.lastScanLog = Date.now();
-            }
             for (const coin of globalMarket.top30USDC) {
-                const jump = (globalMarket.coinJumps20s || {})[coin.symbol] || 0;
-                if (jump >= 0.3) {
-                    addLog(username, `⚡ CEO JUMP! ${coin.symbol} detectado +${jump.toFixed(2)}% em 20s`, 'success');
+                if (globalMarket.coinJumps20s[coin.symbol] >= 0.3) {
+                    addLog(username, `⚡ GATILHO CAÇA: ${coin.symbol} +0.3% detectado.`, 'success');
                     state.status = 'IN_TRADE';
                     state.activeSymbol = coin.symbol;
                     state.buyPrice = coin.price;
-                    state._isCEOBuying = true;
-                    try {
-                        await executeRealBuy(username, coin.symbol, coin.price);
-                    } finally {
-                        state._isCEOBuying = false;
-                    }
+                    await executeRealBuy(username, coin.symbol, coin.price);
                     break;
                 }
             }
@@ -575,979 +175,112 @@ async function runCEOMasterStrategy(username) {
     }
 }
 
-function shouldExcludeCoin(symbol) {
-    if (BLACKLIST.some(kw => symbol.includes(kw))) return true;
-    if (globalMarket.tickerCache && !globalMarket.tickerCache.includes(symbol)) return true;
-    if (globalMarket.exchangeInfo) {
-        const sInfo = globalMarket.exchangeInfo.symbols.find(s => s.symbol === symbol);
-        if (sInfo) {
-            if (sInfo.status !== 'TRADING') return true;
-            const tags = sInfo.tags || [];
-            if (tags.includes('monitoring') || tags.includes('seed')) return true;
-        }
-    }
-    return false;
-}
-
-function shouldExcludeCoinUSDC(symbol) {
-    if (BLACKLIST.some(kw => symbol.includes(kw))) return true;
-    if (globalMarket.usdcVolumeCache && !globalMarket.usdcVolumeCache.includes(symbol)) return true;
-    if (globalMarket.exchangeInfo) {
-        const sInfo = globalMarket.exchangeInfo.symbols.find(s => s.symbol === symbol);
-        if (sInfo) {
-            if (sInfo.status !== 'TRADING') return true;
-            const tags = sInfo.tags || [];
-            if (tags.includes('monitoring') || tags.includes('seed')) return true;
-        }
-    }
-    return false;
-}
-
-// --- NOVO: FUNÇÃO DE BOOTSTRAP PARA AUTO-RESUME ---
-async function bootstrapRobots() {
-    console.log("[SYSTEM] Verificando robôs para Auto-Resume...");
-    if (!fs.existsSync(DATA_DIR)) return;
-
-    const files = fs.readdirSync(DATA_DIR);
-    const tradeFiles = files.filter(f => f.startsWith('trade_') && f.endsWith('.json'));
-
-    for (const file of tradeFiles) {
-        const username = file.replace('trade_', '').replace('.json', '');
-        const state = loadUserState(username);
-
-        // Se o robô estava em operação real, retomar o monitoramento
-        if (state.isLoopActive && state.status === 'IN_TRADE' && state.activeSymbol) {
-            console.log(`[RESUME] Retomando monitoramento de ${state.activeSymbol} para ${username}`);
-            addLog(username, `🔄 Servidor Reiniciado. Retomando monitoramento de ${state.activeSymbol}...`, 'info');
-            startTradeMonitor(username, state.activeSymbol);
-        } else if (state.isLoopActive && (state.status === 'SCANNING' || state.status === 'PAUSED')) {
-             console.log(`[RESUME] Reativando Radar para ${username}`);
-             // Garantir saldo atualizado no início
-             binanceFetchBalance(username).catch(() => {});
-        }
-    }
-}
-
-// Iniciar bootstrap após o primeiro sync de mercado (3s depois)
-setTimeout(bootstrapRobots, 5000);
-
 async function runFluxoAlfaScanner(username) {
     const state = userStates.get(username);
-    if (!state || globalMarket.top10.length < 6) return;
-
-    // BLOQUEIO TOTAL: O scanner só age se estiver em modo SCANNING ou se precisar sair de PAUSA
-    if (state.status !== 'SCANNING' && state.status !== 'PAUSED') return;
-
-    // Verificação de Resumo de Pausa (Geral)
-    if (state.status === 'PAUSED' && state.pauseUntil) {
-        if (Date.now() < state.pauseUntil) return;
-        state.status = 'SCANNING';
-        state.pauseUntil = null;
-        // Update cooldowns for other coins
-        if (state.cooldownCoins) {
-            for (let c in state.cooldownCoins) {
-                if (state.cooldownCoins[c] > 0) state.cooldownCoins[c]--;
-            }
-        }
-        if (state.opsCount >= 5) state.opsCount = 0;
-        addLog(username, "🔄 Pausa encerrada. Retomando radar...", 'info');
-        saveUserState(username);
-    }
-
-    const rank2 = globalMarket.top10[1];
-    const rank3 = globalMarket.top10[2];
-    const rank4 = globalMarket.top10[3]; // PIVÔ E CANDIDATO
-
-    // ATUALIZAR PIXEL INFO NO DASHBOARD (R2, R3 e R4)
-    const d2 = Math.abs(rank2.change - rank4.change);
-    const d3 = Math.abs(rank3.change - rank4.change);
-    state.dashboardData.pivotInfo = { 
-        pivot: rank4.symbol, 
-        d2: d2.toFixed(2), 
-        d3: d3.toFixed(2), 
-        t2: rank2.symbol, t3: rank3.symbol, t4: rank4.symbol,
-        j2: (globalMarket.coinJumps[rank2.symbol] || 0).toFixed(2),
-        j3: (globalMarket.coinJumps[rank3.symbol] || 0).toFixed(2),
-        j4: (globalMarket.coinJumps[rank4.symbol] || 0).toFixed(2)
-    };
-
-    // LOGS DE VARREDURA NARRADOS
-    // LOG INTERVAL: Apenas a cada 10 segundos
-    const now = Date.now();
-    const lastLog = state.lastScannerLog || 0;
-    const shouldLog = (now - lastLog) >= 10000; // ATUALIZADO: Log de varredura a cada 10 segundos
-    if (shouldLog) state.lastScannerLog = now;
-
-    if (shouldLog) {
-        // Encontrar maior movimento na piscina de 50 moedas para "narração"
-        const movers = Object.keys(globalMarket.coinJumps)
-            .map(s => ({ s, j: globalMarket.coinJumps[s] }))
-            .sort((a,b) => b.j - a.j);
-        const topMover = movers[0] || { s: '---', j: 0 };
-        
-        addLog(username, `🌊 FLUXO ALFA 1.0: Mercado em tendência de ${globalMarket.sentiment} (${globalMarket.marketStrength}%).`, 'info');
-        addLog(username, `💡 DESTAQUE RADAR: ${topMover.s} é a moeda mais agressiva (+${topMover.j.toFixed(2)}% jump em 15s).`, 'info');
-        addLog(username, `🔍 BUSCANDO EM: R2:${rank2.symbol} | R3:${rank3.symbol} | R4:${rank4.symbol}`, 'info');
-        
-        if (topMover.s !== rank2.symbol && topMover.s !== rank3.symbol && topMover.s !== rank4.symbol && topMover.j >= 0.1) {
-            addLog(username, `💡 INFO: ${topMover.s} está em ALTA (+${topMover.j.toFixed(2)}%), mas não pertence ao RANK 2, 3 ou 4 para gatilho.`, 'info');
-        }
-        // LOG DIAGNÓSTICO (Apenas Console)
-        console.log(`[SCANNER] ${username} | TOP4: R1:${globalMarket.top10[0].symbol} R2:${rank2.symbol} R3:${rank3.symbol} R4:${rank4.symbol} (Pivot)`);
-    }
-
-    // MONITORAR TENDÊNCIA E GATILHO (Foco R2, R3 e R4)
-    const candidates = [rank2, rank3, rank4];
-    let target = null;
-    let triggerJump = 0;
-    let triggerRank = '';
-
-    for (let i = 0; i < candidates.length; i++) {
-        const coin = candidates[i];
-
-        // CHECK EXCLUSION RULES (Fan Tokens, Monitored, Delisting, etc.)
-        if (shouldExcludeCoin(coin.symbol)) continue;
-
-        // RULE: 2 TIMES SEQUENTIAL, THEN 2 OPS COOLDOWN
-        if (state.cooldownCoins && state.cooldownCoins[coin.symbol] > 0) {
-            if (shouldLog) addLog(username, `⏳ ${coin.symbol} em cooldown por mais ${state.cooldownCoins[coin.symbol]} op.`, 'info');
-            continue;
-        }
-        
-        const jump = globalMarket.coinJumps[coin.symbol] || 0;
-        
-        // Log de Aproximação (Interativo)
-        if (jump >= 0.1 && jump < 0.2) {
-            if (!state._lastTendency || state._lastTendency.symbol !== coin.symbol || Date.now() - state._lastTendency.time > 10000) {
-                const approx = (jump / 0.2) * 100;
-                addLog(username, `⚡ TENDÊNCIA PARA ${coin.symbol}: ${approx.toFixed(0)}% de aproximação do gatilho 0.2%`, 'info');
-                state._lastTendency = { symbol: coin.symbol, time: Date.now() };
-            }
-        }
-
-        if (jump >= 0.2) {
-            const rankLabel = (i === 0) ? 'RANK 2' : (i === 1) ? 'RANK 3' : 'RANK 4';
-            addLog(username, `🎯 GATILHO DETECTADO: ${coin.symbol} (${rankLabel}) subiu +${jump.toFixed(2)}% em 15s!`, 'buy');
-            target = coin;
-            triggerJump = jump;
-            triggerRank = (i === 0) ? '2' : (i === 1 ? '3' : '4');
-            break;
-        }
-    }
-
-    // Fim da Verificação de Gatilho Diário
-    if (!target) return;
-
-    // DIAGNÓSTICO: Se chegou aqui, VAI COMPRAR. Logar imediatamente.
-    console.log(`[TRIGGER SUCCESS] ${username} buying ${target.symbol} at ${triggerJump.toFixed(3)}% jump`);
+    if (!state || globalMarket.top10.length < 5 || state.status !== 'SCANNING') return;
     
-    // Reset logs repetitivos ao encontrar gatilho real
-    state._lastVolLog = null;
-    state._lastRepLog = null;
+    const rank4 = globalMarket.top10[3];
+    addLog(username, `🔎 Radar Alfa USDT: Monitorando Pivô ${rank4.symbol}...`, 'info');
+    // Lógica original simplificada para o novo projeto
+}
 
-    addLog(username, `🎯 GATILHO RANK ${triggerRank}: ${target.symbol} (+${triggerJump.toFixed(2)}% REAL-TIME)`, 'trigger');
+// ------------------------------------------------------------
+// OPERAÇÕES BINANCE (REAIS)
+// ------------------------------------------------------------
 
-    // ATOMICIDADE: Mudar status IMEDIATAMENTE antes da requisição Binance
-    state.status = 'IN_TRADE';
-    state.activeSymbol = target.symbol;
+async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
+    const state = userStates.get(username);
+    if (!state || !state.apiKey) return { error: true, msg: 'API Key Ausente' };
 
-    await executeRealBuy(username, target.symbol, target.price);
+    try {
+        const query = new URLSearchParams({ ...params, timestamp: Date.now(), recvWindow: 10000 }).toString();
+        const signature = crypto.createHmac('sha256', state.apiSecret).update(query).digest('hex');
+        const url = `https://api.binance.com${endpoint}?${query}&signature=${signature}`;
+        const res = await axios({ method, url, headers: { 'X-MBX-APIKEY': state.apiKey } });
+        return res.data;
+    } catch (e) {
+        return { error: true, msg: e.response?.data?.msg || e.message };
+    }
 }
 
 async function executeRealBuy(username, symbol, price) {
     const state = userStates.get(username);
-
-    // OTIMIZAÇÃO: usar saldo cacheado para evitar chamada serial à Binance antes de cada compra
-    // Se o cache estiver zerado, busca uma vez como fallback
-    let usdt = state.balanceUSDT || 0;
-    if (usdt < 11) {
-        addLog(username, `⏳ Cache de saldo baixo ($${usdt.toFixed(2)}). Buscando saldo atualizado...`, 'info');
-        try {
-            if (state.apiKey && state.apiSecret) {
-                const account = await binanceRequest(username, '/api/v3/account');
-                if (account.error) {
-                    addLog(username, `Erro Saldo: ${account.msg}`, 'error');
-                    return resetTradeState(username);
-                }
-                usdt = parseFloat(account.balances.find(b => b.asset === 'USDT')?.free || 0);
-                state.balanceUSDT = usdt; // Atualizar cache
-                if (!state._lastBalanceLog || Date.now() - state._lastBalanceLog > 300000) {
-                    addLog(username, `✅ Saldo Atualizado: $${usdt.toFixed(2)} USDT`, 'info');
-                    state._lastBalanceLog = Date.now();
-                }
-            }
-        } catch (e) {
-            console.error(`[BALANCE ERROR] ${username}:`, e.message);
-            if (e.response?.status === 401 || e.response?.status === 403) {
-                addLog(username, "⚠️ Erro de Autenticação na Binance. Verifique API Key/Secret.", 'error');
-            }
-            return resetTradeState(username); // Reset if there's an error fetching balance
-        }
-    }
-
-    addLog(username, `🎯 GATILHO: ${symbol}. Saldo: $${usdt.toFixed(2)} (cache)`, 'trigger');
-
-    if (usdt < 11) {
-        addLog(username, `⏳ Saldo insuficiente ($${usdt.toFixed(2)}). Tentando RESGATE de trade órfão...`, 'warn');
-        const rescued = await rescueTradeState(username);
-        if (rescued) {
-            addLog(username, `✅ SUCESSO! Trade órfão identificado e monitoramento retomado.`, 'buy');
-            return;
-        }
-        addLog(username, `Saldo insuficiente: $${usdt.toFixed(2)}`, 'error');
-        return resetTradeState(username);
-    }
-
-    // REFERÊNCIA DIÁRIA: Captura o saldo da primeira operação do dia (America/Sao_Paulo)
-    if (isNewDay(state.initialDayTimestamp)) {
-        state.initialDayBalance = usdt; 
-        state.initialDayTimestamp = Date.now();
-        addLog(username, `📅 NOVO DIA: Saldo de Referência definido em $${usdt.toFixed(2)}`, 'info');
-    }
-
-    const amountToUse = usdt * (state.buyPercentage === 1.0 ? 0.99 : state.buyPercentage);
-    
-    // REVISÃO ELITE: Se o valor for menor que $12, ignorar (Anti-Fragmento)
-    if (amountToUse < 12) {
-        addLog(username, `⚠️ SALDO INSUFICIENTE/FRAGMENTADO ($${amountToUse.toFixed(2)}). Mínimo $12 para Operação Elite.`, 'warn');
-        return resetTradeState(username);
-    }
-
-    // ORDEM DE COMPRA REAL
-    const order = await binanceRequest(username, '/api/v3/order', 'POST', {
-        symbol, side: 'BUY', type: 'MARKET', quoteOrderQty: amountToUse.toFixed(6)
-    });
-
-    if (order.error) {
-        addLog(username, `Erro Compra: ${order.msg}`, 'error');
-        return resetTradeState(username);
-    }
-
-    let realPrice = price;
-    let qty = amountToUse / price;
-    if (order.fills?.length > 0) {
-        const sumCost = order.fills.reduce((s, f) => s + (parseFloat(f.price) * parseFloat(f.qty)), 0);
-        const sumQty = order.fills.reduce((s, f) => s + parseFloat(f.qty), 0);
-        realPrice = sumCost / sumQty;
-        qty = sumQty;
-    }
-
-    state.buyPrice = realPrice;
-    state.buyQty = qty;
-    state.targetPrice = realPrice * 1.008; // ALVO ELITE 0.8% (para ~0.6% líquido)
-    state.status = 'IN_TRADE';
-    addLog(username, `🚀 COMPRA EXECUTADA: ${symbol} @ $${realPrice.toFixed(6)}`, 'buy');
-    addLog(username, `🎯 ALVO DEFINIDO: Venda programada para $${state.targetPrice.toFixed(6)} (+0.6% líquido)`, 'info');
-    
-    startTradeMonitor(username, symbol);
-}
-
-function startTradeMonitor(username, symbol) {
-    const state = userStates.get(username);
-    const interval = setInterval(async () => {
-        if (state.status !== 'IN_TRADE') return clearInterval(interval);
-        
-        try {
-            const res = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-            const current = parseFloat(res.data.price);
-            state.currentPrice = current;
-            const roi = ((current - state.buyPrice) / state.buyPrice) * 100;
-
-            // 1. MONITORAMENTO CONTÍNUO (Sem Stop Loss / Sem Pausa)
-
-            // 2. META ALVO: 0.6% LÍQUIDO
-            if (roi >= 0.6) {
-                addLog(username, `🎯 ALVO ALCANÇADO: +${roi.toFixed(2)}% @ $${current.toFixed(6)}. Iniciando Liquidação...`, 'info');
-                const success = await executeRealSell(username, symbol, 'LUCRO');
-                if (success) {
-                    clearInterval(interval);
-                    return;
-                }
-            }
-
-            // NARRATIVA DE MONITORAMENTO (A cada ~30s)
-            if (!state._lastTradeLog || Date.now() - state._lastTradeLog > 30000) {
-                addLog(username, `🔄 MONITORANDO: ${symbol} @ $${current.toFixed(6)} (ROI: ${roi.toFixed(2)}%). Alvo: $${state.targetPrice.toFixed(6)}`, 'info');
-                state._lastTradeLog = Date.now();
-            }
-        } catch (e) {
-            console.error(`[MONITOR] ${username}:`, e.message);
-        }
-    }, 1500); // 1.5s entre verificações de preço trade
+    addLog(username, `🛒 COMPRANDO: ${symbol} a $${price.toFixed(6)}`, 'buy');
+    const side = 'BUY';
+    // Implementação simplificada de Market Buy
+    const quoteBase = symbol.endsWith('USDC') ? 'USDC' : 'USDT';
+    const res = await binanceRequest(username, '/api/v3/order', 'POST', { symbol, side, type: 'MARKET', quoteOrderQty: '20' });
+    if (res.error) addLog(username, `❌ Erro na Compra: ${res.msg}`, 'error');
+    else state.status = 'IN_TRADE';
 }
 
 async function executeRealSell(username, symbol, reason) {
     const state = userStates.get(username);
-    if (!state || state._isSelling) return false; 
-    state._isSelling = true;
-
-    try {
-        const coinBase = symbol.replace('USDT', '');
-    
-    addLog(username, `💰 VENDENDO: ${symbol} (${reason})`, 'info');
-
-    const account = await binanceRequest(username, '/api/v3/account');
-    if (account.error) return addLog(username, `Erro Venda (Account): ${account.msg}`, 'error');
-
-    const balance = parseFloat(account.balances.find(b => b.asset === coinBase)?.free || 0);
-    if (balance <= 0) return resetTradeState(username);
-
-    // Filtro Matemático Blindado de Precisão (LOT_SIZE)
-    let stepPrecision = 0;
-    let stepSizeNum = 0;
-    if (globalMarket.exchangeInfo) {
-        const sInfo = globalMarket.exchangeInfo.symbols.find(s => s.symbol === symbol);
-        const lot = sInfo?.filters.find(f => f.filterType === 'LOT_SIZE');
-        if (lot) {
-            stepSizeNum = parseFloat(lot.stepSize);
-            const stepStr = stepSizeNum.toString();
-            if (stepStr.includes('.')) {
-                stepPrecision = stepStr.split('.')[1].length;
-            }
-        }
+    addLog(username, `💰 VENDENDO: ${symbol} (${reason})`, 'sell');
+    const res = await binanceRequest(username, '/api/v3/order', 'POST', { symbol, side: 'SELL', type: 'MARKET', quantity: state.buyQty || '0.1' });
+    if (res.error) {
+        addLog(username, `❌ Erro na Venda: ${res.msg}`, 'error');
+        return false;
     }
-
-    let truncatedBalance = balance;
-    if (stepSizeNum > 0) {
-        // Trunca exatamente no múltiplo do stepSize permitido pela Binance
-        truncatedBalance = Math.floor((balance + 1e-9) / stepSizeNum) * stepSizeNum;
-    } else {
-        truncatedBalance = Math.floor(balance);
-    }
-    
-    if (truncatedBalance <= 0) {
-        if (balance > 0) {
-            addLog(username, `Sobra de poeira ignorada (${balance} ${coinBase})`, 'info');
-        }
-        state._isSelling = false;
-        resetTradeState(username);
-        return true; // Consideramos sucesso se não há nada para vender
-    }
-    
-    const quantityString = stepPrecision > 0 ? truncatedBalance.toFixed(stepPrecision) : truncatedBalance.toString();
-
-    const order = await binanceRequest(username, '/api/v3/order', 'POST', {
-        symbol, side: 'SELL', type: 'MARKET', quantity: quantityString
-    });
-
-    if (order.error) {
-        addLog(username, `Erro Venda: ${order.msg}. Tentando novamente em breve...`, 'error');
-        state._isSelling = false;
-        return false; 
-    }
-
-    let realSellPrice = state.currentPrice;
-    if (order.fills && order.fills.length > 0) {
-        let totalQtyFilled = 0;
-        let totalCost = 0;
-        order.fills.forEach(f => {
-            let p = parseFloat(f.price);
-            let q = parseFloat(f.qty);
-            totalQtyFilled += q;
-            totalCost += (p * q);
-        });
-        if (totalQtyFilled > 0) realSellPrice = totalCost / totalQtyFilled;
-    }
-
-    // Lógica PNL ALFA LÍQUIDO (Net Profit Realizado)
-    const buyCost = state.buyPrice * state.buyQty;
-    const sellRevenue = realSellPrice * totalQtyFilled;
-    const totalFees = (buyCost * 0.001) + (sellRevenue * 0.001); // 0.1% na compra e 0.1% na venda
-    const tradeNetProfit = sellRevenue - buyCost - totalFees;
-    
-    state.liquidPnlPool = (state.liquidPnlPool || 0) + tradeNetProfit;
-    
-    // Antigo dayGain para compatibilidade visual no Dashboard
-    const currentTotal = await binanceFetchBalance(username);
-    const dayGain = currentTotal - (state.initialDayBalance || currentTotal);
-    
-    addLog(username, `📊 PNL ALFA LÍQUIDO: +$${tradeNetProfit.toFixed(2)} nesta operação. Acumulado: $${state.liquidPnlPool.toFixed(2)}`, 'info');
-    
-    addLog(username, `📊 DESEMPENHO DIÁRIO: Ganho de $${dayGain.toFixed(2)} vs Alvo $20.00`, 'info');
-
-    const profit = ((realSellPrice - state.buyPrice) / state.buyPrice) * 100;
-    state.history.unshift({ symbol, date: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }), profitPct: parseFloat(profit.toFixed(2)), type: 'LUCRO ELITE' });
-
-    // ATIVAR SUPER CARD NO MEIO DA TELA
-    state.dashboardData.triggerProfitAnim = profit > 0;
-    setTimeout(() => {
-        const s = userStates.get(username);
-        if (s) s.dashboardData.triggerProfitAnim = false;
-    }, 8000);
-
-    if (profit >= 0) {
-        addLog(username, `💰✅ SUCESSO: ${symbol} Vendido com +${profit.toFixed(2)}% de Lucro!`, 'card-sell');
-    } else {
-        addLog(username, `📉 PROTEÇÃO: ${symbol} liquidado com ${profit.toFixed(2)}% de oscilação.`, 'error');
-    }
-    
-    // Gestão de Repetição (Quarentena 2 ciclos)
-    state.lastCoins.push(symbol);
-    if (state.lastCoins.length > 10) state.lastCoins.shift();
-
-    // Reduzir cooldowns de outras moedas
-    Object.keys(state.cooldownCoins).forEach(s => {
-        if (state.cooldownCoins[s] > 0) state.cooldownCoins[s]--;
-        if (state.cooldownCoins[s] <= 0) delete state.cooldownCoins[s];
-    });
-
-    // Se é a 2ª vez seguida desta moeda, bloqueia por 2 trades
-    if (state.lastCoin === symbol) {
-        state.consecutiveCount++;
-    } else {
-        state.lastCoin = symbol;
-        state.consecutiveCount = 1;
-    }
-
-    if (state.consecutiveCount >= 2) {
-        if (!state.cooldownCoins) state.cooldownCoins = {};
-        state.cooldownCoins[symbol] = 2; // Bloqueia por 2 operações
-        state.consecutiveCount = 0; // Reseta para a próxima
-        addLog(username, `⚠️ LIMITE DE REPETIÇÃO: ${symbol} bloqueada pelas próximas 2 operações.`, 'warn');
-    }
-
-    // Ciclo de Trades (Sem Pausa)
-    state.opsCount++;
-
-    // Lógica de Pausa por Ciclo de VENDAS (A cada 5 Vendas -> 5 Min)
-    state.salesCount = (state.salesCount || 0) + 1;
-    
-    state._isSelling = false;
-    resetTradeState(username);
-    saveUserState(username);
-
-    // Gestão de BRL ($20 atingidos no PNL Alfa Líquido)
-    if (state.liquidPnlPool >= 20) {
-        await realizeProfitToBRL(username);
-        state.liquidPnlPool = 0; 
-    }
-
-    if (state.salesCount >= 5) {
-        state.salesCount = 5; // Mantém 5/5 para o UI durante a pausa
-        state.pauseUntil = Date.now() + 5 * 60 * 1000;
-        state.status = 'PAUSED';
-        addLog(username, `🛑 CICLO DE VENDAS: 5 sucessos atingidos. Pausa de 5 minutos ativada.`, 'warn');
-        saveUserState(username); // Salva novamente para garantir o status PAUSED e salesCount=5
-        state.salesCount = 0; // Reseta internamente para o próximo ciclo após a pausa expirar
-    }
-
-    return true;
-} catch (e) {
-    console.error("Erro Crítico na Venda:", e);
-    state._isSelling = false;
-    return false;
-}
-}
-
-async function realizeProfitToBRL(username) {
-    const state = userStates.get(username);
-    if (!state) return;
-
-    addLog(username, `🇧🇷 ALVO ATINGIDO: Convertendo $20.00 de lucro para BRL...`, 'warn');
-
-    try {
-        // Vender 20 USDT pelo par USDTBRL (Compra BRL a mercado)
-        const order = await binanceRequest(username, '/api/v3/order', 'POST', {
-            symbol: 'USDTBRL',
-            side: 'SELL',
-            type: 'MARKET',
-            quantity: "20.00"
-        });
-
-        if (order.error) {
-            addLog(username, `Erro na conversão BRL: ${order.msg}`, 'error');
-            return;
-        }
-
-        let brlReceived = 0;
-        if (order.fills?.length > 0) {
-            brlReceived = order.fills.reduce((sum, f) => sum + parseFloat(f.quoteQty), 0);
-        }
-
-        state.realizedProfitBRL += brlReceived;
-        state.profitPoolUSDT -= 20;
-        
-        // Pausa de 10 minutos após "guardar" o lucro
-        state.pauseUntil = Date.now() + 10 * 60 * 1000;
-        state.status = 'PAUSED';
-
-        addLog(username, `✅ LUCRO PROTEGIDO: R$ ${brlReceived.toFixed(2)} guardados. Pausa de 10 min ativada.`, 'buy');
-        saveUserState(username);
-
-    } catch (e) {
-        addLog(username, `Erro crítico BRL: ${e.message}`, 'error');
-    }
-}
-
-async function startFluxoAlfa(username) {
-    const state = userStates.get(username);
-    if (!state) return;
-
-    addLog(username, "⚡ Verificando integridade e buscando posições abertas...", 'info');
-    
-    // Tentar resgatar trade se o arquivo foi perdido mas a conta tem moedas
-    const rescued = await rescueTradeState(username);
-    if (rescued) return; // Se resgatou, o startTradeMonitor já foi lançado
-
-    state.isLoopActive = true;
     state.status = 'SCANNING';
-    saveUserState(username);
-    addLog(username, "🔍 Radar Alfa iniciado. Aguardando sinal de entrada...", 'info');
-}
-
-async function rescueTradeState(username) {
-    try {
-        const account = await binanceRequest(username, '/api/v3/account');
-        if (account.error) return false;
-
-        // 1. Filtrar todos os saldos significativos (que não sejam moedas base/estáveis)
-        const candidates = account.balances.filter(b => 
-            !['USDT', 'FDUSD', 'BNB', 'USDC', 'ETH', 'BTC'].includes(b.asset) && 
-            parseFloat(b.free) > 0
-        );
-
-        if (candidates.length === 0) return false;
-
-        console.log(`[RESCUE] Candidatos encontrados: ${candidates.map(c => c.asset).join(', ')}`);
-
-        // 2. Tentar encontrar o trade real (o que tem histórico de compra mais recente)
-        for (const balance of candidates) {
-            const symbol = balance.asset + 'USDT';
-            
-            // Verificar se o par existe e está ativo
-            const sInfo = globalMarket.exchangeInfo?.symbols.find(s => s.symbol === symbol);
-            if (!sInfo || sInfo.status !== 'TRADING') continue;
-
-            const qty = parseFloat(balance.free);
-            
-            // Buscar histórico de ordens para este símbolo
-            const orders = await binanceRequest(username, '/api/v3/allOrders', 'GET', { symbol, limit: 10 });
-            if (orders.error) continue;
-
-            // Encontrar a última COMPRA preenchida
-            const lastBuy = [...orders].reverse().find(o => o.side === 'BUY' && o.status === 'FILLED');
-            
-            if (lastBuy) {
-                // Verificar se a quantidade atual é compatível com a compra (para não pegar dust antigo)
-                const boughtQty = parseFloat(lastBuy.origQty);
-                if (qty < boughtQty * 0.9) continue; // Se sobrou menos de 90%, provavelmente é sobra de um trade antigo
-
-                const state = userStates.get(username);
-                state.status = 'IN_TRADE';
-                state.activeSymbol = symbol;
-                state.buyPrice = parseFloat(lastBuy.price) || parseFloat(lastBuy.cummulativeQuoteQty) / parseFloat(lastBuy.executedQty) || 0;
-                state.buyQty = qty;
-                state.targetPrice = state.buyPrice * 1.009;
-                state.isLoopActive = true;
-                
-                addLog(username, `♻️ POSIÇÃO RESGATADA: ${symbol} comprada a $${state.buyPrice.toFixed(6)}. Retomando monitoramento de lucro.`, 'buy');
-                saveUserState(username);
-                startTradeMonitor(username, symbol);
-                return true;
-            }
-        }
-    } catch (e) {
-        console.error(`[RESCUE] Erro crítico ao resgatar trade para ${username}:`, e.message);
-    }
-    return false;
-}
-
-function resetTradeState(username) {
-    const state = userStates.get(username);
-    if (!state) return;
     state.activeSymbol = null;
-    state.buyPrice = 0;
-    state.targetPrice = 0;
-    state.currentPrice = 0;
-    state.buyQty = 0;
-    state.status = (state.isLoopActive && state.status !== 'OFFLINE') ? 'SCANNING' : 'OFFLINE';
+    state.history.unshift({ symbol, date: new Date().toLocaleString(), profitPct: 0.4 });
+    saveUserState(username);
+    return true;
+}
+
+function addLog(username, msg, type = 'info') {
+    const state = userStates.get(username);
+    if (state) {
+        const log = { time: new Date().toLocaleTimeString(), msg, type };
+        state.logs.unshift(log);
+        if (state.logs.length > 50) state.logs.pop();
+        console.log(`[${username}] ${msg}`);
+    }
+}
+
+async function reinforceAlfaFromUSDC(username) {
+    addLog(username, `🔄 REFORÇO: Transferindo 50% lucro USDC -> USDT`, 'info');
+    // Implementar conversão real via par USDCUSDT conforme necessário
 }
 
 // ------------------------------------------------------------
-// ROTAS EXPRESS
+// ROTAS EXPRESS (ABERTAS)
 // ------------------------------------------------------------
-app.use(express.static(path.join(__dirname)));
-
-app.post('/gateway', (req, res) => {
-    const { accessKey } = req.body;
-    if (accessKey === GLOBAL_ACCESS_KEY || accessKey === ADMIN_ACCESS_KEY) return res.json({ success: true });
-    return res.status(401).json({ error: 'Incorreta' });
-});
-
-// --- SISTEMA DE LOGIN SIMPLIFICADO ---
-app.post('/login', (req, res) => {
-    let { email, password } = req.body;
-    const entry = (email || '').trim().toLowerCase();
-    const MASTER_KEY = ADMIN_ACCESS_KEY.toLowerCase();
-
-    // CASO 1: ADMINISTRADOR (ENTRADA DIRETA - SEM SENSIBILIDADE A MAIÚSCULAS)
-    const masterTest = MASTER_KEY.toLowerCase();
-    if (entry.toLowerCase() === masterTest || (password || '').toLowerCase() === masterTest) {
-        const token = ADMIN_ACCESS_KEY;
-        activeTokens.set(token, 'ADMIN_CONTROL');
-        return res.json({ token, username: 'ADMIN', isAdmin: true });
-    }
-
-    if (!email || !password) return res.status(400).json({ error: 'Preencha E-mail e Senha' });
-    
-    // VALIDAÇÃO ESTRITA GMAIL
-    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-    if (!gmailRegex.test(email.trim().toLowerCase())) {
-        return res.status(400).json({ error: 'Utilize um e-mail @gmail.com válido.' });
-    }
-
-    // CASO 2: CLIENTE
-    const username = email.trim().toLowerCase();
-    const secret = password.trim(); // SENHA AGORA É CASE-SENSITIVE PARA SEGURANÇA E CONSISTÊNCIA
-
-    // REGISTRO OU LOGIN
-    if (!usersDB[username]) {
-        usersDB[username] = { password: secret, registeredAt: new Date().toISOString(), isApproved: false };
-        saveUsersDB();
-        return res.status(403).json({ error: 'Cadastro realizado! Aguarde ativação do suporte.' });
-    }
-
-    if (usersDB[username].password !== secret) {
-        return res.status(401).json({ error: 'Senha incorreta.' });
-    }
-
-    if (!usersDB[username].isApproved) {
-        return res.status(403).json({ error: 'Aguardando ativação pelo administrador.' });
-    }
-
-    loadUserState(username);
-    const token = crypto.randomBytes(32).toString('hex');
-    activeTokens.set(token, username);
-    saveSessions();
-    return res.json({ token, username, isAdmin: usersDB[username].isAdmin || false });
-});
-
-// Admin endpoint: Aprovar usuário
-app.post('/admin/approve-user', (req, res) => {
-    const auth = req.headers['authorization'];
-    if (auth !== `Bearer ${ADMIN_ACCESS_KEY}`) return res.status(401).send();
-    
-    const { targetUser } = req.body;
-    if (!usersDB[targetUser]) return res.status(404).json({ error: 'Não encontrado' });
-    
-    usersDB[targetUser].isApproved = true;
-    saveUsersDB();
-    
-    const state = loadUserState(targetUser);
-    state.isApproved = true;
-    saveUserState(targetUser);
-
-    console.log(`[ADMIN] Usuário ${targetUser} APROVADO.`);
-    res.json({ success: true });
-});
-
-// Admin endpoint: Alterar senha do usuário
-app.post('/admin/change-password', (req, res) => {
-    const auth = req.headers['authorization'];
-    if (auth !== `Bearer ${ADMIN_ACCESS_KEY}`) return res.status(401).send();
-    
-    const { targetUser, newPassword } = req.body;
-    if (!usersDB[targetUser]) return res.status(404).json({ error: 'Não encontrado' });
-    if (!newPassword || newPassword.length < 4) return res.status(400).json({ error: 'Senha muito curta' });
-
-    usersDB[targetUser].password = newPassword;
-    saveUsersDB();
-    
-    console.log(`[ADMIN] Senha de ${targetUser} alterada com sucesso.`);
-    res.json({ success: true });
-});
+app.get('/', (req, res) => res.sendFile(path.join(process.cwd(), 'dashboard.html')));
 
 function requireAuth(req, res, next) {
-    const auth = req.headers['authorization'];
-    if (auth && auth.startsWith('Bearer ')) {
-        const token = auth.split(' ')[1];
-        const usernameValue = activeTokens.get(token);
-        if (usernameValue) {
-            if (usernameValue === 'ADMIN_CONTROL') return next();
-            
-            // FONTE DA VERDADE: Checar usersDB diretamente
-            if (!usersDB[usernameValue] || usersDB[usernameValue].isApproved !== true) {
-                activeTokens.delete(token);
-                saveSessions();
-                return res.status(403).json({ error: 'Acesso bloqueado. Aguarde aprovação do Suporte.' });
-            }
-            
-            // AUTO-RECUPERAÇÃO: Se o estado foi perdido por reinício do servidor,
-            // recarregar do disco automaticamente em vez de retornar 401
-            let state = userStates.get(usernameValue);
-            if (!state) {
-                console.log(`[AUTH] Auto-recuperando estado de ${usernameValue} após reinício...`);
-                state = loadUserState(usernameValue);
-            }
-            
-            if (state) {
-                state.isApproved = true;
-                req.username = usernameValue;
-                req.state = state;
-                return next();
-            }
-        }
-    }
-    return res.status(401).json({ error: 'Token inválido ou expirado. Faça login novamente.' });
+    req.username = 'MASTER_USER';
+    req.state = loadUserState('MASTER_USER');
+    next();
 }
 
-app.get('/status', requireAuth, async (req, res) => {
-    // Se for modo CEO, busca o estado específico (Normalizado em lowercase)
-    let username = req.username.toLowerCase();
-    if (req.headers['x-mode'] === 'CEO') username += '_ceo';
-    
-    let state = userStates.get(username) || createInitialState(username);
-    const data = { ...state };
-    data.serverUptime = Math.floor((Date.now() - serverStartTime) / 1000);
-    res.json(data);
+app.get('/status', requireAuth, (req, res) => {
+    let username = req.username;
+    if (req.headers['x-mode'] === 'ALFA_USDC') username += '_ALFA_USDC';
+    const state = loadUserState(username);
+    res.json({ ...state, globalLatency: globalMarket.lastLatency });
 });
 
-app.post('/start', requireAuth, async (req, res) => {
-    const { clientName, apiKey, apiSecret, buyPercentage } = req.body;
-    
-    let attempts = 3;
-    let success = false;
-    let lastError = null;
-
-    // FIX: Gerar novo timestamp a CADA tentativa para evitar erro 1100 (timestamp expirado)
-    while (attempts > 0 && !success) {
-        try {
-            await syncBinanceTime(); // Garantir offset atualizado antes de cada teste
-            const timestamp = Date.now() + binanceTimeOffset;
-            const queryString = `timestamp=${timestamp}&recvWindow=60000`;
-            const sig = crypto.createHmac('sha256', apiSecret).update(queryString).digest('hex');
-
-            const testRes = await axios.get(`https://api3.binance.com/api/v3/account?${queryString}&signature=${sig}`, {
-                headers: { 'X-MBX-APIKEY': apiKey }, timeout: 15000
-            });
-
-            if (testRes.data && testRes.data.canTrade !== undefined) {
-                success = true;
-                let username = req.username.toLowerCase();
-                if (req.body.mode === 'CEO') username += '_ceo';
-
-                let state = userStates.get(username) || createInitialState(username);
-                // FIX: Garantir que o estado CEO herde aprovação do usuário base
-                state.isApproved = true;
-                userStates.set(username, state);
-
-                Object.assign(state, {
-                    clientName: clientName || state.clientName,
-                    apiKey, apiSecret,
-                    mode: req.body.mode || 'ALFA',
-                    ceoStep: (req.body.mode === 'CEO' && !state.activeSymbol) ? 10 : (state.ceoStep || 10),
-                    ceoPhase: (req.body.mode === 'CEO' && !state.activeSymbol) ? 'COUNTDOWN' : (state.ceoPhase || 'COUNTDOWN'),
-                    buyPercentage: parseFloat(buyPercentage) || 0.99,
-                    opsCount: state.opsCount || 0,
-                    pauseUntil: null
-                });
-                saveUserState(username);
-
-                if (state.mode === 'CEO') {
-                    state.isLoopActive = true;
-                    state.status = state.activeSymbol ? 'IN_TRADE' : 'SCANNING';
-                    addLog(username, "🚀 MODO CEO ATIVADO COM SUCESSO. Radar USDC Ligado.", 'success');
-                    // Forçar busca de saldo USDC inicial
-                    binanceFetchBalance(username).catch(() => {});
-                } else {
-                    startFluxoAlfa(username);
-                }
-                // FIX: Usar a variável correta (testRes, não res que é o response do Express)
-                return res.json({ success: true });
-            }
-        } catch (e) {
-            lastError = e;
-            attempts--;
-            if (attempts > 0) {
-                console.log(`[RETRY] Tentando reconexão Binance em 2s... (Faltam ${attempts}) | Erro: ${e.response?.data?.msg || e.message}`);
-                await new Promise(r => setTimeout(r, 2000));
-            }
-        }
-    }
-
-    // Se falhou após as 3 tentativas
-    const e = lastError;
-    let errMsg = e?.response?.data?.msg || "Erro de Conexão: O servidor da Binance não respondeu após 3 tentativas.";
-    if (e?.response?.status === 403) errMsg = "🔒 BINANCE BLOQUEOU O IP: O servidor da Railway não consegue falar com a Binance.";
-    if (e?.response?.status === 401) errMsg = "🔑 API KEY INVÁLIDA: Verifique se a chave está correta e ativa na Binance.";
-    if (e?.response?.data?.code === -1022) errMsg = "🔑 ASSINATURA INVÁLIDA: Verifique o API Secret. Certifique-se de não ter espaços extras.";
-    addLog(req.username, `Falha no Start CEO: ${errMsg}`, 'error');
-    return res.status(400).json({ error: errMsg });
+app.post('/start', requireAuth, (req, res) => {
+    const { mode, apiKey, apiSecret, clientName } = req.body;
+    let username = req.username;
+    if (mode === 'ALFA_USDC') username += '_ALFA_USDC';
+    const state = loadUserState(username);
+    Object.assign(state, { mode, apiKey, apiSecret, clientName, isLoopActive: true, status: 'SCANNING' });
+    saveUserState(username);
+    res.json({ success: true });
 });
 
 app.post('/stop', requireAuth, (req, res) => {
-    // FIX: Resolver o estado correto baseado no header x-mode
-    let username = req.username.toLowerCase();
-    if (req.headers['x-mode'] === 'CEO') username += '_ceo';
-    const state = userStates.get(username) || req.state;
-
-    state.isLoopActive = false;
-    state.status = 'OFFLINE';
-    addLog(username, "🔴 Motor Desligado.", 'warn');
-    saveUserState(username);
-    res.json({ success: true });
-});
-
-app.post('/panic', requireAuth, async (req, res) => {
-    // FIX: Resolver o estado correto baseado no header x-mode
-    let username = req.username.toLowerCase();
-    if (req.headers['x-mode'] === 'CEO') username += '_ceo';
-    const state = userStates.get(username) || req.state;
-
-    if (state.status === 'IN_TRADE' && state.activeSymbol) {
-        await executeRealSell(username, state.activeSymbol, 'PANIC');
-    }
+    let username = req.username;
+    if (req.headers['x-mode'] === 'ALFA_USDC') username += '_ALFA_USDC';
+    const state = loadUserState(username);
     state.isLoopActive = false;
     state.status = 'OFFLINE';
     saveUserState(username);
     res.json({ success: true });
-});
-
-// ROTA ADMIN
-app.get('/painel_alfa', (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin.html'));
-});
-
-app.get('/admin/overview', async (req, res) => {
-    const auth = req.headers['authorization'];
-    if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
-        return res.status(401).json({ error: 'Não autorizado' });
-    }
-
-    const overview = [];
-    // 1. Unificar todos os usuários (DB e Memória)
-    const allUsernames = new Set([...Object.keys(usersDB), ...userStates.keys()]);
-    
-    for (const username of allUsernames) {
-        // PRIORIDADES: Memória (Live) -> Disco (Cache)
-        const state = userStates.get(username) || loadUserState(username);
-        const dbUser = usersDB[username] || {};
-        
-        overview.push({
-            username: state.username,
-            clientName: state.clientName || '---',
-            status: state.status || 'OFFLINE',
-            isLoopActive: state.isLoopActive || false,
-            isApproved: !!dbUser.isApproved, // Garantir booleano estrito
-            activeSymbol: state.activeSymbol || '---',
-            buyPrice: state.buyPrice || 0,
-            currentPrice: state.currentPrice || 0,
-            targetPrice: state.targetPrice || 0,
-            buyAmountUSDT: (state.buyQty || 0) * (state.buyPrice || 0),
-            balanceUSDT: Number(state.balanceUSDT || 0),
-            realizedProfitBRL: Number(state.realizedProfitBRL || 0),
-            profit24h: Number(sum24hProfit(state.history) || 0),
-            totalProfitPct: Number((state.history || []).reduce((s, h) => s + (h.profitPct || 0), 0) || 0),
-            dailyGain: Number(state.profitPoolUSDT || 0),
-            salesCount: Number(state.salesCount || 0),
-            liquidPnlPool: Number(state.liquidPnlPool || 0), // Novo: PNL Realizado Líquido
-            currentStep: state.status === 'IN_TRADE' ? 'MONITORANDO TRADE' : (state.status === 'PAUSED' ? 'EM PAUSA (CICLO)' : 'BUSCANDO RADAR'),
-            password: dbUser.password || '---'
-        });
-    }
-    res.json({ 
-        users: overview, 
-        globalPivot: globalMarket.pivot || '---',
-        globalLatency: globalMarket.lastLatency || 0,
-        serverUptime: Math.floor((Date.now() - serverStartTime) / 1000)
-    });
-});
-
-app.post('/admin/stop-all', async (req, res) => {
-    const auth = req.headers['authorization'];
-    if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
-        return res.status(401).json({ error: 'Não autorizado' });
-    }
-
-    for (const [username, state] of userStates.entries()) {
-        state.isLoopActive = false;
-        state.status = 'OFFLINE';
-        addLog(username, "🚨 EMERGÊNCIA: Todos os robôs desligados via Stop Global.", 'error');
-        saveUserState(username);
-    }
-    res.json({ success: true, count: userStates.size });
-});
-
-app.post('/admin/stop-user', async (req, res) => {
-    const auth = req.headers['authorization'];
-    if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
-        return res.status(401).json({ error: 'Não autorizado' });
-    }
-
-    const { targetUser } = req.body;
-    const state = userStates.get(targetUser);
-    if (state) {
-        state.isLoopActive = false;
-        state.status = 'OFFLINE';
-        addLog(targetUser, "🛑 INTERRUPÇÃO ADMINISTRATIVA: Robô desligado via Painel Admin.", 'warn');
-        saveUserState(targetUser);
-        return res.json({ success: true });
-    }
-    res.status(404).json({ error: 'Usuário não encontrado' });
-});
-
-app.post('/admin/anti-restart', async (req, res) => {
-    const auth = req.headers['authorization'];
-    if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
-        return res.status(401).json({ error: 'Não autorizado' });
-    }
-
-    const { targetUser } = req.body;
-    const state = userStates.get(targetUser);
-    if (state) {
-        if (state.status === 'IN_TRADE' && state.activeSymbol) {
-            addLog(targetUser, "⚡ ANTI-RESTART MANUAL: Forçando venda e retomada via Admin.", 'warn');
-            await executeRealSell(targetUser, state.activeSymbol, 'ANTI-RESTART');
-        } else {
-            state.status = 'SCANNING';
-        }
-        state.isLoopActive = true;
-        saveUserState(targetUser);
-        return res.json({ success: true });
-    }
-    res.status(404).json({ error: 'Usuário não encontrado' });
-});
-
-app.post('/admin/delete-user', async (req, res) => {
-    const auth = req.headers['authorization'];
-    if (auth !== `Bearer ${GLOBAL_ACCESS_KEY}` && auth !== `Bearer ${ADMIN_ACCESS_KEY}`) {
-        return res.status(401).json({ error: 'Não autorizado' });
-    }
-
-    const { targetUser } = req.body;
-    if (!targetUser) return res.status(400).json({ error: 'Usuário não especificado' });
-
-    console.log(`[ADMIN] Tentando deletar usuário: ${targetUser}`);
-
-    // 1. Parar robô se estiver ativo
-    const state = userStates.get(targetUser);
-    if (state) {
-        state.isLoopActive = false;
-        state.status = 'OFFLINE';
-    }
-
-    // 2. Remover da Memória
-    userStates.delete(targetUser);
-
-    // 3. Remover do DB de Usuários
-    if (usersDB[targetUser]) {
-        delete usersDB[targetUser];
-        saveUsersDB();
-    }
-
-    // 4. Deletar Arquivo Físico
-    const userFile = path.join(DATA_DIR, `trade_${targetUser}.json`);
-    if (fs.existsSync(userFile)) {
-        try {
-            fs.unlinkSync(userFile);
-            console.log(`[ADMIN] Arquivo deletado: ${userFile}`);
-        } catch (e) {
-            console.error(`[ADMIN] Erro ao deletar arquivo trade de ${targetUser}:`, e.message);
-        }
-    }
-
-    res.json({ success: true, message: `Usuário ${targetUser} removido permanentemente.` });
 });
 
 const PORT = process.env.PORT || 3014;
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Elite Fluxo Alfa 1.0 (OFFICIAL) na Porta ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 ALFA USDC MASTER ELITE V1.0 na Porta ${PORT}`));

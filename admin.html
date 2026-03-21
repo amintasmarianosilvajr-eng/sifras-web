@@ -463,7 +463,8 @@
         if (data.globalLatency || data.serverUptime) {
             const h = Math.floor(data.serverUptime / 3600);
             const m = Math.floor((data.serverUptime % 3600) / 60);
-            setSafe('netStatus', `${data.globalLatency || 0}ms | ${h}h ${m}m`);
+            const ip = data.serverIp || 'N/A';
+            setSafe('netStatus', `${data.globalLatency || 0}ms | ${h}h ${m}m | IP: ${ip}`);
         }
     }
 

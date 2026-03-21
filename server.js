@@ -161,50 +161,48 @@ async function checkTriggers(symbol, currentPrice, now) {
 
         // Lógica de Compra: Sempre comprar se houver espaço (Até 10 operações)
         if (state.activePositions.length < 10) {
-            // Pular a primeira moeda (#01) - Compras da 2ª à 10ª
-            const top2to10 = globalMarket.top10.slice(1, 10);
+            // Ranks permitidos: #2, #4, #6, #8, #10 (Índices 1, 3, 5, 7, 9)
+            const allowedIndices = [1, 3, 5, 7, 9];
+            const targetSymbols = allowedIndices.map(i => globalMarket.top10[i]?.symbol).filter(Boolean);
             
             // Verifica se a moeda já está em operação
             const alreadyOpen = state.activePositions.some(p => p.symbol === symbol);
-            if (!alreadyOpen) {
+            if (!alreadyOpen && targetSymbols.includes(symbol)) {
                 // Filtro de Segurança
-                const isBlacklisted = symbolRules[symbol]?.blacklisted;
-                if (isBlacklisted) continue;
+                if (symbolRules[symbol]?.blacklisted) continue;
 
-                const isInTargetRange = top2to10.some(c => c.symbol === symbol);
-                if (isInTargetRange) {
-                    const history = tickerHistory[symbol] || [];
-                    if (history.length > 2) {
-                        const targetTime = now - 15000;
-                        let lp = history[0];
-                        for (let i = 1; i < history.length; i++) {
-                            if (Math.abs(targetTime - history[i].t) < Math.abs(targetTime - lp.t)) lp = history[i];
-                        }
-                        const change = ((currentPrice - lp.p) / lp.p) * 100;
+                const history = tickerHistory[symbol] || [];
+                if (history.length > 5) {
+                    const targetTime = now - 20000; // Intervalo de 20 segundos conforme instrução
+                    let lp = history[0];
+                    for (let i = 1; i < history.length; i++) {
+                        if (Math.abs(targetTime - history[i].t) < Math.abs(targetTime - lp.t)) lp = history[i];
+                    }
+                    const change = ((currentPrice - lp.p) / lp.p) * 100;
 
-                        if (change >= 0.2) {
-                            addLog(username, `🚀 GATILHO COMPRA (${state.activePositions.length + 1}/10): ${symbol} +${change.toFixed(2)}%`, 'success');
-                            // Registra posição pendente para evitar double-buy enquanto a API processa
-                            state.activePositions.push({ symbol, buyPrice: currentPrice, pending: true });
-                            await executeRealBuy(username, symbol, currentPrice);
-                        }
+                    if (change >= 0.2) {
+                        const rankPos = globalMarket.top10.findIndex(c => c.symbol === symbol) + 1;
+                        addLog(username, `🚀 GATILHO COMPRA (RANK #${rankPos}): ${symbol} +${change.toFixed(2)}% em 20s`, 'success');
+                        state.activePositions.push({ symbol, buyPrice: currentPrice, pending: true });
+                        await executeRealBuy(username, symbol, currentPrice);
                     }
                 }
             }
         }
 
-        // Lógica de Venda Individual: Se bater 0.5% bruto (compra USDT)
+        // Lógica de Venda Individual: Alvo 0.4%
         const positionIndex = state.activePositions.findIndex(p => p.symbol === symbol && !p.pending);
         if (positionIndex !== -1) {
             const pos = state.activePositions[positionIndex];
-            const target = pos.buyPrice * 1.005; // 0.5% conforme nova instrução
+            const target = pos.buyPrice * 1.004; // 0.4% conforme instrução
             if (currentPrice >= target) {
-                addLog(username, `🎯 ALVO 0.5% ATINGIDO: Vendendo ${symbol} (Retornando ao ciclo)`, 'sell');
-                await executeRealSell(username, symbol, 'TAKE_PROF_0.5');
+                addLog(username, `🎯 ALVO 0.4% ATINGIDO: Vendendo ${symbol}`, 'sell');
+                await executeRealSell(username, symbol, 'TAKE_PROF_0.4');
             }
         }
     }
 }
+
 
 startBinanceWS();
 

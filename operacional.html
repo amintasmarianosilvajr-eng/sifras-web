@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa - Teste de Parealidade (Ranking Binance em Tempo Real)</title>
+    <title>Sifras Alfa - Operacional PRO (Estratégia Sniper 2-10)</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -15,276 +15,337 @@
             --alert-red: #ff3366;
             --cyber-green: #39FF14;
             --text-main: #e8f0ff;
-            --glass-panel: rgba(8, 12, 20, 0.75);
-            --border-glow: rgba(0, 255, 200, 0.15);
+            --glass-panel: rgba(10, 15, 25, 0.85);
+            --border-glow: rgba(0, 255, 200, 0.2);
         }
         body {
             background-color: var(--bg-dark);
             color: var(--text-main);
             font-family: 'Oxanium', sans-serif;
-            background: radial-gradient(circle at 50% 0%, rgba(0, 255, 200, 0.05) 0%, transparent 70%), #060a10;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(0, 255, 200, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 180, 255, 0.05) 0%, transparent 40%),
+                #060a10;
             min-height: 100vh;
-            padding: 20px;
+            overflow-x: hidden;
         }
+
         .mono { font-family: 'Share Tech Mono', monospace; }
+
         .glass-card {
             background: var(--glass-panel);
             backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
             border: 1px solid var(--border-glow);
-            border-radius: 16px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5), 0 0 15px rgba(0,255,200,0.02);
-            padding: 30px;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
-        .status-dot {
-            width: 8px; height: 8px;
+
+        .status-pulse {
+            width: 10px; height: 10px;
             border-radius: 50%;
-            background:#00ffc8;
-            box-shadow:0 0 10px #00ffc8;
-            animation: pulseGlow 1.5s ease-in-out infinite;
+            transition: 0.3s;
         }
-        @keyframes pulseGlow {
-            0%, 100% { opacity: 0.6; box-shadow:0 0 5px #00ffc8;}
-            50% { opacity: 1; box-shadow:0 0 15px #00ffc8;}
+        .pulse-active { background: var(--cyber-green); box-shadow: 0 0 15px var(--cyber-green); animation: pulse 1.5s infinite; }
+        .pulse-inactive { background: #666; box-shadow: 0 0 5px #333; }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
         }
-        .ticker-wrap {
-            width: 100%; overflow: hidden; height: 50px;
-            background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(0,255,200,0.1);
-            margin-bottom: 30px; border-radius: 12px;
+
+        .rank-card {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+            overflow: hidden;
         }
-        .ticker-move { display: flex; width: max-content; animation: tickerScroll 40s linear infinite; }
-        @keyframes tickerScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        .ticker-item {
-            padding: 0 30px; height: 50px; display: flex; align-items: center;
-            gap: 10px; border-right: 1px solid rgba(255,255,255,0.05);
-            font-size: 0.75rem;
+        .rank-card:hover { transform: translateY(-5px); border-color: var(--cyber-blue); }
+        .rank-card.trigger-enabled { border-color: var(--cyber-blue); background: rgba(0, 255, 200, 0.03); }
+        
+        .trigger-indicator {
+            position: absolute; top: 0; right: 0;
+            padding: 2px 8px; font-size: 0.6rem; font-weight: bold;
+            background: var(--cyber-blue); color: #000;
+            border-bottom-left-radius: 8px;
+            text-transform: uppercase;
         }
-        .coin-card {
-            min-width: 240px;
-            padding: 15px; border-radius: 12px;
-            display: flex; flex-direction: column; gap: 8px;
-            flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            border-width: 1px; border-style: solid;
+
+        .log-container::-webkit-scrollbar { width: 4px; }
+        .log-container::-webkit-scrollbar-thumb { background: var(--cyber-blue); opacity: 0.3; border-radius: 2px; }
+
+        .btn-action {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s;
+            display: flex; align-items: center; gap: 8px;
         }
-        .color-green { background: rgba(57, 255, 20, 0.05); border-color: rgba(57, 255, 20, 0.5); }
-        .color-orange { background: rgba(255, 95, 31, 0.05); border-color: rgba(255, 95, 31, 0.5); }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .btn-start { background: var(--cyber-blue); color: #000; box-shadow: 0 0 20px rgba(0, 255, 200, 0.3); }
+        .btn-stop { background: rgba(255, 51, 102, 0.1); border: 1px solid var(--alert-red); color: var(--alert-red); }
+        .btn-start:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(0, 255, 200, 0.5); }
+        .btn-stop:hover { background: var(--alert-red); color: #fff; }
+
+        .active-trade-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid var(--cyber-green);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
-<body>
+<body class="p-4 md:p-8">
 
-    <div class="glass-card">
-        <!-- HEADER -->
-        <div class="flex items-center justify-between mb-8">
-            <div>
-                <h1 class="text-3xl font-bold mb-2 flex items-center gap-3" style="color:var(--text-main); text-shadow:0 0 20px rgba(0,255,200,0.2);">
-                    <i data-lucide="activity" style="color:var(--cyber-blue);width:32px;height:32px;"></i>
-                    Ranking Binance Oficial
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header Section -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div class="space-y-1">
+                <h1 class="text-4xl font-bold tracking-tight flex items-center gap-3">
+                    <i data-lucide="zap" class="text-[#00ffc8] w-10 h-10"></i>
+                    Sifras Alfa <span class="text-[#00ffc8]">Operacional PRO</span>
                 </h1>
-                <p class="mono text-sm opacity-60 flex items-center gap-2">
-                    <span class="status-dot"></span> Teste de Parealidade em Tempo Real (Direto da API)
+                <p class="mono text-gray-500 text-sm flex items-center gap-2">
+                    <span id="statusPulse" class="status-pulse pulse-inactive"></span>
+                    Estratégia Sniper: Ranks [2, 4, 6, 8, 10] | Gatilho: 0.2%/20s | Alvo: 0.4%
                 </p>
             </div>
-            <div class="text-right flex flex-col items-end gap-2">
-                <div class="flex gap-2">
-                    <span class="bg-[#00ffc8]/10 text-[#00ffc8] border border-[#00ffc8]/30 px-3 py-1 rounded-full text-[0.6rem] font-bold uppercase tracking-widest">SPOT TRADING</span>
-                    <span id="connIndicator" class="hidden bg-green-900/40 text-[#39FF14] border border-[#39FF14]/30 px-3 py-1 rounded-full text-[0.6rem] font-bold uppercase tracking-widest animate-pulse">Armado (Scanner v3.7)</span>
-                </div>
-                <button id="btnStop" onclick="stopOperation()" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-4 rounded text-[0.6rem] uppercase transition-all shadow-lg active:scale-95">STOP OPERAÇÃO</button>
-            </div>
-        </div>
-
-        <!-- TICKER DYNAMICS (Horizontal Line) -->
-        <div class="ticker-wrap hide-scrollbar">
-            <div id="tickerMove" class="ticker-move">
-                <!-- Injected via JS -->
-            </div>
-        </div>
-
-        <!-- DASHBOARD BALANÇA -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10 border-b border-white/5 pb-10">
-            <div class="text-center">
-                <span class="text-[0.6rem] text-gray-500 uppercase tracking-widest block mb-2">Saldo Caixa (USDT)</span>
-                <span id="labelBalance" class="text-2xl font-black mono tracking-tighter">--.--</span>
-            </div>
-            <div class="text-center">
-                <span class="text-[0.6rem] text-gray-500 uppercase tracking-widest block mb-2">Status Sistema</span>
-                <span id="labelStatus" class="text-2xl font-black tracking-tighter uppercase text-gray-400">OFFLINE</span>
-            </div>
-            <div class="text-center border-l border-white/5">
-                <span class="text-[0.6rem] text-gray-500 uppercase tracking-widest block mb-2">Gatilho (15S)</span>
-                <span class="text-2xl font-black mono text-[#00ffc8] tracking-tighter">0.2%</span>
-            </div>
-            <div class="text-center">
-                <span class="text-[0.6rem] text-gray-500 uppercase tracking-widest block mb-2">PNL Sessão</span>
-                <span id="labelPNL" class="text-2xl font-black mono tracking-tighter">0.00%</span>
-            </div>
-        </div>
-
-        <!-- RADAR MULTI-SLOTS -->
-        <div class="mb-10">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-[0.65rem] text-gray-500 uppercase font-black tracking-widest">Radar de Posições Ativas</h3>
-                <span id="slotCount" class="text-[0.6rem] bg-gray-900 px-2 py-0.5 rounded text-[#00ffc8] font-bold">0/10 Slots</span>
-            </div>
-            <div id="activePosList" class="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
-                <p class="text-gray-700 text-[0.6rem] uppercase italic tracking-[0.2em]">Aguardando gatilhos do Top 2-10...</p>
-            </div>
-        </div>
-
-        <!-- LOGS -->
-        <div class="bg-black/40 border border-white/5 rounded-xl p-4 h-[250px] flex flex-col mb-10">
-            <h3 class="text-[0.55rem] text-gray-700 uppercase font-bold mb-3 flex items-center gap-2">
-                <i data-lucide="terminal" class="w-3 h-3"></i> Console de Auditoria Real-Time
-            </h3>
-            <div id="logConsole" class="flex-1 overflow-y-auto space-y-1 text-[0.65rem] mono pr-2 hide-scrollbar">
-                <p class="text-gray-800">[KERNEL] Standby mode...</p>
-            </div>
-        </div>
-
-        <!-- CONEXÃO BINANCE -->
-        <div class="pt-10 border-t border-white/5">
-            <h2 class="text-[#00ffc8] text-xs font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
-                <i data-lucide="key" class="w-3 h-3"></i> Conexão Binance API (Memorização)
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="text-[0.6rem] text-gray-500 uppercase mb-2 block font-bold">API KEY</label>
-                    <input type="password" id="api_key" placeholder="..." class="w-full bg-black/60 border border-white/10 p-3 rounded-lg text-xs mono text-[#00ffc8] outline-none focus:border-[#00ffc8]">
-                </div>
-                <div>
-                    <label class="text-[0.6rem] text-gray-500 uppercase mb-2 block font-bold">SECRET KEY</label>
-                    <input type="password" id="api_secret" placeholder="..." class="w-full bg-black/60 border border-white/10 p-3 rounded-lg text-xs mono text-[#00ffc8] outline-none focus:border-[#00ffc8]">
-                </div>
-            </div>
+            
             <div class="flex gap-3">
-                <button id="btnStart" onclick="startSystem()" class="flex-1 bg-[#00ffc8] text-black font-black py-4 rounded-lg uppercase text-xs italic hover:shadow-[0_0_15px_#00ffc8] transition-all">Armar Robô Alfa</button>
-                <button onclick="clearKeys()" class="px-6 bg-gray-900 border border-white/10 text-gray-500 rounded-lg hover:text-white transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                <button id="btnStart" onclick="toggleMotor(true)" class="btn-action btn-start">
+                    <i data-lucide="play"></i> Iniciar Motor
+                </button>
+                <button id="btnStop" onclick="toggleMotor(false)" class="btn-action btn-stop" style="display:none;">
+                    <i data-lucide="square"></i> Parar Motor
+                </button>
             </div>
-            <p id="memStatus" class="text-[0.5rem] text-gray-700 text-center mt-3 uppercase tracking-widest">Memória: Sem Chaves</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Main Ranking Panel -->
+            <div class="lg:col-span-2 space-y-4">
+                <div class="glass-card p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold mono flex items-center gap-2">
+                            <i data-lucide="bar-chart-3" class="text-[#00ffc8]"></i> 
+                            Ranking Spot Binance (USDT)
+                        </h2>
+                        <span id="updateTimer" class="text-xs text-gray-600 mono uppercase tracking-widest">Sinc: 1s</span>
+                    </div>
+
+                    <div id="rankingGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Ranks 1 to 10 will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Panel: Active Trades & Logs -->
+            <div class="space-y-6">
+                
+                <!-- Active Trades Panel -->
+                <div class="glass-card p-6">
+                    <h2 class="text-lg font-bold mono mb-4 flex items-center gap-2">
+                        <i data-lucide="layers" class="text-[#39FF14]"></i> 
+                        Posições Ativas (<span id="activeCount">0</span>/10)
+                    </h2>
+                    <div id="activeTradesList" class="space-y-3 max-h-[300px] overflow-y-auto pr-2 log-container">
+                        <!-- Active trades injected here -->
+                        <p class="text-gray-600 text-center text-sm py-4 italic">Nenhuma posição aberta</p>
+                    </div>
+                </div>
+
+                <!-- Live Log Panel -->
+                <div class="glass-card p-6 flex flex-col h-[400px]">
+                    <h2 class="text-lg font-bold mono mb-4 flex items-center gap-2">
+                        <i data-lucide="terminal" class="text-gray-400"></i> 
+                        Log de Auditoria
+                    </h2>
+                    <div id="logConsole" class="flex-1 overflow-y-auto space-y-2 text-[0.7rem] mono p-3 bg-black/40 rounded-xl log-container">
+                        <p class="text-gray-700">[SYSTEM] Aguardando conexão...</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- API Keys Modal (Overlay) -->
+    <div id="keysModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-md p-8 relative">
+            <h3 class="text-2xl font-bold mb-6 text-center text-[#00ffc8]">Configurar Sniper Alfa</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase text-gray-500 mb-1 font-bold">Binance API Key</label>
+                    <input type="password" id="inputApiKey" placeholder="..." class="w-full bg-black/50 border border-white/10 p-3 rounded-lg text-sm mono text-white focus:border-[#00ffc8] outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase text-gray-500 mb-1 font-bold">Binance API Secret</label>
+                    <input type="password" id="inputApiSecret" placeholder="..." class="w-full bg-black/50 border border-white/10 p-3 rounded-lg text-sm mono text-white focus:border-[#00ffc8] outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase text-gray-500 mb-1 font-bold">Nome do Operador</label>
+                    <input type="text" id="inputClientName" placeholder="Ex: Master Silva" class="w-full bg-black/50 border border-white/10 p-3 rounded-lg text-sm mono text-white focus:border-[#00ffc8] outline-none">
+                </div>
+                <button onclick="saveAndStart()" class="w-full btn-start p-4 rounded-xl font-bold mt-4 uppercase">Ativar Robô</button>
+            </div>
+            <p class="text-[0.6rem] text-center text-gray-600 mt-6 uppercase tracking-widest">As chaves são armazenadas localmente no seu navegador para segurança.</p>
         </div>
     </div>
 
     <script>
         lucide.createIcons();
-
+        
+        let isRunning = false;
+        const targetRanks = [2, 4, 6, 8, 10];
+        
+        // Auto-load keys if existing
         window.onload = () => {
             const k = localStorage.getItem('alfa_k');
             const s = localStorage.getItem('alfa_s');
-            if (k) {
-                document.getElementById('api_key').value = k;
-                document.getElementById('memStatus').innerText = 'Chaves Memorizadas Localmente (✓)';
-                document.getElementById('memStatus').className = 'text-[0.5rem] text-[#00ffc8] text-center mt-3 uppercase tracking-widest';
+            if(k && s) {
+                document.getElementById('inputApiKey').value = k;
+                document.getElementById('inputApiSecret').value = s;
+                document.getElementById('inputClientName').value = localStorage.getItem('alfa_n') || '';
+                // No auto-start, wait for user click
             }
-            if (s) document.getElementById('api_secret').value = s;
-            startPoll();
+            setInterval(updateData, 1000);
         };
 
-        function clearKeys() {
-            localStorage.removeItem('alfa_k');
-            localStorage.removeItem('alfa_s');
-            location.reload();
+        async function updateData() {
+            try {
+                const res = await fetch('/status');
+                if(!res.ok) return;
+                const data = await res.json();
+                
+                updateUI(data);
+            } catch(e) {}
         }
 
-        async function startSystem() {
-            const apiKey = document.getElementById('api_key').value;
-            const apiSecret = document.getElementById('api_secret').value;
-            if(!apiKey || !apiSecret) return alert("Insira as chaves!");
+        function updateUI(data) {
+            // 1. Status Pulse & Buttons
+            const pulse = document.getElementById('statusPulse');
+            const btnS = document.getElementById('btnStart');
+            const btnT = document.getElementById('btnStop');
+            const modal = document.getElementById('keysModal');
 
-            localStorage.setItem('alfa_k', apiKey);
-            localStorage.setItem('alfa_s', apiSecret);
+            if (data.isLoopActive) {
+                pulse.className = 'status-pulse pulse-active';
+                btnS.style.display = 'none';
+                btnT.style.display = 'flex';
+                modal.style.display = 'none';
+                isRunning = true;
+            } else {
+                pulse.className = 'status-pulse pulse-inactive';
+                btnS.style.display = 'flex';
+                btnT.style.display = 'none';
+                isRunning = false;
+            }
 
-            const res = await fetch('/start', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ apiKey, apiSecret, mode: 'ALFA_USDT' })
-            });
-            if((await res.json()).success) { console.log("ARMADO"); }
-        }
-
-        async function stopOperation() {
-            if(!confirm("PARAR TODA OPERAÇÃO IMEDIATAMENTE?")) return;
-            await fetch('/stop', { method: 'POST' });
-        }
-
-        function startPoll() {
-            setInterval(async () => {
-                try {
-                    const res = await fetch('/status');
-                    const state = await res.json();
-
-                    // Status UI
-                    const sTxt = document.getElementById('labelStatus');
-                    const bStop = document.getElementById('btnStop');
-                    const cInd = document.getElementById('connIndicator');
-                    const bStart = document.getElementById('btnStart');
-
-                    if (state.isLoopActive) {
-                        sTxt.innerText = 'CONECTADO';
-                        sTxt.className = 'text-2xl font-black tracking-tighter uppercase text-[#39FF14] animate-pulse';
-                        bStop.classList.remove('hidden');
-                        cInd.classList.remove('hidden');
-                        bStart.innerText = 'MOTOR ALFA EM CURSO (BLOQUEADO)';
-                        bStart.disabled = true;
-                        bStart.className = 'flex-1 bg-gray-900 border border-white/5 text-gray-500 font-bold py-4 rounded-lg uppercase text-xs italic cursor-not-allowed';
-                    } else {
-                        sTxt.innerText = 'OFFLINE';
-                        sTxt.className = 'text-2xl font-black tracking-tighter uppercase text-gray-400';
-                        bStop.classList.add('hidden');
-                        cInd.classList.add('hidden');
-                        bStart.innerText = 'Armar Robô Alfa';
-                        bStart.disabled = false;
-                        bStart.className = 'flex-1 bg-[#00ffc8] text-black font-black py-4 rounded-lg uppercase text-xs italic hover:shadow-[0_0_15px_#00ffc8] transition-all';
-                    }
-
-                    document.getElementById('labelBalance').innerText = `$ ${state.balanceUSDT?.toFixed(2) || '0.00'}`;
-                    document.getElementById('labelPNL').innerText = `${state.totalProfitPct?.toFixed(2) || '0.00'}%`;
-                    document.getElementById('slotCount').innerText = `${state.activePositions?.length || 0}/10 Slots`;
-
-                    // Posições (Cards Horizontais)
-                    const posList = document.getElementById('activePosList');
-                    posList.innerHTML = (state.activePositions || []).map((p, index) => `
-                        <div class="coin-card ${index % 2 === 0 ? 'color-green' : 'color-orange'}">
-                            <span class="rank-n font-black text-xs italic uppercase">${p.symbol}</span>
+            // 2. Ranking Grid
+            const grid = document.getElementById('rankingGrid');
+            const top10 = data.top10 || [];
+            
+            // Only update if we have data
+            if (top10.length > 0) {
+                grid.innerHTML = top10.slice(0, 10).map((coin, index) => {
+                    const rank = index + 1;
+                    const isTarget = targetRanks.includes(rank);
+                    const isBuying = isTarget && data.isLoopActive;
+                    
+                    return `
+                        <div class="rank-card glass-card p-4 flex flex-col gap-2 ${isTarget ? 'trigger-enabled' : ''}">
+                            ${isTarget ? '<div class="trigger-indicator">Sniper Habilitado</div>' : ''}
                             <div class="flex justify-between items-center">
-                                <span class="text-[0.6rem] text-gray-500">COMPRA</span>
-                                <span class="mono text-xs font-bold">$ ${p.buyPrice.toFixed(4)}</span>
+                                <span class="mono text-2xl font-bold ${rank === 1 ? 'text-[#00ffc8]' : 'text-gray-400'}">#${rank < 10 ? '0' : ''}${rank}</span>
+                                <span class="font-bold text-white tracking-widest text-lg">${coin.symbol.replace('USDT', '')}<span class="text-xs opacity-30 ml-1">USDT</span></span>
                             </div>
-                            <div class="flex justify-between items-center border-t border-white/5 pt-1">
-                                <span class="text-[0.55rem] font-bold text-[#39FF14]">ALVO +0.5%</span>
+                            <div class="flex justify-between items-end mt-2">
+                                <div class="flex flex-col">
+                                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold">Preço</span>
+                                    <span class="mono text-white text-sm">$${parseFloat(coin.price).toFixed(4)}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[0.61rem] text-gray-500 uppercase font-bold block">Var 24h</span>
+                                    <span class="mono font-bold text-lg ${coin.change >=0 ? 'text-[#39FF14]' : 'text-[#ff3366]'}">${coin.change >= 0 ? '+' : ''}${coin.change.toFixed(2)}%</span>
+                                </div>
                             </div>
                         </div>
-                    `).join('');
-                    if(!state.activePositions?.length) posList.innerHTML = '<p class="text-gray-700 text-[0.6rem] uppercase italic tracking-[0.2em] py-10">Aguardando gatilhos do Top 2-10...</p>';
+                    `;
+                }).join('');
+            }
 
-                    // Logs
-                    const logEl = document.getElementById('logConsole');
-                    logEl.innerHTML = (state.logs || []).map(l => {
-                        let col = 'text-gray-600';
-                        if(l.type === 'buy' || l.type === 'success') col = 'text-[#39FF14] font-bold';
-                        if(l.type === 'sell') col = 'text-blue-400 font-bold';
-                        if(l.type === 'error') col = 'text-red-500';
-                        return `<p class="${col}">[${l.time}] ${l.msg}</p>`;
-                    }).join('');
+            // 3. Active Positions
+            const activeList = document.getElementById('activeTradesList');
+            const pos = data.activePositions || [];
+            document.getElementById('activeCount').innerText = pos.length;
+            
+            if (pos.length > 0) {
+                activeList.innerHTML = pos.map(p => `
+                    <div class="active-trade-card flex justify-between items-center">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-white">${p.symbol}</span>
+                            <span class="text-[0.65rem] text-gray-500 mono">Compra: $${p.buyPrice.toFixed(4)}</span>
+                        </div>
+                        <div class="text-right flex flex-col">
+                            <span class="text-[0.65rem] uppercase font-bold text-[#39FF14]">Alvo: $${p.targetPrice.toFixed(4)}</span>
+                            <span class="text-[0.6rem] text-gray-600 uppercase">PNL: Aguardando data...</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else if (data.isLoopActive) {
+                activeList.innerHTML = '<p class="text-gray-600 text-center text-sm py-4 italic">Buscando gatilho nos ranks pares...</p>';
+            }
 
-                    // Ticker Dynamics (Usando o Ranking Oficial do Bot via Backend)
-                    if (state.top10 && state.top10.length) {
-                        const topSubset = state.top10.slice(0, 10);
-                        document.getElementById('tickerMove').innerHTML = [...topSubset, ...topSubset].map((c, i) => `
-                            <div class="ticker-item">
-                                <span class="text-gray-600 font-bold">#${(i % 10 + 1).toString().padStart(2, '0')}</span>
-                                <span class="text-white font-black italic px-2">${c.symbol.replace('USDT','')}</span>
-                                <span class="${parseFloat(c.change) >= 0 ? 'text-[#39FF14]' : 'text-red-500'} font-bold mono">${parseFloat(c.change).toFixed(2)}%</span>
-                                <span class="text-gray-600 px-2">$${parseFloat(c.price).toFixed(4)}</span>
-                            </div>
-                        `).join('');
-                    }
+            // 4. Logs
+            if (data.logs && data.logs.length > 0) {
+                const logEl = document.getElementById('logConsole');
+                logEl.innerHTML = data.logs.map(l => {
+                    let col = 'text-gray-400';
+                    if (l.type === 'success' || l.type === 'buy') col = 'text-[#39FF14] font-bold';
+                    if (l.type === 'sell') col = 'text-[#00b4ff] font-bold';
+                    if (l.type === 'error') col = 'text-red-500';
+                    return `<p class="${col}">[${l.time}] ${l.msg}</p>`;
+                }).join('');
+            }
+        }
 
-                } catch (e) {}
-            }, 2000);
+        function saveAndStart() {
+            const apiKey = document.getElementById('inputApiKey').value;
+            const apiSecret = document.getElementById('inputApiSecret').value;
+            const name = document.getElementById('inputClientName').value;
+            
+            if(!apiKey || !apiSecret) return alert("Insira as chaves!");
+            
+            localStorage.setItem('alfa_k', apiKey);
+            localStorage.setItem('alfa_s', apiSecret);
+            localStorage.setItem('alfa_n', name);
+            
+            toggleMotor(true);
+        }
+
+        async function toggleMotor(start) {
+            const url = start ? '/start' : '/stop';
+            const k = localStorage.getItem('alfa_k');
+            const s = localStorage.getItem('alfa_s');
+            const n = localStorage.getItem('alfa_n');
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ apiKey: k, apiSecret: s, clientName: n, mode: 'ALFA_USDT' })
+                });
+                if(res.ok) {
+                    if(!start) document.getElementById('keysModal').style.display = 'flex';
+                }
+            } catch(e) {
+                alert("Erro de conexão com o servidor!");
+            }
         }
     </script>
 </body>

@@ -65,6 +65,12 @@ function loadSavedData() {
             activeSlots[id].secret = data.secret;
             activeSlots[id].clientName = data.name;
         }
+
+        const historySaved = localStorage.getItem(`sifras_history_${id}`);
+        if (historySaved) operationHistory[id] = JSON.parse(historySaved);
+
+        const profitSaved = localStorage.getItem(`sifras_profit_${id}`);
+        if (profitSaved) totalProfitAcc[id] = parseFloat(profitSaved);
     });
 }
 
@@ -76,15 +82,23 @@ function saveSlotData(id, name, key, secret) {
     activeSlots[id].clientName = name;
 }
 
+function saveHistoryData(id) {
+    localStorage.setItem(`sifras_history_${id}`, JSON.stringify(operationHistory[id]));
+    localStorage.setItem(`sifras_profit_${id}`, totalProfitAcc[id].toString());
+}
+
 function clearSlotData(id) {
     if (confirm(`Limpar dados do SLOT #${id}?`)) {
         localStorage.removeItem(`sifras_slot_${id}`);
+        localStorage.removeItem(`sifras_history_${id}`);
+        localStorage.removeItem(`sifras_profit_${id}`);
         document.getElementById(`slot-${id}-name`).value = '';
         document.getElementById(`slot-${id}-key`).value = '';
         document.getElementById(`slot-${id}-secret`).value = '';
         activeSlots[id].key = ''; activeSlots[id].secret = ''; activeSlots[id].clientName = '';
+        operationHistory[id] = []; totalProfitAcc[id] = 0;
         if (activeSlots[id].connected) disconnectSlot(id);
-        addLog(`Slot #${id}: Reset de memória.`, 'system');
+        addLog(`Slot #${id}: Reset de memória completo.`, 'system');
     }
 }
 
@@ -275,15 +289,15 @@ async function executeTrade(coin, isReposition = false) {
 
     const symbolShort = coin.symbol.replace('USDT', '');
 
-    // Cooldown por moeda só se NÃO for reposição automática
-    if (!isReposition) {
-        const inCooldown = monitoringSlots.some(id =>
-            operationHistory[id].slice(-CONFIG.COOLDOWN_OPERATIONS).some(op => op.symbol === symbolShort)
-        );
-        if (inCooldown) {
-            addLog(`🚫 COOLDOWN: ${symbolShort} ocultada.`, 'system');
-            return;
-        }
+    // Cooldown obrigatório de 5 moedas (Fiel ao pedido do usuário)
+    const inCooldown = monitoringSlots.some(id =>
+        operationHistory[id].slice(-CONFIG.COOLDOWN_OPERATIONS).some(op => op.symbol === symbolShort)
+    );
+    if (inCooldown) {
+        addLog(`🚫 COOLDOWN: ${symbolShort} ocultada do Rank por repetição recente.`, 'system');
+        // Se for reposição e estiver em cooldown, limpamos o target para buscar novo no loop
+        if (isReposition) { currentTrade = null; document.getElementById('active-trade-card').classList.add('hidden'); }
+        return;
     }
 
     const tp = coin.price * (1 + (CONFIG.TARGET_PROFIT / 100));
@@ -492,6 +506,7 @@ async function buyUsdtAndReposition(pnlValue = 0) {
                 timestamp: Date.now(),
                 time: new Date().toLocaleString()
             });
+            saveHistoryData(id);
             addLog(`💰 Saída registrada! PNL: ${pnlValue.toFixed(2)}% ($${profitUsdt.toFixed(2)}) | Total Slot #${id}: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
         }
     }

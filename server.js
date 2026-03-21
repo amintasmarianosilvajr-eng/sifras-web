@@ -696,14 +696,16 @@ app.post('/check-api', async (req, res) => {
     }
 });
 
-// --- PROXY BINANCE (FIX CORS) ---
+// --- PROXY BINANCE (FIX CORS & 403) ---
 app.all('/proxy-binance/*', async (req, res) => {
     try {
-        const path = req.params[0] || '';
-        const query = req.url.split('?')[1] || '';
-        const url = `https://api.binance.com/${path}${query ? '?' + query : ''}`;
+        const fullPath = req.originalUrl.replace('/proxy-binance/', '');
+        const url = `https://api.binance.com/${fullPath}`;
         
-        const headers = {};
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        };
+        
         if (req.headers['x-mbx-apikey']) headers['X-MBX-APIKEY'] = req.headers['x-mbx-apikey'];
         if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
 
@@ -711,7 +713,7 @@ app.all('/proxy-binance/*', async (req, res) => {
             method: req.method,
             url: url,
             headers: headers,
-            data: req.body,
+            data: req.method !== 'GET' ? req.body : undefined,
             timeout: 15000
         };
 

@@ -126,10 +126,14 @@
                 </div>
             </div>
 
-            <div class="flex-1 flex gap-4">
-                <input type="password" id="inputApiKey" placeholder="DIGITE SUA BINANCE API KEY" class="flex-1 mono border-white/5 bg-white/5 text-[0.7rem] h-[42px] px-4 rounded-lg outline-none focus:border-[#00ffc8]/50">
-                <input type="password" id="inputApiSecret" placeholder="DIGITE SEU BINANCE API SECRET" class="flex-1 mono border-white/5 bg-white/5 text-[0.7rem] h-[42px] px-4 rounded-lg outline-none focus:border-[#00ffc8]/50">
+            <div class="flex-1 flex gap-4 items-center">
+                <input type="password" id="inputApiKey" placeholder="BINANCE API KEY" class="flex-1 mono border-white/5 bg-white/5 text-[0.7rem] h-[42px] px-4 rounded-lg outline-none focus:border-[#00ffc8]/50">
+                <input type="password" id="inputApiSecret" placeholder="BINANCE API SECRET" class="flex-1 mono border-white/5 bg-white/5 text-[0.7rem] h-[42px] px-4 rounded-lg outline-none focus:border-[#00ffc8]/50">
+                <button onclick="clearKeys()" title="Limpar Chaves" class="p-2 text-gray-600 hover:text-red-500 transition-colors">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
             </div>
+
 
             <div class="flex items-center gap-3 shrink-0">
                 <button id="btnValidate" onclick="validateAPI()" class="h-[42px] px-6 rounded-lg bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-all flex items-center gap-2">
@@ -206,15 +210,34 @@
         const targetRanks = [2, 4, 6, 8, 10];
         
         window.onload = () => {
+            // Inicialização Virgem Solicitada (Limpando para o próximo reinício)
+            // localStorage.removeItem('alfa_k'); 
+            // localStorage.removeItem('alfa_s');
+
             const k = localStorage.getItem('alfa_k');
             const s = localStorage.getItem('alfa_s');
-            const n = localStorage.getItem('alfa_n');
             if(k) document.getElementById('inputApiKey').value = k;
             if(s) document.getElementById('inputApiSecret').value = s;
-            if(n) document.getElementById('inputClientName').value = n;
             
             setInterval(updateData, 1000);
         };
+
+        function clearKeys() {
+            if(confirm("Deseja EXCLUIR permanentemente as chaves API deste navegador?")) {
+                localStorage.removeItem('alfa_k');
+                localStorage.removeItem('alfa_s');
+                document.getElementById('inputApiKey').value = '';
+                document.getElementById('inputApiSecret').value = '';
+                const btn = document.getElementById('btnValidate');
+                const btnS = document.getElementById('btnStart');
+                btn.innerHTML = `<i data-lucide="link" class="w-4 h-4"></i> Validar Acesso`;
+                btn.className = "h-[42px] px-6 rounded-lg bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-all flex items-center gap-2";
+                btnS.classList.add('opacity-50', 'pointer-events-none');
+                alert("Chaves Excluídas! O cache está VIRGEM.");
+                lucide.createIcons();
+            }
+        }
+
 
         async function updateData() {
             try {

@@ -11,6 +11,7 @@ const serverStartTime = Date.now();
 let lastGlobalLatency = 0;
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // Forçar limpeza de cache
@@ -696,24 +697,40 @@ app.post('/check-api', async (req, res) => {
     }
 });
 
-// --- PROXY BINANCE (FIX CORS & 403) ---
+// --- PROXY BINANCE (FIX CORS, 403 & ORDER PARAMS) ---
 app.all('/proxy-binance/*', async (req, res) => {
     try {
-        const fullPath = req.originalUrl.replace('/proxy-binance/', '');
-        const url = `https://api.binance.com/${fullPath}`;
+        const fullPath = req.originalUrl.split('?')[0].replace('/proxy-binance/', '');
+        const query = req.url.split('?')[1] || '';
+        const url = `https://api.binance.com/${fullPath}${query ? '?' + query : ''}`;
         
         const headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         };
         
         if (req.headers['x-mbx-apikey']) headers['X-MBX-APIKEY'] = req.headers['x-mbx-apikey'];
-        if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
+        
+        // Se for POST, garantimos que os dados cheguem corretamente à Binance
+        const isPost = req.method !== 'GET';
+        let postData = undefined;
+        
+        if (isPost) {
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            // Se o corpo já for um objeto (parseado pelo express), convertemos de volta para string
+            if (typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+                const searchParams = new URLSearchParams();
+                for (const key in req.body) searchParams.append(key, req.body[key]);
+                postData = searchParams.toString();
+            } else {
+                postData = req.body;
+            }
+        }
 
         const config = {
             method: req.method,
             url: url,
             headers: headers,
-            data: req.method !== 'GET' ? req.body : undefined,
+            data: postData,
             timeout: 15000
         };
 

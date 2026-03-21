@@ -3,569 +3,408 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa 1.0 — Painel Administrativo</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <title>Sifras Alfa - Admin Sniper Network</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0a0a0a;
-            --cyber-blue: #ccff00;
-            --cyber-gold: #f3ba2f;
-            --alert-red: #ff3366;
-            --cyber-green: #ccff00;
-            --text-main: #ffffff;
-            --glass-panel: rgba(18, 18, 18, 0.95);
-            --border-glow: rgba(204, 255, 0, 0.3);
+            --bg-deep: #05080c;
+            --accent-cyan: #00f5ff;
+            --accent-emerald: #00ff9f;
+            --accent-ruby: #ff2a6d;
+            --glass-bg: rgba(10, 15, 25, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.05);
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
-            background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.05) 0%, transparent 70%), #111111;
+            background-color: var(--bg-deep);
+            color: #f8fafc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(0, 245, 255, 0.03) 0%, transparent 70%);
             min-height: 100vh;
-            padding: 10px;
-            zoom: 0.9; /* Força escala para caber tudo */
-            -webkit-transform: scale(0.9);
-            -webkit-transform-origin: top center;
-            -moz-transform: scale(0.9); /* Firefox */
-            -moz-transform-origin: top center;
-            transform: scale(0.9);
-            transform-origin: top center;
+            padding: 20px;
         }
 
-        h1, h2, .orbitron { font-family: 'Orbitron', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
 
-        .container { 
-            width: 100% !important; 
-            max-width: 98% !important; 
-            margin: 0 auto; 
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 0;
-            border-bottom: 2px solid var(--cyber-blue);
-            margin-bottom: 40px;
-        }
-
-        .logo-text { font-size: 1.8rem; font-weight: 900; }
-        .logo-alfa { color: var(--cyber-blue); text-shadow: 0 0 10px rgba(204, 255, 0, 0.5); }
-
-        .admin-badge {
-            background: rgba(204, 255, 0, 0.1);
-            border: 1px solid var(--cyber-blue);
-            color: var(--cyber-blue);
-            padding: 5px 15px;
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
             border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-
-        .stats-summary {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
         }
 
         .stat-card {
-            background: var(--glass-panel);
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid rgba(255, 255, 255, 0.05);
             padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border-radius: 16px;
+            transition: all 0.3s ease;
         }
+        .stat-card:hover { transform: translateY(-4px); border-color: var(--accent-cyan); }
 
-        .stat-value { font-size: 2.2rem; font-family: 'Orbitron', sans-serif; color: var(--cyber-blue); margin-top: 5px; }
-        .stat-label { color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
-
-        .client-list {
-            background: var(--glass-panel);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            overflow-x: auto; /* Permite scroll horizontal se a tabela for larga */
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            background: rgba(255, 255, 255, 0.02);
-            padding: 15px;
+        .table-premium th {
+            padding: 16px;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
             text-align: left;
-            color: var(--cyber-blue);
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.8rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.02);
         }
 
-        td {
-            padding: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            font-size: 0.95rem;
+        .table-premium td {
+            padding: 16px;
+            font-size: 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
         }
 
         .status-pill {
             padding: 4px 10px;
-            border-radius: 10px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            display: inline-block;
-        }
-
-        .status-scanning { background: rgba(204, 255, 0, 0.1); color: var(--cyber-blue); }
-        .status-in_trade { background: rgba(243, 186, 47, 0.1); color: var(--cyber-gold); }
-        .status-offline { background: rgba(102, 102, 102, 0.1); color: #888; }
-        .status-paused { background: rgba(255, 153, 0, 0.1); color: #ff9900; }
-        .status-pending { background: rgba(255, 51, 102, 0.2); color: #ff3366; border: 1px solid #ff3366; }
-
-        .step-text { color: #aaa; font-size: 0.85rem; font-style: italic; }
-        .amount-text { color: #fff; font-weight: bold; }
-        .profit-text { color: var(--cyber-green); font-family: 'Orbitron', sans-serif; }
-
-        .btn-refresh {
-            background: var(--cyber-blue);
-            color: #000;
-            border: none;
-            padding: 10px 20px;
             border-radius: 8px;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .btn-refresh:hover { box-shadow: 0 0 15px var(--cyber-blue); opacity: 0.9; }
 
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .spin { animation: spin 1s linear infinite; }
+        .status-red { background: rgba(255, 42, 109, 0.1); color: var(--accent-ruby); border: 1px solid var(--accent-ruby); }
+        .status-green { background: rgba(0, 255, 159, 0.1); color: var(--accent-emerald); border: 1px solid var(--accent-emerald); }
+        .status-blue { background: rgba(0, 245, 255, 0.1); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); }
+        .status-gray { background: rgba(255, 255, 255, 0.05); color: #64748b; border: 1px solid rgba(255,255,255,0.1); }
 
-        /* Estilos Telemetria */
-        .telemetry-container {
-            width: 100%;
-            background: #222;
-            height: 12px;
-            border-radius: 6px;
-            margin-top: 8px;
-            position: relative;
+        .telemetry-mini-bar {
+            height: 6px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 3px;
             overflow: hidden;
             border: 1px solid rgba(255,255,255,0.05);
+            margin-top: 6px;
         }
-        .telemetry-bar {
-            height: 100%;
-            width: 0%;
-            transition: width 0.5s ease, background 0.5s ease;
-        }
-        .telemetry-labels {
+
+        .btn-action {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            transition: 0.2s;
             display: flex;
-            justify-content: space-between;
-            font-size: 10px;
-            color: #666;
-            margin-top: 2px;
-            font-family: 'Orbitron', sans-serif;
-        }
-        .telemetry-marker {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: rgba(255,255,255,0.2);
+            align-items: center;
+            gap: 6px;
         }
 
-        .read-only-badge { display: none; }
+        .btn-refresh {
+            background: var(--accent-cyan);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 245, 255, 0.2);
+        }
 
+        .btn-refresh:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 245, 255, 0.4); }
+
+        .btn-stop-all {
+            background: var(--accent-ruby);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(255, 42, 109, 0.2);
+        }
+
+        @keyframes pulse { 50% { opacity: 0.4; } }
+        .animate-pulse-slow { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     </style>
 </head>
-<body>
+<body class="p-4 lg:p-10">
 
-<div class="container">
-    <header>
-        <div class="logo-box" style="display: flex; align-items: center; gap: 15px;">
-            <img src="logo.png" alt="Logo" style="width: 45px; border-radius: 8px;">
-            <h1 class="orbitron" style="cursor:pointer" onclick="window.location.href='/dashboard'">SIFRAS <span class="logo-alfa">ALFA 1.0</span> <span class="admin-badge">ADMIN MONITOR OFFICIAL</span></h1>
+<div class="max-w-[1800px] mx-auto space-y-8">
+    
+    <!-- HEADER -->
+    <header class="glass-panel p-6 flex flex-col lg:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-accent-cyan/10 flex items-center justify-center text-accent-cyan border border-accent-cyan/20">
+                <i data-lucide="shield-alert" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-black uppercase italic tracking-tight">Sifras <span class="text-accent-cyan">Network Monitor</span></h1>
+                <p class="text-[0.6rem] text-slate-500 font-bold tracking-widest uppercase mono">Admin Control Panel v1.2</p>
+            </div>
         </div>
-        <div style="display: flex; gap: 15px; align-items: center;">
-            <div id="lastUpdateTime" style="color: #666; font-size: 0.8rem;">Atualizado em: --:--:--</div>
-            <button onclick="stopAll()" style="background:var(--alert-red); color:#fff; border:none; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer;" id="btnStopAll">
-                <i class="ph ph-warning-octagon"></i> STOP ALL (EMERGÊNCIA)
+
+        <div class="flex items-center gap-4">
+            <span id="lastUpdateTime" class="text-[0.6rem] text-slate-500 font-bold uppercase mono mr-4">Sinc: --:--:--</span>
+            <button onclick="stopAll()" id="btnStopAll" class="btn-stop-all">
+                <i data-lucide="octagon" class="w-4 h-4"></i> Stop All Network
             </button>
             <button class="btn-refresh" onclick="updateOverview(true)">
-                <i class="ph ph-arrows-clockwise"></i> ATUALIZAR AGORA
+                <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i> Resync
             </button>
         </div>
     </header>
 
-    <div class="stats-summary">
+    <!-- STATS SUMMARY -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6 text-center">
         <div class="stat-card">
-            <div class="stat-label">Clientes Online</div>
-            <div class="stat-value" id="totalClients">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Em Operação</div>
-            <div class="stat-value" id="tradingCount">0</div>
+            <p class="stat-label">Clientes Online</p>
+            <p id="totalClients" class="stat-value text-white text-3xl font-black italic">0</p>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Capital em Operação</div>
-            <div class="stat-value" id="avgProfit">$ 0.00</div>
+            <p class="stat-label">Em Operação</p>
+            <p id="tradingCount" class="stat-value text-accent-cyan text-3xl font-black italic">0</p>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Performance Geral</div>
-            <div class="stat-value" id="globalProfitPct">0.00%</div>
+            <p class="stat-label">Capital Sniper</p>
+            <p id="avgProfit" class="stat-value text-white text-2xl font-black mono">$ 0.00</p>
         </div>
-        <div class="stat-card" style="border-color: var(--cyber-blue); background: rgba(204, 255, 0, 0.02);">
-            <div class="stat-label">Latência / Uptime</div>
-            <div class="stat-value" id="netStatus" style="font-size: 1.2rem; margin-top: 10px;">-- ms | 00h 00m</div>
+        <div class="stat-card border-b-2 border-accent-emerald">
+            <p class="stat-label">ROI Geral (%)</p>
+            <p id="globalProfitPct" class="stat-value text-accent-emerald text-2xl font-black italic">0.00%</p>
+        </div>
+        <div class="stat-card border-b-2 border-accent-cyan">
+            <p class="stat-label">Latência / Uptime</p>
+            <p id="netStatus" class="stat-value text-white text-xs font-bold mono mt-2 leading-relaxed">-- ms | 00h 00m</p>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Pivo Global (R4)</div>
-            <div class="stat-value" id="globalPivot" style="color:var(--cyber-gold); font-size: 1.4rem;">---</div>
+            <p class="stat-label">Fator Rank #4</p>
+            <p id="globalPivot" class="stat-value text-accent-cyan text-xl font-black italic truncate">---</p>
         </div>
-        <div class="stat-card" style="border-color: var(--cyber-gold); background: rgba(255, 153, 0, 0.02);">
-            <div class="stat-label">Total Realizado (BRL)</div>
-            <div class="stat-value" id="totalBRL" style="color:var(--cyber-gold); font-size: 1.4rem;">R$ 0,00</div>
+        <div class="stat-card border-b-2 border-accent-emerald">
+            <p class="stat-label">Realizado BRL</p>
+            <p id="totalBRL" class="stat-value text-accent-emerald text-xl font-black mono">R$ 0,00</p>
         </div>
     </div>
 
-    <div class="client-list">
-        <table>
-            <thead>
-                <tr>
-                    <th>IDENTIFICAÇÃO (LOGIN)</th>
-                    <th>STATUS MÁQUINA</th>
-                    <th>ETAPA REAL-TIME</th>
-                    <th>ATIVO</th>
-                    <th>V. COMPRA ($)</th>
-                    <th>V. ATUAL ($)</th>
-                    <th>V. ALVO ($)</th>
-                    <th>V. OPERAÇÃO ($)</th>
-                    <th>SALDO CONTA (USDT)</th>
-                    <th>PNL ALFA LÍQUIDO ($)</th>
-                    <th>TOTAL CONVERTIDO (BRL)</th>
-                    <th>AÇÕES</th>
-                </tr>
-            </thead>
-            <tbody id="adminTableBody">
-                <tr>
-                    <td colspan="8" style="text-align: center; color: #666; padding: 40px;">Buscando dados da rede...</td>
-                </tr>
-            </tbody>
-        </table>
+    <!-- CLIENT LIST -->
+    <div class="glass-panel overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full table-premium">
+                <thead>
+                    <tr>
+                        <th>Identificação Client</th>
+                        <th>Status Máquina</th>
+                        <th>Telemetria / Etapa</th>
+                        <th>Ativo Sniper</th>
+                        <th>E: Compra ($)</th>
+                        <th>🔄 Atual ($)</th>
+                        <th>🎯 Alvo ($)</th>
+                        <th>Cap ($)</th>
+                        <th>Balanço USDT</th>
+                        <th>P&L Líquido</th>
+                        <th>Vendas</th>
+                        <th>Ações Críticas</th>
+                    </tr>
+                </thead>
+                <tbody id="adminTableBody" class="mono">
+                    <tr>
+                        <td colspan="12" class="text-center py-20 text-slate-500 uppercase text-[0.6rem] font-black italic tracking-widest">
+                            Estabelecendo conexão com a rede...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <script>
-    const ACCESS_KEY = localStorage.getItem('sifras_token'); // TOKEN DINÂMICO DO STORAGE
+    lucide.createIcons();
+    const ACCESS_KEY = localStorage.getItem('sifras_token');
 
     async function stopAll() {
-        if (!confirm('⚠️ ALERTA: Deseja interromper TODOS os robôs operando agora? Isso parará inclusive robôs legítimos e órfãos.')) return;
+        if (!confirm('⚠️ EMERGÊNCIA: Parar TODOS os robôs da rede?')) return;
         const btn = document.getElementById('btnStopAll');
         btn.disabled = true;
-        btn.innerText = 'PARANDO...';
         try {
             const res = await fetch('/admin/stop-all', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
             });
-            if (res.ok) {
-                const data = await res.json();
-                alert(`Sucesso! ${data.count} robôs foram desligados.`);
-                updateOverview();
-            } else {
-                alert('Erro ao tentar parar todos.');
-            }
-        } catch (e) {
-            alert('Falha na conexão com o servidor.');
-        } finally {
-            btn.disabled = false;
-            btn.innerText = 'PARAR TODOS (EMERGÊNCIA)';
-        }
+            if (res.ok) alert('Comando executado com sucesso.');
+            updateOverview();
+        } catch (e) { alert('Falha no comando.'); }
+        btn.disabled = false;
     }
 
     async function stopUser(targetUser) {
-        if (!confirm(`Tem certeza que deseja interromper o robô do usuário ${targetUser}?`)) return;
+        if (!confirm(`Parar robô do usuário ${targetUser}?`)) return;
         try {
-            const res = await fetch('/admin/stop-user', {
+            await fetch('/admin/stop-user', {
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${ACCESS_KEY}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Authorization': `Bearer ${ACCESS_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetUser })
             });
-            if (res.ok) {
-                alert(`Robô de ${targetUser} interrompido com sucesso.`);
-                updateOverview();
-            } else {
-                alert('Erro ao interromper robô.');
-            }
-        } catch (e) {
-            alert('Falha na comunicação.');
-        }
+            updateOverview();
+        } catch (e) {}
     }
 
     async function antiRestartUser(targetUser) {
-        if (!confirm(`⚠️ Deseja aplicar o ANTI-RESTART para o usuário ${targetUser}? Isso venderá a moeda atual e retomará a busca (SCAN) imediatamente.`)) return;
+        if (!confirm(`Resetar ciclo Sniper para ${targetUser}?`)) return;
         try {
-            const res = await fetch('/admin/anti-restart', {
+            await fetch('/admin/anti-restart', {
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${ACCESS_KEY}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Authorization': `Bearer ${ACCESS_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetUser })
             });
-            if (res.ok) {
-                alert(`Anti-Restart aplicado com sucesso para ${targetUser}.`);
-                updateOverview();
-            } else {
-                alert('Erro ao aplicar Anti-Restart.');
-            }
-        } catch (e) {
-            alert('Falha na comunicação.');
-        }
+            updateOverview();
+        } catch (e) {}
     }
 
     async function deleteUser(targetUser) {
-        if (!confirm(`⚠️ ALERTA MÁXIMO:\n\nDeseja EXCLUIR PERMANENTEMENTE o usuário ${targetUser}?\n\nIsso apagará todos os arquivos de configuração, histórico e dados deste cliente do servidor. Esta ação não pode ser desfeita.`)) return;
-        
-        const feedback = prompt(`Para confirmar a exclusão de ${targetUser}, digite DELETE:`);
-        if (feedback !== 'DELETE') return alert('Exclusão cancelada. Confirmação incorreta.');
+        if (!confirm(`DELETAR PERMANENTEMENTE o usuário ${targetUser}?`)) return;
+        const confirmStr = prompt('Digite DELETE para confirmar:');
+        if (confirmStr !== 'DELETE') return;
 
         try {
-            const res = await fetch('/admin/delete-user', {
+            await fetch('/admin/delete-user', {
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${ACCESS_KEY}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Authorization': `Bearer ${ACCESS_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetUser })
             });
-            if (res.ok) {
-                alert(`Usuário ${targetUser} foi removido para sempre.`);
-                updateOverview();
-            } else {
-                alert('Erro ao excluir usuário.');
-            }
-        } catch (e) {
-            alert('Falha na comunicação com o servidor.');
-        }
+            updateOverview();
+        } catch (e) {}
     }
 
     async function approveUser(targetUser) {
-        if (!confirm(`🚀 Deseja ATIVAR o acesso do usuário ${targetUser}?`)) return;
         try {
-            const res = await fetch('/admin/approve-user', {
+            await fetch('/admin/approve-user', {
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${ACCESS_KEY}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Authorization': `Bearer ${ACCESS_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetUser })
             });
-            if (res.ok) {
-                alert(`Usuário ${targetUser} ATIVADO com sucesso.`);
-                updateOverview();
-            } else {
-                alert('Erro ao ativar usuário.');
-            }
-        } catch (e) {
-            alert('Falha na comunicação.');
-        }
-    }
-
-    async function changePassword(username) {
-        const newPass = prompt(`Nova senha para ${username}:`);
-        if (newPass && newPass.length >= 4) {
-            try {
-                const res = await fetch('/admin/change-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ACCESS_KEY}` },
-                    body: JSON.stringify({ targetUser: username, newPassword: newPass })
-                });
-                if (res.ok) {
-                    alert('Senha alterada com sucesso!');
-                    updateOverview();
-                } else {
-                    alert('Erro ao alterar senha.');
-                }
-            } catch (e) {
-                alert('Falha na comunicação com o servidor.');
-            }
-        } else if (newPass !== null) { // If user didn't cancel but entered invalid password
-            alert('A senha deve ter pelo menos 4 caracteres.');
-        }
+            updateOverview();
+        } catch (e) {}
     }
 
     async function updateOverview(isManual = false) {
-        const btn = document.querySelector('.btn-refresh');
+        const icon = document.getElementById('refreshIcon');
+        if (isManual) icon.classList.add('animate-spin');
+
         try {
-            if (isManual) {
-                btn.style.opacity = '0.5';
-                btn.innerHTML = '<i class="ph ph-circle-notch spin"></i> ATUALIZANDO...';
-            }
-            
             const res = await fetch(`/admin/overview?t=${Date.now()}`, {
                 headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
             });
             if (!res.ok) throw new Error('Falha no acesso admin');
-            
             const data = await res.json();
             
-            // Assuming data now has a structure like { users: [...], globalPivot: "value" }
-            if (!Array.isArray(data.users)) {
-                console.error("Formato de dados inválido: 'users' não é um array.");
-                return;
-            }
-
-            renderTable(data.users); // Pass only the users array to renderTable
-            renderStats(data);      // Pass the full data object to renderStats
-            document.getElementById('lastUpdateTime').innerText = `Atualizado em: ${new Date().toLocaleTimeString()}`;
+            renderStats(data);
+            renderTable(data.users || []);
+            document.getElementById('lastUpdateTime').innerText = `Sinc: ${new Date().toLocaleTimeString()}`;
         } catch (e) {
             console.error(e);
         } finally {
-            if (isManual) {
-                btn.style.opacity = '1';
-                btn.innerHTML = '<i class="ph ph-arrows-clockwise"></i> ATUALIZAR AGORA';
-            }
+            if (isManual) setTimeout(() => icon.classList.remove('animate-spin'), 500);
         }
     }
 
     function renderStats(data) {
         const users = data.users || [];
-        const setSafe = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
 
-        setSafe('totalClients', users.length);
-        setSafe('tradingCount', users.filter(u => u.status === 'IN_TRADE').length);
-        setSafe('globalPivot', data.globalPivot || '---');
+        setVal('totalClients', users.length);
+        setVal('tradingCount', users.filter(u => u.status === 'IN_TRADE').length);
+        setVal('globalPivot', data.globalPivot || '---');
 
         const totalYield = users.reduce((sum, u) => sum + (Number(u.totalProfitPct) || 0), 0);
-        setSafe('globalProfitPct', `${totalYield.toFixed(2)}%`);
+        setVal('globalProfitPct', `${totalYield.toFixed(2)}%`);
         
         const totalCapital = users.reduce((sum, u) => sum + (Number(u.buyAmountUSDT) || 0), 0);
-        setSafe('avgProfit', `$ ${totalCapital.toFixed(2)}`);
+        setVal('avgProfit', `$ ${totalCapital.toFixed(2)}`);
 
         const totalBRL = users.reduce((sum, u) => sum + (Number(u.realizedProfitBRL) || 0), 0);
-        setSafe('totalBRL', `R$ ${totalBRL.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+        setVal('totalBRL', `R$ ${totalBRL.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
 
-        if (data.globalLatency || data.serverUptime) {
-            const h = Math.floor(data.serverUptime / 3600);
-            const m = Math.floor((data.serverUptime % 3600) / 60);
-            const ip = data.serverIp || 'N/A';
-            setSafe('netStatus', `${data.globalLatency || 0}ms | ${h}h ${m}m | IP: ${ip}`);
-        }
+        const h = Math.floor(data.serverUptime / 3600);
+        const m = Math.floor((data.serverUptime % 3600) / 60);
+        setVal('netStatus', `${data.globalLatency || 0}ms | ${h}h ${m}m | IP: ${data.serverIp || 'N/A'}`);
     }
 
-    function renderTable(data) { // data here is now the array of users
+    function renderTable(users) {
         const body = document.getElementById('adminTableBody');
-        if (data.length === 0) {
-            body.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666; padding: 40px;">Nenhum cliente conectado no momento.</td></tr>';
+        if (users.length === 0) {
+            body.innerHTML = '<tr><td colspan="12" class="text-center py-20 text-slate-600 uppercase text-[0.6rem] font-black italic tracking-widest">Nenhum cliente sincronizado</td></tr>';
             return;
         }
 
-        body.innerHTML = data.map(u => {
-            // Cálculo de ROI para Telemetria
-            let roi = 0;
-            let progressPercent = 0;
-            let barColor = '#ff3366'; // Red
-            
-            if (u.status === 'IN_TRADE' && u.buyPrice > 0 && u.currentPrice > 0) {
+        body.innerHTML = users.map(u => {
+            let roi = 0, progress = 0, color = 'var(--accent-ruby)';
+            if (u.status === 'IN_TRADE' && u.buyPrice > 0) {
                 roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
-                
-                // Mapeia de -6.0% (ALINHADO COM PIXEL LOSS) até +0.6% (100%)
-                const minRange = -6.0;
-                const maxRange = 0.6;
-                progressPercent = ((roi - minRange) / (maxRange - minRange)) * 100;
-                progressPercent = Math.max(0, Math.min(100, progressPercent));
-                
-                // Cor dinâmica
-                if (roi >= 0.6) barColor = '#ccff00'; // Meta
-                else if (roi >= 0) barColor = '#00ff88'; // Positivo
-                else if (roi > -1.5) barColor = '#f3ba2f'; // Alerta
-                else barColor = '#ff3366'; // Pixel Loss
+                progress = Math.max(0, Math.min(100, ((roi - (-6.0)) / (0.6 - (-6.0))) * 100));
+                if (roi >= 0.4) color = 'var(--accent-emerald)';
+                else if (roi >= 0) color = 'var(--accent-cyan)';
+                else color = 'var(--accent-ruby)';
             }
 
             return `
             <tr>
-                <td>
-                    <strong><i class="ph ph-user"></i> ${u.username}</strong>
-                    <div style="font-size: 0.65rem; color: #999;">Vendas: ${u.salesCount || 0}/5</div>
-                </td>
+                <td class="font-black italic text-white uppercase tracking-tighter">${u.username}</td>
                 <td>
                     ${!u.isApproved ? 
-                        '<span class="status-pill status-pending">PENDENTE</span>' : 
-                        `<span class="status-pill status-${u.status.toLowerCase()}">${u.status}</span>`
+                        '<span class="status-pill status-red">Pendente</span>' : 
+                        `<span class="status-pill status-${u.status === 'IN_TRADE' ? 'green' : (u.status === 'OFFLINE' ? 'gray' : 'blue')}">${u.status}</span>`
                     }
                 </td>
                 <td>
-                    <span class="step-text">${u.currentStep}</span>
+                    <div class="text-[0.6rem] font-black text-slate-500 uppercase mb-1">${u.currentStep || 'SCAN'}</div>
                     ${u.status === 'IN_TRADE' ? `
-                        <div class="telemetry-container">
-                             <div class="telemetry-marker" style="left: 76.9%;"></div> <!-- Marcador do 0% (2/2.6) -->
-                            <div class="telemetry-bar" style="width: ${progressPercent}%; background: ${barColor}; box-shadow: 0 0 10px ${barColor}"></div>
+                        <div class="telemetry-mini-bar relative">
+                            <div class="absolute h-full w-px bg-white/20" style="left:76.9%"></div>
+                            <div class="h-full" style="width: ${progress}%; background: ${color}; box-shadow: 0 0 10px ${color}"></div>
                         </div>
-                        <div class="telemetry-labels">
-                            <span>-6.0%</span>
-                            <span style="color:${roi >= 0 ? '#ccff00' : '#ff3366'}">${roi.toFixed(2)}%</span>
-                            <span>+0.6%</span>
+                        <div class="flex justify-between text-[0.5rem] mt-1 font-bold">
+                            <span class="text-slate-600">-6.0%</span>
+                            <span style="color:${color}">${roi.toFixed(2)}%</span>
+                            <span class="text-slate-600">+0.6%</span>
                         </div>
-                    ` : ''}
+                    ` : '<div class="text-slate-700 italic">---</div>'}
                 </td>
-                <td class="orbitron" style="color:var(--cyber-blue)">${u.activeSymbol || '---'}</td>
-                <td class="amount-text" title="Preço de Compra">$ ${(Number(u.buyPrice) || 0).toFixed(6)}</td>
-                <td class="amount-text" title="Preço Atual">$ ${(Number(u.currentPrice) || 0).toFixed(6)}</td>
-                <td class="amount-text" title="Preço de Alvo" style="color:var(--cyber-gold)">$ ${(Number(u.targetPrice) || 0).toFixed(6)}</td>
-                <td class="amount-text" title="Montante Alocado">$ ${(Number(u.buyAmountUSDT) || 0).toFixed(2)}</td>
-                <td class="amount-text" style="color:var(--cyber-blue)">$ ${(Number(u.balanceUSDT) || 0).toFixed(2)}</td>
-                <td class="${(Number(u.liquidPnlPool) || 0) >= 0 ? 'profit-up' : 'profit-down'}">
-                    <strong>$ ${(Number(u.liquidPnlPool) || 0).toFixed(2)}</strong><br>
-                    <span style="font-size: 0.7rem; color: #999;">Meta: $20.00</span>
+                <td class="font-black text-accent-cyan">${u.activeSymbol || '---'}</td>
+                <td class="text-slate-400">$ ${Number(u.buyPrice || 0).toFixed(6)}</td>
+                <td class="font-bold">$ ${Number(u.currentPrice || 0).toFixed(6)}</td>
+                <td class="text-accent-emerald font-bold">$ ${Number(u.targetPrice || 0).toFixed(6)}</td>
+                <td class="text-white font-black">$ ${Number(u.buyAmountUSDT || 0).toFixed(2)}</td>
+                <td class="text-white font-black">$ ${Number(u.balanceUSDT || 0).toFixed(2)}</td>
+                <td class="${u.liquidPnlPool >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} font-black italic">
+                    $ ${Number(u.liquidPnlPool || 0).toFixed(2)}
                 </td>
-                <td style="color: var(--cyber-gold); font-weight: bold;">R$ ${(Number(u.realizedProfitBRL) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td class="font-bold text-slate-500">${u.salesCount || 0}/5</td>
                 <td>
-                    <div style="display: flex; gap: 5px;">
+                    <div class="flex flex-wrap gap-2 text-white">
                         ${!u.isApproved ? `
-                            <button onclick="approveUser('${u.username}')" class="btn-action" style="background:#ccff00; color:#000; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
-                                ATIVAR ACESSO
-                            </button>
+                            <button onclick="approveUser('${u.username}')" class="btn-action bg-accent-emerald text-black">Aprovar</button>
                         ` : `
-                            <button onclick="antiRestartUser('${u.username}')" class="btn-action" style="background:rgba(204,255,0,0.1); border:1px solid var(--cyber-blue); color:var(--cyber-blue); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
-                                ANTI-RESTART
-                            </button>
-                            <button onclick="stopUser('${u.username}')" class="btn-action" style="background:rgba(255,153,0,0.1); border:1px solid #ff9900; color:#ff9900; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
-                                STOP
-                            </button>
+                            <button onclick="antiRestartUser('${u.username}')" class="btn-action bg-accent-cyan/10 border border-accent-cyan/30 text-accent-cyan">Reset</button>
+                            <button onclick="stopUser('${u.username}')" class="btn-action bg-accent-ruby/10 border border-accent-ruby/30 text-accent-ruby">Stop</button>
                         `}
-                        <button onclick="deleteUser('${u.username}')" class="btn-action" style="background:rgba(255,51,102,0.1); border:1px solid var(--alert-red); color:var(--alert-red); padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
-                            EXCLUIR
-                        </button>
+                        <button onclick="deleteUser('${u.username}')" class="btn-action bg-white/5 border border-white/10 text-slate-500 hover:text-white">Del</button>
                     </div>
                 </td>
-            </tr>
-        `; }).join('');
+            </tr>`;
+        }).join('');
     }
 
-    // Inicialização
-    window.onload = async () => {
-        console.log("🚀 Elite Fluxo Alfa Admin V1.0 Official Loaded");
-        
+    window.onload = () => {
+        lucide.createIcons();
         updateOverview();
         setInterval(updateOverview, 5000);
     };
-
 </script>
-
 </body>
 </html>

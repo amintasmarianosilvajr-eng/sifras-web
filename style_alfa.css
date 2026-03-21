@@ -1,0 +1,630 @@
+:root {
+    --bg-dark: #0a0b10;
+    --sidebar-bg: #11121a;
+    --card-bg: rgba(255, 255, 255, 0.03);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --primary: #0070f3;
+    --accent-purple: #7928ca;
+    --accent-green: #00dfd8;
+    --text-main: #ffffff;
+    --text-dim: #a1a1a6;
+    --glow-blue: rgba(0, 112, 243, 0.3);
+    --glow-green: rgba(0, 223, 216, 0.3);
+    --danger: #ff4d4d;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+}
+
+input,
+textarea,
+button,
+select,
+a {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 10;
+}
+
+h1,
+h2,
+h3,
+.logo-text {
+    font-family: 'Outfit', sans-serif;
+}
+
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 260px;
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--card-border);
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 1.5rem;
+    position: fixed;
+    height: 100vh;
+    z-index: 100;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 3rem;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--primary), var(--accent-purple));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.logo-text {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.logo-text span {
+    color: var(--primary);
+}
+
+.nav-menu {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    text-decoration: none;
+    color: var(--text-dim);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.nav-item.active {
+    background: rgba(0, 112, 243, 0.1);
+    color: var(--primary);
+    border: 1px solid rgba(0, 112, 243, 0.2);
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-dim);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 10px var(--danger);
+}
+
+.status-dot.online {
+    background: var(--accent-green);
+    box-shadow: 0 0 10px var(--accent-green);
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    margin-left: 260px;
+    padding: 2rem;
+}
+
+.top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.highlight {
+    color: var(--primary);
+}
+
+.header-stats {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.stat-badge {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    padding: 10px 20px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-badge .label {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.stat-badge .value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--accent-green);
+}
+
+/* Grid */
+.dashboard-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-start;
+}
+
+.slots-card {
+    flex: 2;
+    min-width: 600px;
+    position: relative;
+    z-index: 10;
+}
+
+.active-trade-card {
+    flex: 1;
+    min-width: 350px;
+    margin-top: 0 !important;
+}
+
+/* Slots */
+.slots-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.slot {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--card-border);
+    border-radius: 15px;
+    padding: 1.2rem;
+}
+
+.slot-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.slot-id {
+    color: var(--text-dim);
+}
+
+.slot-status {
+    color: var(--danger);
+    font-size: 0.7rem;
+}
+
+.slot-status.connected {
+    color: var(--accent-green);
+}
+
+.slot-input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid var(--primary) !important;
+    padding: 12px !important;
+    border-radius: 8px;
+    color: white !important;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    pointer-events: auto !important;
+    user-select: text !important;
+    cursor: text !important;
+    position: relative;
+    z-index: 9999;
+}
+
+.slot-input:focus {
+    outline: 2px solid var(--accent-green) !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    box-shadow: 0 0 10px var(--accent-green);
+}
+
+.btn-connect {
+    width: 100%;
+    background: var(--primary);
+    border: none;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-connect:hover {
+    opacity: 0.8;
+}
+
+.btn-activate {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: 0.3s;
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--text-dim);
+}
+
+.btn-activate.disabled {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.btn-activate.on {
+    background: rgba(0, 223, 216, 0.1);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+    box-shadow: 0 0 10px rgba(0, 223, 216, 0.2);
+}
+
+.btn-pdf:hover {
+    background: #34495e !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 15px rgba(0, 112, 243, 0.2);
+}
+
+.btn-clear-slot {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    color: var(--text-dim);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: 0.2s;
+}
+
+.btn-clear-slot:hover {
+    background: rgba(255, 77, 77, 0.2);
+    border-color: var(--danger);
+    color: white;
+}
+
+/* Trade Monitor */
+.trade-monitor-body {
+    padding: 1rem 0;
+}
+
+.holding-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.holding-info h1 {
+    font-size: 2.5rem;
+    color: var(--text-main);
+}
+
+.price-info {
+    text-align: right;
+}
+
+.price-info .label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+}
+
+.price-info h2 {
+    color: var(--accent-green);
+    font-size: 1.8rem;
+}
+
+.trade-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+}
+
+.metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.metric .label {
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.metric .value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.metric.highlight .value {
+    color: var(--accent-green);
+}
+
+.progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: var(--text-dim);
+}
+
+.progress-bar-container {
+    height: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.progress-marker.zero-marker {
+    position: absolute;
+    left: 52.6%;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    z-index: 1;
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--accent-green));
+    box-shadow: 0 0 15px var(--accent-green);
+    transition: width 0.5s ease;
+}
+
+.live-badge {
+    background: var(--accent-green);
+    color: #000;
+    animation: blink 2s infinite;
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+.hidden {
+    display: none !important;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.card-header h3 {
+    font-size: 1rem;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+}
+
+.badge {
+    background: rgba(0, 112, 243, 0.1);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+/* Ranking */
+.ranking-list {
+    list-style: none;
+}
+
+.ranking-header-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    font-weight: 800;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--card-border);
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+.rank-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.rank-item .symbol {
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rank-item .pos {
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    width: 20px;
+}
+
+.rank-item .change {
+    font-weight: 800;
+    color: var(--accent-green);
+}
+
+.rank-item .change.down {
+    color: var(--danger);
+}
+
+/* Analysis */
+.alfa-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.alfa-indicator {
+    text-align: center;
+}
+
+.alfa-indicator label,
+.target-box label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-weight: 800;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.coin-highlight {
+    font-size: 2rem;
+    font-weight: 800;
+    padding: 1rem;
+    background: rgba(0, 112, 243, 0.05);
+    border: 2px solid var(--primary);
+    border-radius: 15px;
+    color: var(--primary);
+}
+
+.alfa-targets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.coin-box {
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.proximity {
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--accent-green);
+    margin-top: 8px;
+}
+
+.decision-box {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed var(--card-border);
+    padding: 1.5rem;
+    border-radius: 15px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.decision-box.active {
+    background: rgba(0, 223, 216, 0.1);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+/* Logs */
+.log-monitor {
+    height: 250px;
+    background: #000;
+    border-radius: 10px;
+    padding: 1rem;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.8rem;
+    overflow-y: auto;
+    color: #0f0;
+}
+
+.log-entry.system { color: #888; font-style: italic; }
+.log-entry.scan { color: #ccff00; text-shadow: 0 0 5px rgba(204, 255, 0, 0.4); }
+.log-entry.buy { color: #00ff00; font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 0, 0.5); }
+.log-entry.sell { color: #00ffff; font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 255, 0.5); }
+.log-entry.error { color: #ff00ff; font-weight: bold; text-shadow: 0 0 8px rgba(255, 0, 255, 0.5); }
+.log-entry.proximity { color: #ff9900; text-shadow: 0 0 5px rgba(255, 153, 0, 0.4); }
+
+.btn-clear {
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+}

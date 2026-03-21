@@ -230,21 +230,24 @@ async function startMarketLoop() {
         // Loop Redundante de Venda (Segurança Alfa)
         for (const [username, state] of userStates.entries()) {
             if (state.isLoopActive && state.activePositions.length > 0) {
-                for (const pos of state.activePositions) {
+                // Cria cópia [ ... ] para evitar bugs de mutação durante iteração
+                const positionsToProcess = [...state.activePositions];
+                for (const pos of positionsToProcess) {
                     if (pos.pending || pos.selling) continue;
                     
                     // Busca preço ultra-fresco no cache global de TODAS as moedas (Garante venda absoluta)
                     const currentPrice = globalMarket.allTickersMap?.get(pos.symbol);
                     if (currentPrice) {
-                        const target = pos.buyPrice * 1.004;
+                        const target = pos.targetPrice || (pos.buyPrice * 1.004); // Usa alvo salvo ou calcula
                         if (currentPrice >= target) {
                             pos.selling = true;
-                            addLog(username, `🎯 Sniper RE-CHECK: Alvo 0.4% Alcançado -> [${pos.symbol}] ($${currentPrice} >= $${target.toFixed(6)})`, 'sell');
+                            addLog(username, `🎯 Sniper RE-CHECK: Alvo 0.4% em [${pos.symbol}] ($${currentPrice} >= $${target.toFixed(6)})`, 'sell');
                             await executeRealSell(username, pos.symbol, 'REDUNDANT_LOOP_SELL');
                         }
                     }
                 }
             }
+
 
             if (state.isLoopActive) {
                 if (state.mode === 'ALFA_USDC') await runAlfaUSDCScanner(username);

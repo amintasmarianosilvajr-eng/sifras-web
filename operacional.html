@@ -1,389 +1,259 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa - Operacional Sniper PRO</title>
-    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-dark: #060a10;
-            --cyber-blue: #00ffc8;
-            --cyber-gold: #00b4ff;
-            --alert-red: #ff3366;
-            --cyber-green: #39FF14;
-            --text-main: #e8f0ff;
-            --glass-panel: rgba(10, 15, 25, 0.95);
-            --border-glow: rgba(0, 255, 200, 0.2);
-        }
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            font-family: 'Oxanium', sans-serif;
-            background: 
-                radial-gradient(circle at 10% 20%, rgba(0, 255, 200, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(0, 180, 255, 0.05) 0%, transparent 40%),
-                #060a10;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        .mono { font-family: 'Share Tech Mono', monospace; }
-
-        .glass-card {
-            background: var(--glass-panel);
-            backdrop-filter: blur(24px);
-            border: 1px solid var(--border-glow);
-            border-radius: 12px;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-        }
-
-        .status-pulse {
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            transition: 0.3s;
-        }
-        .pulse-active { background: var(--cyber-green); box-shadow: 0 0 15px var(--cyber-green); animation: pulse 1s infinite; }
-        .pulse-inactive { background: #666; box-shadow: 0 0 5px #333; }
-
-        @keyframes pulse {
-            0% { transform: scale(0.95); opacity: 0.8; }
-            50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(0.95); opacity: 0.8; }
-        }
-
-        .rank-card {
-            transition: all 0.2s ease;
-            border: 1px solid rgba(255,255,255,0.05);
-            position: relative;
-            overflow: hidden;
-        }
-        .rank-card:hover { transform: translateY(-3px); border-color: var(--cyber-blue); }
-        .rank-card.trigger-enabled { border-color: var(--cyber-blue); background: rgba(0, 255, 200, 0.05); }
-        
-        .trigger-indicator {
-            position: absolute; top: 0; right: 0;
-            padding: 2px 6px; font-size: 0.55rem; font-weight: bold;
-            background: var(--cyber-blue); color: #000;
-            border-bottom-left-radius: 6px;
-            text-transform: uppercase;
-        }
-
-        .log-container::-webkit-scrollbar { width: 4px; }
-        .log-container::-webkit-scrollbar-thumb { background: var(--cyber-blue); opacity: 0.3; border-radius: 2px; }
-
-        .btn-action {
-            height: 42px;
-            padding: 0 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            transition: 0.3s;
-            display: flex; align-items: center; gap: 8px;
-            font-size: 0.8rem;
-        }
-        .btn-start { background: var(--cyber-blue); color: #000; box-shadow: 0 0 15px rgba(0, 255, 200, 0.2); }
-        .btn-stop { background: rgba(255, 51, 102, 0.1); border: 1px solid var(--alert-red); color: var(--alert-red); }
-        .btn-start:hover { box-shadow: 0 0 25px rgba(0, 255, 200, 0.4); }
-
-        input {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            outline: none;
-            transition: 0.2s;
-        }
-        input:focus { border-color: var(--cyber-blue); background: rgba(255, 255, 255, 0.1); }
-
-        .active-trade-card {
-            background: rgba(0, 255, 200, 0.05);
-            border: 1px solid rgba(0, 255, 200, 0.1);
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
-    </style>
+    <title>SIFRAS PERSONAL | OPERACIONAL FLUXO ALFA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style_alfa.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
-<body class="p-4 md:p-6 lg:p-8">
 
-    <div class="max-w-[1600px] mx-auto space-y-6">
-        
-        <!-- API Control Center (Top Bar) -->
-        <div class="glass-card p-4 flex items-center justify-between gap-6">
-            <div class="flex items-center gap-3 shrink-0">
-                <div class="bg-[#00ffc8]/10 p-2 rounded-lg">
-                    <i data-lucide="shield" class="text-[#00ffc8] w-6 h-6"></i>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon">S</div>
+                <div class="logo-text">SIFRAS<span>PERSONAL</span></div>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="/dashboard" class="nav-item">
+                    <span class="nav-icon">📊</span> Painel Principal
+                </a>
+                <a href="/operacional" class="nav-item active" id="nav-dashboard">
+                    <span class="nav-icon">🛰️</span> Operacional Alfa
+                </a>
+                <a href="/admin" class="nav-item">
+                    <span class="nav-icon">⚙️</span> Configurações
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="system-status">
+                    <div class="status-indicator">
+                        <span class="status-dot" id="system-status-dot"></span>
+                        <span class="status-text" id="system-status-text">SINCRONIZANDO...</span>
+                    </div>
                 </div>
-                <div class="hidden sm:block">
-                    <h1 class="text-sm font-bold tracking-tight">Sifras <span class="text-[#00ffc8]">PRO Sniper</span></h1>
-                    <p class="text-[0.55rem] text-gray-500 uppercase font-bold mono">Spot Binance 0.4% Target</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header" id="main-header">
+                <div class="header-title">
+                    <h1>Sifras Web <span class="highlight">Operação Ciclos ALFA</span></h1>
+                    <p style="color: var(--accent-green); font-weight: bold;">🛰️ CONEXÃO BINANCE MAINNET (LIVE)
+                        — Reposição Automática Ativa
+                    </p>
                 </div>
-            </div>
+                <div class="header-stats">
+                    <div class="stat-badge">
+                        <span class="label">LUCRO ALVO</span>
+                        <span class="value" id="target-profit">0.9%</span>
+                    </div>
+                    <div class="stat-badge">
+                        <span class="label">VOLATILIDADE</span>
+                        <span class="value">0.1% / 10s</span>
+                    </div>
+                    <div class="stat-badge" style="min-width: 200px;">
+                        <span class="label">CONTADOR DE CICLO</span>
+                        <span id="cycle-counter"
+                            style="font-size: 0.85rem; font-weight: 700; color: var(--accent-green);">🔄 CICLO:
+                            <strong>0</strong> / 10 operações</span>
+                    </div>
+                    <button onclick="emergencyStop()" style="
+                        background: rgba(255,77,77,0.15);
+                        border: 2px solid var(--danger);
+                        color: var(--danger);
+                        padding: 10px 20px;
+                        border-radius: 12px;
+                        font-weight: 800;
+                        font-size: 0.85rem;
+                        cursor: pointer;
+                        animation: blink 1.5s infinite;
+                        letter-spacing: 1px;
+                    ">🛑 STOP GERAL</button>
+                </div>
+            </header>
 
-            <div class="flex-1 flex gap-4 items-center">
-                <input type="password" id="inputApiKey" placeholder="BINANCE API KEY" class="flex-1 mono border-white/5 bg-white/5 text-[0.7rem] h-[42px] px-4 rounded-lg outline-none focus:border-[#00ffc8]/50">
-                <input type="password" id="inputApiSecret" placeholder="BINANCE API SECRET" class="flex-1 mono border-white/5 bg-white/5 text-[0.7rem] h-[42px] px-4 rounded-lg outline-none focus:border-[#00ffc8]/50">
-                <button onclick="clearKeys()" title="Limpar Chaves" class="p-2 text-gray-600 hover:text-red-500 transition-colors">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
-            </div>
-
-
-            <div class="flex items-center gap-3 shrink-0">
-                <button id="btnValidate" onclick="validateAPI()" class="h-[42px] px-6 rounded-lg bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-all flex items-center gap-2">
-                    <i data-lucide="link" class="w-4 h-4"></i> Validar Acesso
-                </button>
-
-                <button id="btnStart" onclick="toggleMotor(true)" class="h-[42px] px-8 rounded-lg bg-orange-500 text-black text-[0.7rem] font-black uppercase tracking-widest hover:brightness-110 transition-all flex items-center gap-2 opacity-50 pointer-events-none">
-                    <i data-lucide="zap" class="w-4 h-4"></i> ATIVAR GATILHO
-                </button>
-                <button id="btnStop" onclick="toggleMotor(false)" class="h-[42px] px-8 rounded-lg bg-red-500/10 border border-red-500 text-red-500 text-[0.7rem] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2" style="display:none;">
-                    <i data-lucide="power" class="w-4 h-4"></i> DESATIVAR
-                </button>
-            </div>
-        </div>
-
-
-        <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
-            
-            <!-- RANKING SPOT BINANCE -->
-            <div class="xl:col-span-3 space-y-4">
-                <div class="glass-card p-6 min-h-[500px]">
-                    <div class="flex justify-between items-center mb-6">
-                        <div class="flex items-center gap-3">
-                            <span id="statusPulse" class="status-pulse pulse-inactive"></span>
-                            <h2 class="text-sm font-bold mono uppercase tracking-wider">Spot Ranking Elite 10 (0.15% / 15s)</h2>
+            <div class="dashboard-grid">
+                <!-- Slot Configuration Section -->
+                <div class="card slots-card">
+                    <div class="card-header">
+                        <h3>Configuração de Slots</h3>
+                        <span class="badge">2 SLOTS ATIVOS</span>
+                    </div>
+                    <div class="slots-container">
+                        <!-- Slot 1 -->
+                        <div class="slot" id="slot-1">
+                            <div class="slot-header">
+                                <span class="slot-id">SLOT #01</span>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <button class="btn-clear-slot" onclick="clearSlotData(1)"
+                                        title="Limpar tudo neste slot">🔄</button>
+                                    <span class="slot-status" id="slot-1-status">DESCONECTADO</span>
+                                </div>
+                            </div>
+                            <div class="slot-body">
+                                <input type="text" placeholder="NOME DO CLIENTE" class="slot-input" id="slot-1-name">
+                                <input type="password" placeholder="API KEY" class="slot-input" id="slot-1-key">
+                                <input type="password" placeholder="SECRET KEY" class="slot-input" id="slot-1-secret">
+                                <button class="btn-connect" onclick="connectSlot(1)">CONECTAR SLOT</button>
+                                <button class="btn-test-api disabled" id="test-1" onclick="testApiConnection(1)"
+                                    style="width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer; background: rgba(121, 40, 202, 0.2); border: 1px solid var(--accent-purple); color: var(--accent-purple);">TESTAR
+                                    API (SALDO)</button>
+                                <button class="btn-activate disabled" id="activate-1"
+                                    onclick="toggleMonitoring(1)">INICIAR MONITORAMENTO</button>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-4 text-[0.6rem] mono text-gray-500 font-bold uppercase">
-                            <span>Vol > 1M USDT</span>
-                            <span>Target: 0.4%</span>
-                            <span id="updateTimer">Sinc: 1s</span>
+
+                        <!-- Slot 2 -->
+                        <div class="slot" id="slot-2">
+                            <div class="slot-header">
+                                <span class="slot-id">SLOT #02</span>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <button class="btn-clear-slot" onclick="clearSlotData(2)"
+                                        title="Limpar tudo neste slot">🔄</button>
+                                    <span class="slot-status" id="slot-2-status">DESCONECTADO</span>
+                                </div>
+                            </div>
+                            <div class="slot-body">
+                                <input type="text" placeholder="NOME DO CLIENTE" class="slot-input" id="slot-2-name">
+                                <input type="password" placeholder="API KEY" class="slot-input" id="slot-2-key">
+                                <input type="password" placeholder="SECRET KEY" class="slot-input" id="slot-2-secret">
+                                <button class="btn-connect" onclick="connectSlot(2)">CONECTAR SLOT</button>
+                                <button class="btn-test-api disabled" id="test-2" onclick="testApiConnection(2)"
+                                    style="width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer; background: rgba(121, 40, 202, 0.2); border: 1px solid var(--accent-purple); color: var(--accent-purple);">TESTAR
+                                    API (SALDO)</button>
+                                <button class="btn-activate disabled" id="activate-2"
+                                    onclick="toggleMonitoring(2)">INICIAR MONITORAMENTO</button>
+                            </div>
                         </div>
                     </div>
 
-                    <div id="rankingGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4">
-                        <!-- Rankings 1-50 injected here -->
-                        <div class="col-span-full h-64 flex items-center justify-center opacity-20">
-                            <p class="mono text-2xl">Aguardando WebSocket...</p>
+                    <div class="pdf-container"
+                        style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <button class="btn-pdf" id="download-pdf-1"
+                            style="background: #2c3e50; border: 1px solid var(--card-border); color: #fff; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; font-size: 0.75rem;">
+                            <span>📄</span> PDF SLOT 1
+                        </button>
+                        <button class="btn-pdf" id="download-pdf-2"
+                            style="background: #2c3e50; border: 1px solid var(--card-border); color: #fff; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; font-size: 0.75rem;">
+                            <span>📄</span> PDF SLOT 2
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Monitor de Operação Ativa -->
+                <div class="card active-trade-card hidden" id="active-trade-card">
+                    <div class="card-header">
+                        <h3>Monitor de Operação Ativa</h3>
+                        <span class="badge live-badge">AO VIVO</span>
+                    </div>
+                    <div class="trade-monitor-body">
+                        <div class="holding-info">
+                            <h1 id="monitoring-symbol">---</h1>
+                            <div class="price-info">
+                                <span class="label">P&L ATUAL</span>
+                                <h2 id="monitoring-pl">0.00%</h2>
+                            </div>
+                        </div>
+
+                        <div class="trade-metrics">
+                            <div class="metric">
+                                <span class="label">COMPRA</span>
+                                <span class="value" id="monitoring-buy-price">$0.0000</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">ATUAL</span>
+                                <span class="value" id="monitoring-current-price">$0.0000</span>
+                            </div>
+                            <div class="metric highlight">
+                                <span class="label">ALVO (TAKE PROFIT)</span>
+                                <span class="value" id="monitoring-target-price">$0.0000</span>
+                            </div>
+                        </div>
+                        <div class="progress-box">
+                            <div class="progress-labels">
+                                <span>-1.00%</span>
+                                <span>ENTRADA (0.00%)</span>
+                                <span id="target-label">META (+0.90%)</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-marker zero-marker"></div>
+                                <div class="progress-fill" id="trade-progress-fill"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- RIGHT SIDEBAR (ACTIVE & LOGS) -->
-            <div class="space-y-6">
-                
-                <!-- POSITIONS -->
-                <div class="glass-card p-6 flex flex-col max-h-[400px]">
-                    <h2 class="text-sm font-bold mono mb-4 uppercase flex items-center gap-2 text-[#39FF14]">
-                        <i data-lucide="circle-dot" class="w-4 h-4"></i> Posições Sniper (<span id="activeCount">0</span>/10)
-                    </h2>
-                    <div id="activeTradesList" class="flex-1 overflow-y-auto space-y-2 pr-2 log-container">
-                        <p class="text-gray-600 text-center text-[0.7rem] py-8 italic uppercase">Nenhum alvo em radar</p>
+                <!-- Ranking / Indicator Analysis -->
+                <div class="card ranking-card">
+                    <div class="card-header">
+                        <h3>Top 10 Binance (24h)</h3>
+                        <span class="time-update" id="last-update">--:--:--</span>
+                    </div>
+                    <div class="ranking-header-row">
+                        <span>MOEDA</span>
+                        <span>VAR. 24H</span>
+                    </div>
+                    <ul id="ranking-list" class="ranking-list">
+                        <li class="loading">Buscando dados...</li>
+                    </ul>
+                </div>
+
+                <!-- Alfa Indicator Logic View -->
+                <div class="card analysis-card">
+                    <div class="card-header">
+                        <h3>Proximidade Fluxo Alfa</h3>
+                        <button class="btn-clear" onclick="clearLogs()">Limpar Logs</button>
+                    </div>
+                    <div class="alfa-container">
+                        <div class="alfa-indicator">
+                            <label>INDICADORA (4º)</label>
+                            <div class="coin-highlight" id="alfa-4">---</div>
+                        </div>
+                        <div class="alfa-targets">
+                            <div class="target-box">
+                                <label>ALVO 1 (2º)</label>
+                                <div class="coin-box" id="alfa-2">---</div>
+                                <div class="proximity" id="prox-2">DIF: 0.00%</div>
+                            </div>
+                            <div class="target-box">
+                                <label>ALVO 2 (6º)</label>
+                                <div class="coin-box" id="alfa-6">---</div>
+                                <div class="proximity" id="prox-6">DIF: 0.00%</div>
+                            </div>
+                        </div>
+                        <div class="decision-box" id="decision-box">
+                            AGUARDANDO OPORTUNIDADE...
+                        </div>
                     </div>
                 </div>
 
-                <!-- AUDIT LOG -->
-                <div class="glass-card p-6 flex flex-col h-[400px]">
-                    <h2 class="text-sm font-bold mono mb-4 uppercase flex items-center gap-2 text-gray-400">
-                        <i data-lucide="activity" class="w-4 h-4"></i> Auditoria Real (Spot Ranking)
-                    </h2>
-                    <div id="logConsole" class="flex-1 overflow-y-auto space-y-1 text-[0.65rem] mono p-3 bg-black/40 rounded-lg log-container border border-white/5">
-                        <p class="text-gray-700">Iniciando sistema operacional...</p>
+                <!-- Operational Logs -->
+                <div class="card logs-card">
+                    <div class="card-header">
+                        <h3>Monitor Operational Fluxo Alfa</h3>
+                    </div>
+                    <div class="log-monitor" id="log-monitor">
+                        <div class="log-entry system">[SISTEMA] Aguardando conexão dos slots...</div>
                     </div>
                 </div>
-
             </div>
-        </div>
+        </main>
     </div>
 
-    <script>
-        lucide.createIcons();
-        
-        const targetRanks = [2, 4, 6, 8, 10];
-        
-        window.onload = () => {
-            // Inicialização Virgem Solicitada (Limpando para o próximo reinício)
-            // localStorage.removeItem('alfa_k'); 
-            // localStorage.removeItem('alfa_s');
-
-            const k = localStorage.getItem('alfa_k');
-            const s = localStorage.getItem('alfa_s');
-            if(k) document.getElementById('inputApiKey').value = k;
-            if(s) document.getElementById('inputApiSecret').value = s;
-            
-            setInterval(updateData, 1000);
-        };
-
-        function clearKeys() {
-            if(confirm("Deseja EXCLUIR permanentemente as chaves API deste navegador?")) {
-                localStorage.removeItem('alfa_k');
-                localStorage.removeItem('alfa_s');
-                document.getElementById('inputApiKey').value = '';
-                document.getElementById('inputApiSecret').value = '';
-                const btn = document.getElementById('btnValidate');
-                const btnS = document.getElementById('btnStart');
-                btn.innerHTML = `<i data-lucide="link" class="w-4 h-4"></i> Validar Acesso`;
-                btn.className = "h-[42px] px-6 rounded-lg bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-all flex items-center gap-2";
-                btnS.classList.add('opacity-50', 'pointer-events-none');
-                alert("Chaves Excluídas! O cache está VIRGEM.");
-                lucide.createIcons();
-            }
-        }
-
-
-        async function updateData() {
-            try {
-                const res = await fetch('/status');
-                if(!res.ok) return;
-                const data = await res.json();
-                updateUI(data);
-            } catch(e) {}
-        }
-
-        function updateUI(data) {
-            const pulse = document.getElementById('statusPulse');
-            const btnS = document.getElementById('btnStart');
-            const btnT = document.getElementById('btnStop');
-
-            if (data.isLoopActive) {
-                pulse.className = 'status-pulse pulse-active';
-                btnS.style.display = 'none';
-                btnT.style.display = 'flex';
-            } else {
-                pulse.className = 'status-pulse pulse-inactive';
-                btnS.style.display = 'flex';
-                btnT.style.display = 'none';
-            }            // Ranking Elite 10 (Lista Vertical Inconfundível)
-            const grid = document.getElementById('rankingGrid');
-            const top = data.top10 || [];
-            if (top.length > 0) {
-                grid.className = "flex flex-col gap-2"; // Transforma grid em lista vertical
-                grid.innerHTML = top.slice(0, 10).map((coin, index) => {
-                    const rank = index + 1;
-                    const isTarget = targetRanks.includes(rank);
-                    return `
-                        <div class="rank-card glass-card p-4 flex items-center justify-between gap-4 ${isTarget ? 'trigger-enabled ring-1 ring-[#00ffc8]/30' : ''}">
-                            <div class="flex items-center gap-6">
-                                <span class="mono text-3xl font-black italic ${rank <= 3 ? 'text-[#00ffc8]' : 'text-gray-700'} w-12">#${rank}</span>
-                                <div class="flex flex-col">
-                                    <span class="font-bold text-white text-lg tracking-tighter">${coin.symbol.replace('USDT', '/USDT')}</span>
-                                    ${isTarget ? '<span class="text-[0.5rem] text-[#00ffc8] font-bold uppercase tracking-widest">Sniper Radar Ativo</span>' : '<span class="text-[0.5rem] text-gray-600 uppercase">Observando</span>'}
-                                </div>
-                            </div>
-
-                            <div class="flex flex-1 justify-center gap-12 hidden md:flex">
-                                <div class="flex flex-col items-center">
-                                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold mono">Preço Atual</span>
-                                    <span class="mono text-sm text-white font-bold">$${parseFloat(coin.price).toFixed(coin.price < 1 ? 6 : 4)}</span>
-                                </div>
-                                <div class="flex flex-col items-center">
-                                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold mono">Volume 24h</span>
-                                    <span class="mono text-sm text-gray-400 font-bold">$${(coin.volume/1000000).toFixed(1)}M</span>
-                                </div>
-                            </div>
-
-                            <div class="text-right">
-                                <span class="mono font-black text-2xl ${coin.change >= 0 ? 'text-[#39FF14]' : 'text-[#ff3366]'}">${coin.change >= 0 ? '+' : ''}${coin.change.toFixed(2)}%</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-
-            // Active Trades
-            const activeList = document.getElementById('activeTradesList');
-            const pos = data.activePositions || [];
-            document.getElementById('activeCount').innerText = pos.length;
-            if (pos.length > 0) {
-                activeList.innerHTML = pos.map(p => `
-                    <div class="active-trade-card flex justify-between items-center border-l-2 border-[#39FF14]">
-                        <div class="flex flex-col">
-                            <span class="font-bold text-sm text-white">${p.symbol}</span>
-                            <span class="text-[0.6rem] text-gray-500 mono">ENTRADA: $${p.buyPrice.toFixed(4)}</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-[0.7rem] font-bold text-[#00ffc8] block mono">+0.40%</span>
-                            <span class="text-[0.55rem] text-gray-600 mono uppercase tracking-tighter">Target: $${(p.buyPrice * 1.004).toFixed(4)}</span>
-                        </div>
-                    </div>
-                `).join('');
-
-            } else if (data.isLoopActive) {
-                activeList.innerHTML = '<p class="text-gray-600 text-center text-[0.6rem] py-8 italic uppercase animate-pulse">Monitorando Ranks Pares...</p>';
-            }
-
-            // Logs: NEWS FIRST (Mais recentes no Topo)
-            if (data.logs && data.logs.length > 0) {
-                const logEl = document.getElementById('logConsole');
-                logEl.innerHTML = [...data.logs].reverse().slice(0, 50).map(l => {
-                    let col = 'text-gray-500';
-                    if (l.type === 'success' || l.type === 'buy') col = 'text-white border-l border-white/20 pl-2 bg-white/5';
-                    if (l.type === 'sell') col = 'text-[#00ffc8] font-bold bg-[#00ffc8]/5 pl-2';
-                    return `<div class="mb-1 py-1 ${col}">[${l.time}] ${l.msg}</div>`;
-                }).join('');
-            }
-
-        }
-
-        async function validateAPI() {
-            const k = document.getElementById('inputApiKey').value;
-            const s = document.getElementById('inputApiSecret').value;
-            const btn = document.getElementById('btnValidate');
-            const btnS = document.getElementById('btnStart');
-
-            if(!k || !s) return alert("Insira as chaves API!");
-
-            btn.innerText = "⏳ Validando...";
-            btn.className = "h-[42px] px-6 rounded-lg bg-yellow-500/20 border border-yellow-500/50 text-xs font-bold uppercase text-yellow-500 flex items-center gap-2";
-
-            try {
-                const res = await fetch('/check-api', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ apiKey: k, apiSecret: s })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> CONECTADO`;
-                    btn.className = "h-[42px] px-6 rounded-lg bg-green-500/20 border border-green-500/50 text-xs font-bold uppercase text-green-500 flex items-center gap-2";
-                    btnS.classList.remove('opacity-50', 'pointer-events-none');
-                    localStorage.setItem('alfa_k', k);
-                    localStorage.setItem('alfa_s', s);
-                    lucide.createIcons();
-                } else {
-
-                    btn.innerText = "❌ Erro nas Chaves";
-                    btn.className = "h-[42px] px-6 rounded-lg bg-red-500/20 border border-red-500/50 text-xs font-bold uppercase text-red-500 flex items-center gap-2";
-                }
-            } catch(e) {
-                btn.innerText = "❌ Falha Servidor";
-            }
-        }
-
-        async function toggleMotor(start) {
-            const k = localStorage.getItem('alfa_k');
-            const s = localStorage.getItem('alfa_s');
-            const n = localStorage.getItem('alfa_n') || 'Sniper_User';
-            try {
-                const res = await fetch(start ? '/start' : '/stop', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ apiKey: k, apiSecret: s, clientName: n, mode: 'ALFA_USDT' })
-                });
-                if(res.ok) isRunning = start;
-            } catch(e) { alert("ERRO DE CONEXÃO!"); }
-        }
-
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="script_alfa.js"></script>
 </body>
+
 </html>

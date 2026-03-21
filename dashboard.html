@@ -1,600 +1,456 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALFA USDC MASTER — Painel Operacional</title>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap"
-        rel="stylesheet">
+    <title>Sifras Alfa - Dashboard Sniper Master</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0a0a0a;
-            --cyber-blue: #ccff00;
-            --cyber-gold: #f3ba2f;
-            --alert-red: #ff3366;
-            --cyber-green: #39FF14; /* VERDE NEON */
-            --neon-orange: #FF5F1F; /* LARANJA NEON */
-            --text-main: #ffffff;
-            --glass-panel: rgba(18, 18, 18, 0.95);
-            --border-glow: rgba(204, 255, 0, 0.3);
-            --border-red: rgba(255, 51, 102, 0.5);
+            --bg-deep: #05080c;
+            --accent-cyan: #00f5ff;
+            --accent-emerald: #00ff9f;
+            --accent-ruby: #ff2a6d;
+            --glass-bg: rgba(10, 15, 25, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-deep);
+            color: #f8fafc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(0, 245, 255, 0.05) 0%, transparent 70%),
+                radial-gradient(circle at 10% 90%, rgba(0, 255, 159, 0.02) 0%, transparent 40%);
+            min-height: 100vh;
             overflow-x: hidden;
-            background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.05) 0%, transparent 70%), #111111;
-            zoom: 0.9; /* Força escala para caber tudo */
-            -webkit-transform: scale(0.9);
-            -webkit-transform-origin: top center;
-            -moz-transform: scale(0.9);
-            -moz-transform-origin: top center;
-            transform: scale(0.9);
-            transform-origin: top center;
         }
 
-        h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
 
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 30px;
-        }
-
-        .logo-box { display: flex; align-items: center; gap: 15px; }
-        .logo-text { font-size: 1.5rem; font-weight: 900; }
-        .logo-alfa { color: var(--cyber-blue); text-shadow: 0 0 10px rgba(204, 255, 0, 0.5); }
-
-        .header-right { display: flex; align-items: center; gap: 15px; }
-
-        .status-badge {
-            padding: 8px 16px;
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
             border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: bold;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover { 
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--accent-cyan);
+            transform: translateY(-4px);
+        }
+
+        .custom-input {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            height: 48px;
+            padding: 0 16px;
+            font-size: 0.8rem;
+            color: white;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .custom-input:focus {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: var(--accent-cyan);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(0, 245, 255, 0.1);
+        }
+
+        .btn-premium {
+            padding: 0 24px;
+            height: 48px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .btn-logout {
-            padding: 8px 16px;
-            background: rgba(255, 51, 102, 0.08);
-            border: 1px solid rgba(255, 51, 102, 0.3);
-            color: var(--alert-red);
-            border-radius: 20px;
-            font-family: 'Outfit', sans-serif;
-            font-size: 0.85rem;
-            cursor: pointer;
-            display: flex; align-items: center; gap: 6px; transition: 0.3s;
-        }
-        .btn-logout:hover { background: var(--alert-red); color: #fff; }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 30px;
-        }
-
-        .panel {
-            background: var(--glass-panel);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 25px;
-            position: relative;
-        }
-
-        .panel-title {
-            font-size: 1.2rem;
-            margin-bottom: 20px;
-            color: var(--cyber-blue);
-            display: flex;
-            align-items: center;
+            justify-content: center;
             gap: 10px;
         }
 
-        .input-group { margin-bottom: 20px; }
-        .input-group label { display: block; margin-bottom: 8px; color: #a0aab5; font-size: 0.9rem; }
-        .input-group input {
-            width: 100%; padding: 12px;
+        .btn-start { 
+            background: var(--accent-cyan); 
+            color: #000; 
+            width: 100%;
+            box-shadow: 0 4px 20px rgba(0, 245, 255, 0.2); 
+        }
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0, 245, 255, 0.4); }
+
+        .btn-panic { 
+            background: rgba(255, 42, 109, 0.1); 
+            border: 1px solid var(--accent-ruby); 
+            color: var(--accent-ruby); 
+            width: 100%;
+        }
+        .btn-panic:hover { background: var(--accent-ruby); color: white; transform: translateY(-2px); }
+
+        .btn-mode {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            color: #64748b;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            transition: 0.3s;
+            flex: 1;
+        }
+        .btn-mode.active {
+            background: rgba(0, 245, 255, 0.1);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .telemetry-progress {
+            height: 40px;
             background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px; color: #fff;
-            font-family: 'Outfit', sans-serif; outline: none; transition: 0.3s;
-        }
-        .input-group input:focus { border-color: var(--cyber-blue); box-shadow: 0 0 10px var(--border-glow); }
-
-        .btn {
-            width: 100%; padding: 15px; border: none; border-radius: 8px;
-            font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 1rem;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s;
-        }
-
-        .btn-start { background: rgba(204, 255, 0, 0.1); color: var(--cyber-blue); border: 1px solid var(--cyber-blue); }
-        .btn-start:hover { background: var(--cyber-blue); color: #000; box-shadow: 0 0 20px var(--border-glow); }
-
-        .btn-panic { background-color: transparent; border: 1px solid var(--alert-red); color: var(--alert-red); }
-        .btn-panic:hover { background-color: var(--alert-red); color: #fff; box-shadow: 0 0 15px var(--alert-red); }
-
-        .fraction-group { display: flex; gap: 5px; margin-top: -10px; margin-bottom: 10px; }
-        .fraction-btn {
-            flex: 1; padding: 8px 0;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff; border-radius: 6px; cursor: pointer;
-            font-family: 'Orbitron', sans-serif; font-size: 0.8rem; transition: all 0.2s ease;
-        }
-        .fraction-btn:hover { background: rgba(204, 255, 0, 0.2); border-color: var(--cyber-blue); }
-        .fraction-btn.active { background: var(--cyber-blue); color: #000; border-color: var(--cyber-blue); box-shadow: 0 0 10px rgba(204, 255, 0, 0.5); }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.05); color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 10px; font-size: 0.9rem; margin-top: 10px;
-        }
-        .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
-
-        .central-stage { display: flex; flex-direction: column; gap: 30px; }
-
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-
-        .stat-card {
-            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
             border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 20px; border-radius: 12px; text-align: center;
         }
 
-        .stat-value { font-size: 2rem; font-family: 'Orbitron', sans-serif; color: #fff; margin: 10px 0; }
-        .stat-label { color: #888; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
-
-        .log-container {
-            height: 300px; overflow-y: auto;
-            background: #000; border-radius: 8px; padding: 15px;
-            font-family: monospace; font-size: 0.9rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .telemetry-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-ruby) 0%, var(--accent-cyan) 100%);
+            box-shadow: 0 0 30px rgba(0, 245, 255, 0.3);
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .log-entry { padding: 8px 5px; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); }
-        .log-alt-0 { background-color: rgba(255, 255, 255, 0.02); }
-        .log-alt-1 { background-color: transparent; }
-
-        .log-card-sell {
-            background: rgba(204, 255, 0, 0.05);
-            border: 1px solid var(--cyber-blue);
-            border-left: 5px solid var(--cyber-blue);
-            padding: 15px; margin: 10px 0; border-radius: 6px;
-            font-family: 'Outfit', sans-serif;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        .log-entry {
+            border-left: 2px solid rgba(255,255,255,0.05);
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            font-size: 0.75rem;
+            transition: all 0.2s ease;
         }
-        .log-card-sell .card-title { font-size: 1.1rem; color: var(--cyber-blue); font-weight: bold; margin-bottom: 5px; }
-        .log-card-sell .card-body { color: #fff; font-size: 0.95rem; line-height: 1.4; }
+        .log-entry:hover { background: rgba(255, 255, 255, 0.02); }
+        .log-info { color: #94a3b8; }
+        .log-buy { color: var(--accent-cyan); background: rgba(0, 245, 255, 0.05); border-left-color: var(--accent-cyan); }
+        .log-sell { color: var(--accent-emerald); background: rgba(0, 255, 159, 0.05); border-left-color: var(--accent-emerald); }
+        .log-error { color: var(--accent-ruby); background: rgba(255, 42, 109, 0.05); border-left-color: var(--accent-ruby); }
 
-        .log-time { color: #666; margin-right: 10px; }
-        .log-info { color: #a0aab5; }
-        .log-trigger { color: var(--cyber-gold); }
-        .log-buy { color: var(--cyber-blue); font-weight: bold; }
-        .log-sell { color: var(--cyber-green); font-weight: bold; }
-        .log-error { color: var(--alert-red); }
-        .log-warn { color: #ff9900; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-        th { color: #888; font-size: 0.9rem; }
-        .profit-positive { color: var(--cyber-blue); }
-        .profit-negative { color: var(--alert-red); }
-
-        @keyframes logoPulse {
-            0% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(204,255,0,0.4)); }
-            50% { transform: scale(1.1); filter: drop-shadow(0 0 60px rgba(204,255,0,0.8)); }
-            100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(204,255,0,0.4)); }
+        .table-premium th {
+            padding: 16px;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .logo-pulse {
-            animation: logoPulse 1.5s ease-in-out infinite;
-            width: 300px;
-            border-radius: 40px;
+
+        .table-premium td {
+            padding: 16px;
+            font-size: 0.8rem;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
         }
 
         .profit-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(5, 8, 12, 0.95);
             backdrop-filter: blur(10px);
             z-index: 9999; display: flex; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none; transition: 0.8s;
+            opacity: 0; pointer-events: none; transition: 0.6s;
         }
         .profit-overlay.show { opacity: 1; pointer-events: all; }
-        
-        .profit-box {
-            text-align: center;
-            transform: scale(0.5); transition: 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .profit-overlay.show .profit-box { transform: scale(1); }
-        
-        .profit-box h2 { 
-            font-size: 2.5rem; 
-            color: var(--cyber-blue); 
-            margin-top: 30px; 
-            text-shadow: 0 0 20px rgba(204,255,0,0.5);
-        }
-        .profit-box p { font-size: 1.2rem; color: #fff; opacity: 0.8; }
 
-        @keyframes blinker { 50% { opacity: 0.2; } }
-        .blink { animation: blinker 1s linear infinite; }
-
-        .telemetry-card {
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid var(--cyber-blue);
-            padding: 20px; border-radius: 12px; margin-top: 20px; text-align: center;
-            box-shadow: 0 0 20px rgba(204, 255, 0, 0.1);
-            display: none; flex-direction: column; gap: 15px;
-        }
-        .telemetry-card.active { display: flex; }
-
-        .progress-container {
-            width: 100%; height: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px; overflow: hidden; position: relative;
-        }
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #ff0055 0%, #ffaa00 50%, #00ff88 100%);
-            width: 0%; transition: width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.25);
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
-            border-radius: 10px;
-        }
-        .progress-marker { position: absolute; top: 0; height: 100%; width: 2px; background: rgba(255, 255, 255, 0.3); }
-
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--cyber-blue); }
-
-        /* Modo Leitura */
-        .read-only-mode .btn-start, 
-        .read-only-mode .btn-panic,
-        .read-only-mode .btn-secondary,
-        .read-only-mode .fraction-btn {
-            opacity: 0.3 !important;
-            pointer-events: none !important;
-            filter: grayscale(1);
-        }
-        .read-only-mode input {
-            pointer-events: none !important;
-            opacity: 0.6;
-        }
-
-        .toggle-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(255,255,255,0.05);
-            padding: 5px 15px;
-            border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
         .switch {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 20px;
+            position: relative; display: inline-block; width: 44px; height: 22px;
         }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #333;
-            transition: .4s;
-            border-radius: 20px;
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #1e293b; transition: .4s; border-radius: 20px;
         }
         .slider:before {
-            position: absolute;
-            content: "";
-            height: 14px;
-            width: 14px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
+            position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
+            background-color: white; transition: .4s; border-radius: 50%;
         }
-        input:checked + .slider { background-color: var(--cyber-blue); }
-        input:checked + .slider:before { transform: translateX(20px); }
+        input:checked + .slider { background-color: var(--accent-cyan); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        .read-only-mode .interactive {
+            opacity: 0.4; pointer-events: none; filter: grayscale(0.8);
+        }
+
+        @keyframes blink { 50% { opacity: 0.3; } }
+        .animate-blink { animation: blink 1.5s step-start infinite; }
     </style>
 </head>
+<body class="p-4 md:p-8">
 
-<body>
-
+    <!-- PROFIT ANIMATION OVERLAY -->
     <div class="profit-overlay" id="profitOverlay">
-        <div class="profit-box">
-            <img src="logo.png" alt="ALFA USDC MASTER" class="logo-pulse">
-            <h2 class="orbitron">ALVO ALCANÇADO!</h2>
-            <p>Sifras ALFA USDC Operando com Sucesso</p>
+        <div class="text-center transform scale-90 transition-transform duration-700" id="profitBox">
+            <div class="w-32 h-32 mx-auto mb-8 relative">
+                <div class="absolute inset-0 bg-accent-cyan/20 blur-3xl rounded-full"></div>
+                <img src="logo.png" alt="Logo" class="relative z-10 w-full h-full rounded-3xl shadow-2xl">
+            </div>
+            <h2 class="text-4xl font-black italic uppercase tracking-tighter text-white">Target Atingido!</h2>
+            <p class="text-accent-cyan font-bold tracking-[0.3em] uppercase mt-4">Sniper Elite Operando com Sucesso</p>
         </div>
     </div>
 
-    <div class="container">
-        <header>
-            <div class="logo-box" style="display: flex; align-items: center; gap: 12px;">
-                <img src="logo.png" alt="Logo" style="width: 40px; border-radius: 8px;">
-                <h1 class="orbitron">ALFA <span class="logo-alfa">USDC MASTER</span></h1>
+    <div class="max-w-[1600px] mx-auto space-y-8">
+        
+        <!-- HEADER -->
+        <header class="glass-panel p-4 flex flex-col lg:flex-row items-center justify-between gap-6 px-6">
+            <div class="flex items-center gap-4">
+                <img src="logo.png" alt="Logo" class="w-12 h-12 rounded-xl shadow-lg">
+                <div>
+                    <h1 class="text-lg font-black uppercase italic tracking-tight">Sifras <span class="text-accent-cyan">Master Pro</span></h1>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span class="text-[0.6rem] text-slate-500 font-bold tracking-widest uppercase mono">Algoritmo Sniper v4.2</span>
+                        <div class="w-1 h-1 rounded-full bg-slate-700"></div>
+                        <span class="text-[0.6rem] text-accent-emerald font-bold tracking-widest uppercase mono">Nuvem 24h</span>
+                    </div>
+                </div>
             </div>
-            <div class="toggle-container" style="margin-left: 15px;">
-                <span style="font-size: 0.7rem; color: #888; font-weight: bold; letter-spacing: 1px;">MODO LEITURA</span>
-                <label class="switch">
-                    <input type="checkbox" id="readModeToggle" onchange="toggleReadMode()">
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <span style="font-size: 0.75rem; color: var(--cyber-gold); margin-left:15px; border: 1px solid var(--cyber-gold); padding: 2px 8px; border-radius: 4px;">
-                <i class="ph ph-cloud-check"></i> OPERAÇÃO EM NUVEM 24H ATIVA
-            </span>
-            <div class="header-right">
-                <div class="status-badge" id="sysStatusBadge">
-                    <i class="ph-fill ph-circle" style="color: #666;"></i> OFFLINE
+
+            <div class="flex items-center gap-6">
+                <!-- READ MODE -->
+                <div class="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-full border border-white/5">
+                    <span class="text-[0.6rem] text-slate-500 font-bold uppercase tracking-widest">Leitura</span>
+                    <label class="switch">
+                        <input type="checkbox" id="readModeToggle" onchange="toggleReadMode()">
+                        <span class="slider"></span>
+                    </label>
                 </div>
-                <div class="status-badge" style="background: rgba(204, 255, 0, 0.05); border-color: var(--cyber-blue);">
-                    <i class="ph ph-wallet" style="color: var(--cyber-blue);"></i> <span id="valBalanceUSDT">$ 0.00</span>
+
+                <!-- BALANCES -->
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/5 px-4 py-2 rounded-xl border border-white/5 text-center">
+                        <p class="text-[0.5rem] text-slate-500 uppercase font-black mono mb-1">Balanço USDT</p>
+                        <p id="valBalanceUSDT" class="text-xs font-bold mono text-white">$ 0.00</p>
+                    </div>
+                    <div class="bg-white/5 px-4 py-2 rounded-xl border border-white/5 text-center">
+                        <p class="text-[0.5rem] text-slate-500 uppercase font-black mono mb-1">Usuário</p>
+                        <p id="userNameLabel" class="text-xs font-bold text-accent-cyan uppercase tracking-tighter">---</p>
+                    </div>
                 </div>
-                <div class="status-badge" style="background: rgba(204, 255, 0, 0.05); border-color: var(--cyber-blue);">
-                    <i class="ph ph-user" style="color: var(--cyber-blue);"></i> <span id="userNameLabel">---</span>
-                </div>
-                <button class="btn-logout" onclick="doLogout()">
-                    <i class="ph ph-sign-out"></i> Sair
+
+                <button onclick="doLogout()" class="w-10 h-10 rounded-full bg-accent-ruby/10 border border-accent-ruby/20 text-accent-ruby flex items-center justify-center hover:bg-accent-ruby hover:text-white transition-all">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
                 </button>
             </div>
         </header>
 
-        <div class="dashboard-grid">
-            <!-- Lateral: Controles API -->
-            <div class="panel">
-                <h2 class="panel-title orbitron"><i class="ph ph-key"></i> Conexão Binance</h2>
-
-                <div class="input-group">
-                    <label>Nome do Cliente</label>
-                    <input type="text" id="clientName" placeholder="Ex: Amintas Silva">
-                </div>
-
-                <div class="input-group">
-                    <label>Binance API Key</label>
-                    <input type="password" id="apiKey" placeholder="Cole sua chave API aqui">
-                </div>
-
-                <div class="input-group">
-                    <label>Binance API Secret</label>
-                    <input type="password" id="apiSecret" placeholder="Cole sua chave Secreta aqui">
-                </div>
-
-                <div class="input-group" style="margin-top:20px;">
-                    <label>Estratégia do Motor</label>
-                    <div style="display: flex; gap: 10px; margin-top: 5px;">
-                        <button id="modeAlfaUSDT" class="btn-mode active" onclick="selectMode('ALFA_USDT', this)" style="flex: 1;">ALFA USDT</button>
-                        <button id="modeAlfaUSDC" class="btn-mode" onclick="selectMode('ALFA_USDC', this)" style="flex: 1;">ALFA USDC</button>
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+            
+            <!-- CONTROLS SIDEBAR -->
+            <div class="glass-panel p-6 space-y-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Motor de Comando</h2>
+                    <div id="sysStatusBadge" class="flex items-center gap-2 text-[0.6rem] font-bold text-slate-500 px-2 py-1 rounded-full bg-white/5 border border-white/5">
+                        <div class="w-1.5 h-1.5 rounded-full bg-slate-600"></div> OFFLINE
                     </div>
                 </div>
 
-                <style>
-                    .btn-mode {
-                        background: rgba(255,255,255,0.05);
-                        border: 1px solid rgba(255,255,255,0.1);
-                        color: #888;
-                        padding: 10px;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-family: 'Orbitron';
-                        font-size: 0.75rem;
-                        transition: 0.3s;
-                    }
-                    .btn-mode.active {
-                        background: rgba(204, 255, 0, 0.1);
-                        border-color: var(--cyber-blue);
-                        color: var(--cyber-blue);
-                        box-shadow: 0 0 15px rgba(204, 255, 0, 0.2);
-                    }
-                </style>
-
-                <div class="input-group" style="display: flex; align-items: center; gap: 10px; margin-top:20px;">
-                    <input type="checkbox" id="chkLoop" checked
-                        style="width: 20px; height: 20px; accent-color: var(--cyber-blue);">
-                    <label style="margin: 0; color: #fff;">Operação Contínua (Sem Pausas)</label>
-                </div>
-
-
-                <button class="btn btn-start" id="btnStart" onclick="startSystem()">
-                    <i class="ph-fill ph-power"></i> INICIAR MOTOR MASTER
-                </button>
-
-                <div class="input-group" style="margin-top: 10px; margin-bottom: 5px;">
-                    <label style="font-size: 0.85rem; color: #a0aab5;"><i class="ph ph-wallet"></i> Capital por Operação:</label>
-                    <div class="fraction-group">
-                        <button class="fraction-btn" onclick="selectFraction(0.25, this)">25%</button>
-                        <button class="fraction-btn" onclick="selectFraction(0.50, this)">50%</button>
-                        <button class="fraction-btn" onclick="selectFraction(0.75, this)">75%</button>
-                        <button class="fraction-btn active" onclick="selectFraction(1.00, this)">100%</button>
+                <div class="space-y-4 interactive">
+                    <div class="space-y-1">
+                        <label class="text-[0.6rem] text-slate-500 uppercase font-black ml-1">Identificação Cliente</label>
+                        <input type="text" id="clientName" placeholder="NOME DO OPERADOR" class="custom-input mono">
                     </div>
-                </div>
+                    <div class="space-y-1">
+                        <label class="text-[0.6rem] text-slate-500 uppercase font-black ml-1">Binance API Key</label>
+                        <input type="password" id="apiKey" placeholder="CONECTAR CHAVE" class="custom-input mono">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[0.6rem] text-slate-500 uppercase font-black ml-1">Binance API Secret</label>
+                        <input type="password" id="apiSecret" placeholder="IDENTIFICAR SEGREDO" class="custom-input mono">
+                    </div>
 
-                <button class="btn btn-panic" id="btnPanic" onclick="panicSell()" style="margin-top: 10px;">
-                    <i class="ph-fill ph-warning-circle"></i> STOP GERAL E VENDER
-                </button>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px;">
-                    <button class="btn btn-secondary" onclick="resetApi()" style="font-size: 0.75rem; padding: 8px 2px;"><i class="ph ph-key"></i> Reset</button>
-                    <button class="btn btn-secondary" onclick="resetHistory()" style="font-size: 0.75rem; padding: 8px 2px;"><i class="ph ph-trash"></i> Limpar</button>
-                    <button class="btn btn-secondary" onclick="downloadReport()" style="font-size: 0.75rem; padding: 8px 2px;"><i class="ph ph-download"></i> Extrato</button>
-                </div>
-
-                <!-- DIAGNÓSTICO DE REDE ALFA -->
-                <div class="panel" style="margin-top: 25px; padding: 15px; background: rgba(204, 255, 0, 0.03); border: 1px dashed rgba(204, 255, 0, 0.2); border-radius: 12px;">
-                    <h3 style="font-size: 0.75rem; color: var(--cyber-blue); font-family: 'Orbitron'; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">
-                        <i class="ph-fill ph-broadcast"></i> Diagnóstico de Rede Alfa
-                    </h3>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
-                            <span style="color: #666;">Latência Binance:</span>
-                            <span id="diagLatency" style="color: #ccff00; font-weight: bold;">-- ms</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
-                            <span style="color: #666;">Sistema Ativo:</span>
-                            <span id="diagUptime" style="color: #fff;">00h 00m</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
-                            <span style="color: #666;">Status Servidor:</span>
-                            <span style="color: #00ff88;"><i class="ph-fill ph-shield-check"></i> Seguro</span>
+                    <div class="space-y-2">
+                        <label class="text-[0.6rem] text-slate-500 uppercase font-black ml-1">Modalidade Snipering</label>
+                        <div class="flex gap-2">
+                            <button id="modeAlfaUSDT" class="btn-mode active" onclick="selectMode('ALFA_USDT', this)">ALFA USDT</button>
+                            <button id="modeAlfaUSDC" class="btn-mode" onclick="selectMode('ALFA_USDC', this)">ALFA USDC</button>
                         </div>
                     </div>
+
+                    <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+                        <input type="checkbox" id="chkLoop" checked class="w-5 h-5 accent-accent-cyan bg-transparent">
+                        <span class="text-[0.65rem] font-bold uppercase text-slate-300">Fluxo Contínuo Sniper</span>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2">
+                        <button class="fraction-btn text-[0.6rem] font-black p-2 rounded-lg bg-white/5 border border-white/5 hover:border-accent-cyan/50 transition-all" onclick="selectFraction(0.25, this)">25%</button>
+                        <button class="fraction-btn text-[0.6rem] font-black p-2 rounded-lg bg-white/5 border border-white/5 hover:border-accent-cyan/50 transition-all" onclick="selectFraction(0.50, this)">50%</button>
+                        <button class="fraction-btn text-[0.6rem] font-black p-2 rounded-lg bg-white/5 border border-white/5 hover:border-accent-cyan/50 transition-all" onclick="selectFraction(0.75, this)">75%</button>
+                        <button class="fraction-btn active text-[0.6rem] font-black p-2 rounded-lg bg-accent-cyan/10 border border-accent-cyan text-accent-cyan" onclick="selectFraction(1.00, this)">100%</button>
+                    </div>
+
+                    <button id="btnStart" onclick="startSystem()" class="btn-premium btn-start">
+                        <i data-lucide="zap" class="w-5 h-5"></i> Ativar Sniper Motor
+                    </button>
+
+                    <button id="btnPanic" onclick="panicSell()" class="btn-premium btn-panic">
+                        <i data-lucide="alert-circle" class="w-5 h-5"></i> Venda Panic Stop
+                    </button>
+                </div>
+
+                <div class="pt-4 border-t border-white/5 grid grid-cols-2 gap-2">
+                    <button class="text-[0.6rem] font-bold uppercase p-2 text-slate-500 hover:text-white transition-all flex items-center justify-center gap-2" onclick="resetApi()">
+                        <i data-lucide="key-round" class="w-3 h-3"></i> Reset Chaves
+                    </button>
+                    <button class="text-[0.6rem] font-bold uppercase p-2 text-slate-500 hover:text-white transition-all flex items-center justify-center gap-2" onclick="downloadReport()">
+                        <i data-lucide="file-down" class="w-3 h-3"></i> Gerar Extrato
+                    </button>
                 </div>
             </div>
 
-            <!-- Central: Monitoramento -->
-            <div class="central-stage">
-
-                <div class="stats-grid">
-                    <div class="stat-card" style="border-color: var(--cyber-blue);">
-                        <div class="stat-label">Fator Pixel Alfa</div>
-                        <div class="stat-value" id="valPivot">Aguardando...</div>
-                        <div style="color: #a0aab5; font-size: 0.85rem;" id="valDistances">D2: 0% | D6: 0%</div>
+            <!-- MAIN CONTENT -->
+            <div class="xl:col-span-3 space-y-8">
+                
+                <!-- TOP STATS -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="stat-card">
+                        <p class="text-[0.6rem] text-slate-500 uppercase font-black tracking-widest mb-2">Fator Sniper</p>
+                        <p id="valPivot" class="text-xl font-black text-white italic truncate">---</p>
+                        <p id="valDistances" class="text-[0.6rem] text-slate-400 font-bold mono mt-2">D2: 0% | D6: 0%</p>
                     </div>
-
-                    <div class="stat-card" id="cardCycle">
-                        <div class="stat-label">Ciclo Atual</div>
-                        <div class="stat-value" id="valOpsCount">0 / 5</div>
-                        <div style="color: #a0aab5; font-size: 0.85rem;" id="valCooldown">Nenhum Cooldown</div>
+                    <div class="stat-card">
+                        <p class="text-[0.6rem] text-slate-500 uppercase font-black tracking-widest mb-2">Ciclo de Vendas</p>
+                        <p id="valOpsCount" class="text-xl font-black text-white italic">0 / 5</p>
+                        <p id="valCooldown" class="text-[0.6rem] text-slate-400 font-bold mono mt-2 text-accent-emerald">Aguardando Filtro</p>
                     </div>
+                    <div class="stat-card" style="border-bottom: 2px solid var(--accent-cyan)">
+                        <p class="text-[0.6rem] text-slate-500 uppercase font-black tracking-widest mb-2">P&L Acumulado (%)</p>
+                        <p id="valRealizedBRL" class="text-2xl font-black text-accent-cyan italic">+0.00%</p>
+                        <p id="valProfitPool" class="text-[0.6rem] text-slate-400 font-bold mono mt-2">Meta Reforço: 50%</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-[0.6rem] text-slate-500 uppercase font-black tracking-widest mb-2">Latência Global</p>
+                        <p id="diagLatency" class="text-xl font-black text-white italic">-- ms</p>
+                        <p id="diagUptime" class="text-[0.6rem] text-slate-400 font-bold mono mt-2">Uptime: 00h 00m</p>
+                    </div>
+                </div>
 
-                    <div class="stat-card" style="display:flex; flex-direction:column; justify-content:center; border-color: var(--cyber-gold);">
-                        <div class="stat-label">PNL MÉDIO (USDC/USDT)</div>
-                        <div class="stat-value" id="valRealizedBRL" style="font-size: 1.5rem; margin:5px 0;">$ 0.00</div>
-                        <div style="color: #a0aab5; font-size: 0.85rem;" id="valProfitPool">
-                            Meta Reforço: 0% / 50%
+                <!-- HUD TELEMETRY -->
+                <div id="telemetryCard" class="glass-panel p-8 hidden opacity-0 transition-all duration-500 border-l-4 border-accent-cyan">
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-8">
+                        <div class="text-center md:text-left">
+                            <h3 class="text-xs font-black uppercase tracking-[0.3em] text-accent-cyan mb-2">Trade em Monitoramento</h3>
+                            <div class="flex items-center gap-4">
+                                <span id="telemetrySymbol" class="text-4xl font-black italic text-white tracking-tighter">---</span>
+                                <div class="px-2 py-1 rounded bg-accent-cyan/10 text-accent-cyan text-[0.6rem] font-black uppercase">Live Sniper</div>
+                            </div>
+                            <div id="valTradeTarget" class="mt-4 space-y-1 text-[0.65rem] mono font-bold text-slate-500">
+                                <p>📥 ENTRADA: <span class="text-white">$---</span></p>
+                                <p>🔄 ATUAL: <span class="text-white">$---</span></p>
+                                <p>🎯 ALVO: <span class="text-accent-emerald uppercase tracking-widest">+0.40% TAKE</span></p>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="stat-card" style="display:flex; flex-direction:column; justify-content:center;">
-                        <div class="stat-label">Trade Ativo</div>
-                        <div class="stat-value" id="valActiveTrade" style="font-size: 1.5rem; margin:5px 0;">---</div>
-                        <div style="font-size: 0.9rem; margin-top:5px; text-align:left; display:inline-block; margin-left:auto; margin-right:auto;" id="valTradeTarget">
-                            <span style="color:#a0aab5">📥 Compra:</span> ---<br>
-                            <span style="color:#fff">🔄 Atual:</span> ---<br>
-                            <span>Alvo: <span style="color:var(--cyber-green)">+0.4%</span></span>
+                        <div class="flex-1 w-full max-w-xl">
+                            <div class="flex justify-between items-end mb-4">
+                                <div class="text-center">
+                                    <span class="text-[0.5rem] text-slate-500 uppercase font-black block mb-1">Pixel Loss</span>
+                                    <span class="text-xs font-bold mono text-slate-400">-6.00%</span>
+                                </div>
+                                <div class="text-center">
+                                    <span class="text-[0.6rem] text-accent-cyan uppercase font-black block mb-2">Variação Real</span>
+                                    <span id="telemetryPct" class="text-5xl font-black italic text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">+0.00%</span>
+                                </div>
+                                <div class="text-center">
+                                    <span class="text-[0.5rem] text-slate-500 uppercase font-black block mb-1">Sniper Meta</span>
+                                    <span class="text-xs font-bold mono text-accent-emerald">+0.40%</span>
+                                </div>
+                            </div>
+                            <div class="telemetry-progress">
+                                <div id="telemetryBar" class="telemetry-bar" style="width: 0%"></div>
+                                <!-- GRID LINES -->
+                                <div class="absolute inset-0 flex justify-between px-2">
+                                    <div class="w-px h-full bg-white/5"></div>
+                                    <div class="w-px h-full bg-white/5"></div>
+                                    <div class="w-px h-full bg-white/5"></div>
+                                    <div class="w-px h-full bg-white/5"></div>
+                                </div>
+                            </div>
+                            <p class="text-[0.5rem] text-center text-slate-600 uppercase font-black mt-3 tracking-widest">Processamento Grid-Alpha Sync 1.0s</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- NOVO: BARRA DE PROGRESSO ALFA USDC (CONTAGEM 10 A 1) -->
-                <div class="panel" id="ALFA USDCProgressPanel" style="display: none; padding: 20px; background: rgba(0,0,0,0.4); border: 1px solid var(--cyber-blue);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 class="orbitron" style="font-size: 0.9rem; color: var(--cyber-blue);">CONTAGEM REGRESSIVA ALFA USDC</h3>
-                        <div id="ALFA USDCTimeEst" style="font-size: 0.8rem; color: #888;">Previsão: Calculando...</div>
-                    </div>
-                    <div class="progress-container" style="height: 12px; background: rgba(255,255,255,0.05);">
-                        <div id="ALFA USDCProgressBar" class="progress-bar" style="width: 0%; background: linear-gradient(90deg, var(--alert-red) 0%, var(--cyber-gold) 50%, var(--cyber-green) 100%);"></div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-top: 10px; font-family: 'Orbitron'; font-size: 0.7rem; color: #666;">
-                        <span>RANK 10</span>
-                        <span>RANK 8</span>
-                        <span>RANK 6</span>
-                        <span>RANK 4</span>
-                        <span>RANK 2</span>
-                        <span style="color: var(--cyber-green)">RANK 1</span>
-                    </div>
-                </div>
-
-                <!-- Telemetria -->
-                <div class="telemetry-card active" id="telemetryCard" style="background: linear-gradient(180deg, rgba(20,20,20,0.95) 0%, rgba(10,10,10,0.98) 100%); border: 2px solid rgba(204, 255, 0, 0.5); padding: 30px;">
-                    <h3 class="orbitron" style="color: var(--cyber-blue); font-size: 1.4rem; margin-bottom: 20px; letter-spacing: 2px;">
-                        <i class="ph-fill ph-radar-beacon" style="color: #ffcc00;"></i> TELEMETRIA DE ALVO ELITE: <span id="telemetrySymbol" style="color:#fff; text-decoration: underline;">---</span>
-                    </h3>
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end; font-size: 1.1rem; font-weight: bold; margin-bottom: 15px;">
-                        <div style="text-align: left;">
-                            <span style="color: #a0aab5; display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">PIXEL LOSS</span>
-                            <span style="color: #a0aab5; font-size: 1.5rem; font-family: 'Orbitron';">-6.00%</span>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- HISTORY TABLE -->
+                    <div class="glass-panel overflow-hidden">
+                        <div class="p-6 border-bottom border-white/5 flex items-center justify-between">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-white">Extrato de Operações</h3>
+                            <button onclick="resetHistory()" class="text-[0.6rem] font-bold text-slate-600 hover:text-accent-ruby transition-all uppercase italic">Zerar Histórico</button>
                         </div>
-                        <div style="text-align: center;">
-                            <span style="color: #a0aab5; display: block; font-size: 0.8rem; text-transform: uppercase;">VARIAÇÃO ATUAL</span>
-                            <span id="telemetryPct" style="color: #fff; font-size: 3.5rem; text-shadow: 0 0 25px rgba(255,255,255,0.4); font-family: 'Orbitron', sans-serif;">+0.00%</span>
-                        </div>
-                        <div style="text-align: right;">
-                            <span style="color: #00ff88; display: block; font-size: 0.8rem; text-transform: uppercase;">META ALVO</span>
-                            <span style="color: #00ff88; font-size: 1.5rem; font-family: 'Orbitron';">+0.60%</span>
-                        </div>
-                    </div>
-                    <div class="progress-container" style="height: 35px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); box-shadow: inset 0 0 15px rgba(0,0,0,0.8);">
-                        <div class="progress-bar" id="telemetryBar" style="background: linear-gradient(90deg, #1a3a00 0%, #ccff00 100%); box-shadow: 0 0 30px rgba(204, 255, 0, 0.4);"></div>
-                        <div class="progress-marker" style="left: 20%; height: 100%; background: rgba(255,255,255,0.1);"></div>
-                        <div class="progress-marker" style="left: 40%; height: 100%; background: rgba(255,255,255,0.1);"></div>
-                        <div class="progress-marker" style="left: 60%; height: 100%; background: rgba(255,255,255,0.1);"></div>
-                        <div class="progress-marker" style="left: 80%; height: 100%; background: rgba(255,255,255,0.1);"></div>
-                    </div>
-                    <div style="display: flex; justify-content: center; margin-top: 15px;">
-                        <div style="background: rgba(204, 255, 0, 0.1); padding: 5px 15px; border-radius: 4px; border: 1px solid var(--cyber-blue); font-size: 0.85rem; color: var(--cyber-blue); letter-spacing: 1px;">
-                            <i class="ph ph-fast-forward"></i> PROCESSAMENTO EM TEMPO REAL (BINANCE SYNC)
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; gap:20px; margin-top:20px;">
-                    <!-- Histórico -->
-                    <div class="panel">
-                        <h2 class="panel-title orbitron"><i class="ph ph-list-numbers"></i> Últimas 10 Operações</h2>
-                        <div style="overflow-x: auto;">
-                            <table>
+                        <div class="overflow-x-auto">
+                            <table class="w-full table-premium">
                                 <thead>
                                     <tr>
-                                        <th>Ativo</th>
-                                        <th>Tipo</th>
-                                        <th>Lucro %</th>
-                                        <th>Data/Hora</th>
+                                        <th>Simbolo</th>
+                                        <th>Modalidade</th>
+                                        <th>Resultado</th>
+                                        <th>Timestamp</th>
                                     </tr>
                                 </thead>
-                                <tbody id="historyTableBody"></tbody>
+                                <tbody id="historyTableBody" class="mono">
+                                    <tr><td colspan="4" class="text-center py-12 text-slate-600 uppercase text-[0.6rem] font-black italic tracking-widest">Aguardando Execuções...</td></tr>
+                                </tbody>
                             </table>
-                            <div style="margin-top: 15px; text-align: right; border-top: 1px solid #333; padding-top: 10px;">
-                                <strong class="orbitron">SALDO TOTAL: <span id="totalProfit" style="color:var(--cyber-blue)">0.00%</span></strong>
-                            </div>
+                        </div>
+                        <div class="p-6 bg-white/2 text-right">
+                            <p id="totalProfit" class="text-xs font-black italic text-accent-cyan uppercase tracking-tighter"></p>
                         </div>
                     </div>
 
-                    <!-- Suporte e Logs -->
-                    <div style="display: flex; flex-direction: column; gap: 20px;">
-                        <!-- CARD SUPORTE QR CODE -->
-                        <div class="panel" style="background: linear-gradient(135deg, rgba(20,20,20,0.9) 0%, rgba(30,30,30,0.8) 100%); border: 1px solid rgba(204, 255, 0, 0.2); text-align: center; padding: 25px;">
-                            <h2 class="panel-title orbitron" style="color: var(--cyber-blue); margin-bottom: 15px;">
-                                <i class="ph ph-whatsapp-logo"></i> SUPORTE EXCLUSIVO
-                            </h2>
-                            <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
-                                <div style="background: #fff; padding: 10px; border-radius: 12px; box-shadow: 0 0 20px rgba(204, 255, 0, 0.2);">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://wa.me/5531997004567" alt="WhatsApp QR Code" style="display: block; width: 120px; height: 120px;">
+                    <!-- LOGS AND SUPPORT -->
+                    <div class="space-y-8">
+                        <!-- TERMINAL LOGS -->
+                        <div class="glass-panel p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Audit Console</h3>
+                                <div class="flex items-center gap-1">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-accent-emerald animate-blink"></div>
+                                    <span class="text-[0.5rem] font-bold uppercase mono text-slate-600">Sync Master</span>
                                 </div>
-                                <div style="text-align: left;">
-                                    <p style="font-size: 0.9rem; color: #fff; margin-bottom: 5px;">Escaneie o código</p>
-                                    <p style="font-size: 0.75rem; color: #a0aab5;">Dúvidas ou ajustes?</p>
-                                    <a href="https://wa.me/5531997004567" target="_blank" style="display: inline-block; margin-top: 10px; background: #25D366; color: #fff; text-decoration: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; font-size: 0.8rem;">
-                                        <i class="ph ph-chat-circle"></i> ABRIR WHATSAPP
-                                    </a>
-                                </div>
+                            </div>
+                            <div id="terminalLogs" class="h-[250px] overflow-y-auto pr-2 mono scroll-smooth">
+                                <div class="log-entry log-info">Iniciando interface de monitoramento...</div>
                             </div>
                         </div>
 
-                        <!-- Terminal Logs -->
-                        <div class="panel" style="flex-grow: 1;">
-                            <h2 class="panel-title orbitron"><i class="ph ph-terminal"></i> Terminal Logs</h2>
-                            <div class="log-container" id="terminalLogs" style="max-height: 200px;"></div>
+                        <!-- SUPPORT CARD -->
+                        <div class="glass-panel p-8 bg-gradient-to-br from-accent-cyan/5 to-transparent flex items-center gap-8">
+                            <div class="bg-white p-2 rounded-xl shadow-lg shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://wa.me/5531997004567" alt="QR" class="w-20 h-20">
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-black uppercase text-accent-cyan mb-2">Suporte Sniper VIP</h4>
+                                <p class="text-[0.65rem] text-slate-400 font-bold mb-4">Acesso direto ao arquiteto do algoritmo via WhatsApp.</p>
+                                <a href="https://wa.me/5531997004567" target="_blank" class="text-[0.6rem] font-black uppercase py-2 px-4 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all inline-flex items-center gap-2">
+                                    <i data-lucide="message-circle" class="w-3 h-3"></i> Abrir Chat VIP
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -604,485 +460,244 @@
     </div>
 
     <script>
-        const API_URL = ''; // Relativo — funciona em qualquer host
+        lucide.createIcons();
+        const API_URL = ''; 
         let refreshInterval = null;
         let selectedBuyRatio = 1.00;
-
-        // ── Auth ─────────────────────────────────────────────
-        function getToken() {
-            return localStorage.getItem('sifras_token') || localStorage.getItem('sifrasToken') || '';
-        }
-
         let selectedMode = 'ALFA_USDT';
 
-        function selectMode(mode, btn) {
-            selectedMode = mode;
-            document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            // Resetar telemetria visual ao trocar modo
-            document.getElementById('telemetryCard').classList.remove('active');
-            fetchStatus(); // Atualizar UI imediatamente
-        }
+        // ── Auth & Fetch ─────────────────────────────────────────────
+        function getToken() { return localStorage.getItem('sifras_token') || localStorage.getItem('sifrasToken') || ''; }
 
         async function authFetch(url, options = {}) {
             const token = getToken();
-            if (!token) {
-                window.location.href = '/';
-                return new Promise(() => {}); // Stop execution
-            }
+            if (!token) { window.location.href = '/login.html'; return new Promise(() => {}); }
             const headers = { 
                 ...(options.headers || {}), 
                 'Authorization': `Bearer ${token}`,
                 'x-mode': selectedMode
             };
             const res = await fetch(url, { ...options, headers });
-            
-            // PADRONIZAÇÃO RIGOROSA: 401 = Token Inválido | 403 = Não aprovado
             if (res.status === 401 || res.status === 403) {
-                localStorage.removeItem('sifrasToken');
-                localStorage.removeItem('sifras_token');
-                sessionStorage.removeItem('gatewayOk');
-                window.location.href = '/';
-                return new Promise(() => {}); // Stop execution
+                localStorage.removeItem('sifrasToken'); sessionStorage.removeItem('gatewayOk');
+                window.location.href = '/login.html'; return new Promise(() => {});
             }
             return res;
         }
 
         async function doLogout() {
             try { await authFetch(`${API_URL}/logout`, { method: 'POST' }); } catch (e) {}
-            localStorage.removeItem('sifras_token');
-            localStorage.removeItem('sifrasToken');
-            sessionStorage.removeItem('gatewayOk'); 
-            window.location.href = '/'; // Redirecionar para login
+            localStorage.removeItem('sifrasToken'); sessionStorage.removeItem('gatewayOk');
+            window.location.href = '/login.html';
         }
 
-        // ── UI ───────────────────────────────────────────────
-        function selectFraction(ratio, btnElement) {
+        // ── UI Actions ───────────────────────────────────────────────
+        function selectMode(mode, btn) {
+            selectedMode = mode;
+            document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('telemetryCard').classList.add('hidden', 'opacity-0');
+            fetchStatus();
+        }
+
+        function selectFraction(ratio, btn) {
             selectedBuyRatio = ratio;
-            document.querySelectorAll('.fraction-btn').forEach(b => b.classList.remove('active'));
-            btnElement.classList.add('active');
+            document.querySelectorAll('.fraction-btn').forEach(b => b.classList.remove('active', 'bg-accent-cyan/10', 'border-accent-cyan', 'text-accent-cyan'));
+            document.querySelectorAll('.fraction-btn').forEach(b => b.classList.add('bg-white/5', 'border-white/5'));
+            btn.classList.add('active', 'bg-accent-cyan/10', 'border-accent-cyan', 'text-accent-cyan');
         }
-
-        let errorCount = 0;
-        async function fetchStatus() {
-            try {
-                const res = await authFetch(`${API_URL}/status`);
-                const data = await res.json();
-                errorCount = 0;
-                updateUI(data);
-
-                // Re-aplicar modo leitura se necessário
-                if (localStorage.getItem('sifras_user_read_mode') === 'true') {
-                    document.body.classList.add('read-only-mode');
-                }
-            } catch (e) {
-                // Ignorar erros de autenticação (redirecionamento já ocorreu)
-                if (e.message !== 'Não autorizado' && e.message !== 'Acesso negado') {
-                    errorCount++;
-                    if (errorCount > 3) {
-                        document.getElementById('sysStatusBadge').innerHTML = `<i class="ph-fill ph-circle" style="color: var(--alert-red);"></i> ERRO API`;
-                    }
-                }
-            }
-        }
-
-        let lastHeartbeat = Date.now();
-        function updateUI(state) {
-            // Heartbeat check
-            const terminal = document.getElementById('terminalLogs');
-            if (Date.now() - lastHeartbeat > 5000) {
-                const time = new Date().toLocaleTimeString();
-                terminal.innerHTML = `<div class="log-entry log-info"><span class="log-time">[${time}]</span> Sistema Ativo: Recebendo dados do servidor...</div>` + terminal.innerHTML;
-                lastHeartbeat = Date.now();
-            }
-
-            let statusText = state.status;
-            let statusColor = '#666';
-            let isBlinking = false;
-
-            if (state.status === 'SCANNING') {
-                statusText = 'CONECTADO (BUSCANDO)';
-                statusColor = 'var(--cyber-green)';
-                isBlinking = true;
-            } else if (state.status === 'IN_TRADE') {
-                statusText = 'COMPRADO (ALVO 0.6%)';
-                statusColor = 'var(--cyber-green)';
-                isBlinking = true;
-            } else if (state.status === 'PAUSED') {
-                const remaining = Math.max(0, Math.ceil((state.pauseUntil - Date.now()) / 60000));
-                statusText = `AGUARDANDO GATILHO`;
-                statusColor = '#ff9900';
-                isBlinking = true;
-            } else if (state.status === 'OFFLINE') {
-                statusText = 'OFFLINE';
-                statusColor = '#ccc';
-            }
-
-            const badge = document.getElementById('sysStatusBadge');
-            badge.innerHTML = `<i class="ph-fill ph-circle ${isBlinking ? 'blink' : ''}" style="color: ${statusColor}; text-shadow: 0 0 10px ${statusColor};"></i> ${statusText}`;
-            badge.style.borderColor = statusColor;
-
-            // Info de IP no Terminal
-            if (state.serverIp && state.serverIp !== 'N/A' && !document.getElementById('serverIpDisplay')) {
-                 terminal.innerHTML = `<div class="log-entry log-info" id="serverIpDisplay"><span class="log-time">[SISTEMA]</span> Servidor IP: ${state.serverIp} | Horário: ${state.binanceClockOk ? 'Sincronizado' : 'Ajustando...'}</div>` + terminal.innerHTML;
-            }
-
-            const pivotInfo = state.dashboardData?.pivotInfo;
-            if (pivotInfo && pivotInfo.t2) {
-                document.getElementById('valPivot').innerText = pivotInfo.pivot || 'Aguardando...';
-                const j2 = pivotInfo.j2 ? ` [⚡${pivotInfo.j2}%]` : '';
-                const j6 = pivotInfo.j6 ? ` [⚡${pivotInfo.j6}%]` : '';
-                document.getElementById('valDistances').innerHTML = `
-                    <span style="color:var(--cyber-blue)">${pivotInfo.t2}:</span> ${pivotInfo.d2}%${j2} | 
-                    <span style="color:var(--alert-red)">${pivotInfo.t6}:</span> ${pivotInfo.d6}%${j6}
-                `;
-            } else {
-                document.getElementById('valPivot').innerText = 'Aguardando...';
-                document.getElementById('valDistances').innerText = 'D2: --- | D6: ---';
-            }
-
-            // Diagnóstico
-            if (state.lastLatency) document.getElementById('diagLatency').innerText = `${state.lastLatency} ms`;
-            if (state.serverUptime != null) {
-                const h = Math.floor(state.serverUptime / 3600);
-                const m = Math.floor((state.serverUptime % 3600) / 60);
-                document.getElementById('diagUptime').innerText = `${h}h ${m}m`;
-            }
-
-            document.getElementById('valBalanceUSDT').innerText = `$ ${state.balanceUSDT ? state.balanceUSDT.toFixed(2) : '0.00'}`;
-            document.getElementById('valRealizedBRL').innerText = `$ ${(state.liquidPnlPool || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            document.getElementById('valProfitPool').innerText = `Meta BRL: $${(state.liquidPnlPool || 0).toFixed(2)} / $20.00`;
-
-            document.getElementById('valOpsCount').innerText = `Vendas: ${state.salesCount || 0} / 5`;
-            document.getElementById('valCooldown').innerText = `${(state.blockedSymbols || []).length || 0} Moedas em Quarentena`;
-
-            if (state.activeSymbol && state.status === 'IN_TRADE') {
-                const buyP = state.buyPrice ? state.buyPrice.toFixed(9) : '0.000000000';
-                const currP = state.currentPrice ? state.currentPrice.toFixed(9) : buyP;
-                const tgtP = state.targetPrice ? state.targetPrice.toFixed(9) : '0.000000000';
-
-                document.getElementById('valActiveTrade').innerText = state.activeSymbol;
-                document.getElementById('valTradeTarget').innerHTML = `
-                    <span style="color:#a0aab5">📥 Compra:</span> $${buyP}<br>
-                    <span style="color:#fff">🔄 Atual:</span> $${currP}<br>
-                    <span style="color:var(--cyber-green)">🎯 Alvo:</span> $${tgtP} (+0.4%)
-                `;
-
-                document.getElementById('telemetryCard').classList.add('active');
-                document.getElementById('telemetrySymbol').innerText = state.activeSymbol;
-
-                let currentProfitPct = 0;
-                if (state.buyPrice > 0 && state.currentPrice > 0) {
-                    currentProfitPct = ((state.currentPrice - state.buyPrice) / state.buyPrice) * 100;
-                }
-
-                document.getElementById('telemetryPct').innerText = `${currentProfitPct >= 0 ? '+' : ''}${currentProfitPct.toFixed(2)}%`;
-                
-                // CORES NEON NO TERMINAL E TELEMETRIA
-                if (currentProfitPct >= 0) {
-                    document.getElementById('telemetryPct').style.color = 'var(--cyber-green)';
-                    document.getElementById('telemetryPct').style.textShadow = '0 0 20px var(--cyber-green)';
-                } else {
-                    document.getElementById('telemetryPct').style.color = 'var(--neon-orange)';
-                    document.getElementById('telemetryPct').style.textShadow = '0 0 20px var(--neon-orange)';
-                }
-
-                const minR = -6.0;
-                const maxR = 0.4;
-                let barWidth = ((currentProfitPct - minR) / (maxR - minR)) * 100;
-                if (barWidth < 0) barWidth = 0;
-                if (barWidth > 100) barWidth = 100;
-                document.getElementById('telemetryBar').style.width = `${barWidth}%`;
-
-            } else {
-                state.activeSymbol = null;
-                document.getElementById('telemetryCard').classList.remove('active');
-                document.getElementById('valActiveTrade').innerText = 'Nenhum';
-                document.getElementById('valTradeTarget').innerHTML = `
-                    <span style="color:#a0aab5">📥 Compra:</span> ---<br>
-                    <span style="color:#fff">🔄 Atual:</span> ---<br>
-                    <span style="color:var(--cyber-green)">🎯 Alvo:</span> ---
-                `;
-            }
-
-            // ATUALIZAR BARRA PROGRESSO ALFA (CONTAGEM 10 A 1)
-            if (state.mode === 'ALFA_USDC') {
-                document.getElementById('ceoProgressPanel').style.display = 'block';
-                const step = state.alfaStep || 10;
-                const phase = state.alfaPhase || 'COUNTDOWN';
-                
-                if (phase === 'COUNTDOWN') {
-                    const progress = ((10 - step) / 10) * 100;
-                    document.getElementById('ceoProgressBar').style.width = `${progress}%`;
-                    document.getElementById('ceoTimeEst').innerText = `Fase: Contagem Rank ${step}`;
-                } else {
-                    document.getElementById('ceoProgressBar').style.width = `100%`;
-                    document.getElementById('ceoTimeEst').innerText = `Fase: Caça Ativa (Top 30 USDC)`;
-                }
-            } else {
-                document.getElementById('ceoProgressPanel').style.display = 'none';
-            }
-
-            // PNL NEON NO VALOR CENTRAL
-            const pnlValue = state.totalProfitPct || 0;
-            const pnlEl = document.getElementById('valRealizedBRL');
-            pnlEl.innerText = `${pnlValue >= 0 ? '+' : ''}${pnlValue.toFixed(2)}%`;
-            if (pnlValue >= 0) {
-                pnlEl.style.color = 'var(--cyber-green)';
-                pnlEl.style.textShadow = '0 0 15px var(--cyber-green)';
-            } else {
-                pnlEl.style.color = 'var(--neon-orange)';
-                pnlEl.style.textShadow = '0 0 15px var(--neon-orange)';
-            }
-            document.getElementById('valProfitPool').innerText = `Meta Reforço: ${pnlValue.toFixed(2)}% / 50%`;
-
-            const logContainer = document.getElementById('terminalLogs');
-            logContainer.innerHTML = state.logs.map((log, index) => {
-                if (log.type === 'card-sell') {
-                    return `
-                    <div class="log-card-sell">
-                        <div class="card-title"><i class="ph-fill ph-check-circle"></i> VENDA EXECUTADA COM SUCESSO</div>
-                        <div class="card-body">${log.msg}</div>
-                        <div style="color: #666; font-size:0.8rem; text-align:right; margin-top:8px;">[${log.timestamp}]</div>
-                    </div>`;
-                }
-                const altClass = `log-alt-${index % 2}`;
-                return `<div class="log-entry ${altClass} log-${log.type}"><span class="log-time">[${log.timestamp}]</span> ${log.msg}</div>`;
-            }).join('');
-
-            const histBody = document.getElementById('historyTableBody');
-            let sumProfit = 0;
-            histBody.innerHTML = state.history.slice(0, 10).map(h => {
-                sumProfit += h.profitPct;
-                const pClass = h.profitPct >= 0 ? 'profit-positive' : 'profit-negative';
-                return `<tr>
-                    <td><strong>${h.symbol}</strong></td>
-                    <td>${h.type}</td>
-                    <td class="${pClass}">${h.profitPct > 0 ? '+' : ''}${h.profitPct}%</td>
-                    <td><small style="color:#666">${h.date}</small></td>
-                </tr>`;
-            }).join('');
-
-            if (state.history.length === 0) {
-                histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666">Nenhuma operação ainda.</td></tr>';
-            }
-
-            const totalEl = document.getElementById('totalProfit');
-            const p24h = state.profit24h || 0;
-            const p24hClass = p24h >= 0 ? 'profit-positive' : 'profit-negative';
-            
-            totalEl.innerHTML = `
-                <span style="color:#666; font-size: 0.8rem; margin-right: 15px;">24H: <span class="${p24hClass}">${p24h > 0 ? '+' : ''}${p24h.toFixed(2)}%</span></span>
-                SALDO TOTAL: <span style="color:var(--cyber-blue)">${sumProfit > 0 ? '+' : ''}${sumProfit.toFixed(2)}%</span>
-            `;
-            totalEl.className = 'orbitron';
-
-            const overlay = document.getElementById('profitOverlay');
-            if (state.dashboardData?.triggerProfitAnim) {
-                if (!overlay.classList.contains('show')) overlay.classList.add('show');
-            } else {
-                overlay.classList.remove('show');
-            }
-
-            document.getElementById('btnStart').disabled = state.status !== 'OFFLINE';
-            document.getElementById('btnStart').style.opacity = state.status !== 'OFFLINE' ? '0.5' : '1';
-        }
-
-        // ── Ações ────────────────────────────────────────────
-        async function startSystem() {
-            const clientName = document.getElementById('clientName').value;
-            const apiKey = document.getElementById('apiKey').value;
-            const apiSecret = document.getElementById('apiSecret').value;
-            const isLoop = document.getElementById('chkLoop').checked;
-
-            if (!apiKey || !apiSecret) {
-                alert("Preencha API Key e API Secret da Binance.");
-                return;
-            }
-
-            const terminal = document.getElementById('terminalLogs');
-            const time = new Date().toLocaleTimeString();
-            terminal.innerHTML = `<div class="log-entry log-info"><span class="log-time">[${time}]</span> Enviando solicitação para o servidor...</div>` + terminal.innerHTML;
-
-            localStorage.setItem('sifrasClientName', clientName);
-            localStorage.setItem('sifrasApiKey', apiKey);
-            localStorage.setItem('sifrasApiSecret', apiSecret);
-
-            const body = {
-                clientName, apiKey, apiSecret,
-                buyPercentage: selectedBuyRatio,
-                mode: selectedMode // Novo: Enviar modo escolhido
-            };
-
-            const btn = document.getElementById('btnStart');
-            btn.innerHTML = '<i class="ph-fill ph-spinner-gap"></i> PROCESSANDO...';
-            btn.disabled = true;
-
-            try {
-                // Controller para timeout manual do fetch
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-                const res = await authFetch(`${API_URL}/start`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientName, apiKey, apiSecret, isLoop, buyPercentage: selectedBuyRatio }),
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-
-                if (res.ok) {
-                    terminal.innerHTML = `<div class="log-entry log-sell"><span class="log-time">[${time}]</span> CONEXÃO ESTABELECIDA! Aguardando radar...</div>` + terminal.innerHTML;
-                } else {
-                    const data = await res.json();
-                    const errMsg = data.error || 'Erro desconhecido na API';
-                    alert(`ERRO NA CONEXÃO: ${errMsg}`);
-                    terminal.innerHTML = `<div class="log-entry log-error"><span class="log-time">[${time}]</span> NEGADO PELA BINANCE: ${errMsg}</div>` + terminal.innerHTML;
-                }
-            } catch (e) {
-                if (e.name === 'AbortError') {
-                    alert("TIMEOUT: O servidor demorou demais para responder. Provável bloqueio de IP da Binance no servidor.");
-                    terminal.innerHTML = `<div class="log-entry log-error"><span class="log-time">[${time}]</span> ERRO: Timeout na comunicação (Servidor Lento/Bloqueado).</div>` + terminal.innerHTML;
-                } else {
-                    alert(`ERRO DE REDE: ${e.message}`);
-                    terminal.innerHTML = `<div class="log-entry log-error"><span class="log-time">[${time}]</span> ERRO TÉCNICO: ${e.message}</div>` + terminal.innerHTML;
-                }
-            }
-        }
-
-        async function panicSell() {
-            if (confirm("ATENÇÃO: Isso irá interromper a verificação E venderá qualquer operação atual A MERCADO imediatamente. Confirmar STOP GERAL?")) {
-                await authFetch(`${API_URL}/panic`, { method: 'POST' });
-            }
-        }
-
-        async function resetApi() {
-            if (confirm("Zerar chaves da API e limpar logs?")) {
-                document.getElementById('apiKey').value = '';
-                document.getElementById('apiSecret').value = '';
-                document.getElementById('clientName').value = '';
-                localStorage.removeItem('sifrasClientName');
-                localStorage.removeItem('sifrasApiKey');
-                localStorage.removeItem('sifrasApiSecret');
-                await authFetch(`${API_URL}/stop`, { method: 'POST' });
-            }
-        }
-
-        async function resetHistory() {
-            if (confirm("Tem certeza que deseja apagar o extrato do dia e zerar o lucro atual?")) {
-                await authFetch(`${API_URL}/reset-history`, { method: 'POST' });
-            }
-        }
-
-        async function downloadReport() {
-            try {
-                const res = await authFetch(`${API_URL}/status`);
-                const state = await res.json();
-                const history = state.history || [];
-
-                if (!history || history.length === 0) {
-                    alert('Sem operações para baixar o extrato.');
-                    return;
-                }
-
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                const clientName = document.getElementById('clientName').value || localStorage.getItem('sifrasClientName') || 'Investidor';
-
-                doc.setFontSize(18);
-                doc.text("SIFRAS INVEST - EXTRATO OPERACIONAL", 105, 20, null, null, "center");
-                doc.setFontSize(12);
-                doc.text(`Cliente: ${clientName}`, 20, 35);
-                doc.text(`Data do Relatório: ${new Date().toLocaleString('pt-BR')}`, 20, 42);
-                doc.text(`Lucro Total da Sessão: ${document.getElementById('totalProfit').innerText}`, 20, 49);
-
-                const columns = ["Data", "Moeda", "Entrada/Log", "Resultado (%)", "Status"];
-                const rows = history.map(item => {
-                    const statusText = item.profitPct > 0 ? "GAIN" : (item.profitPct < 0 ? "LOSS" : "FECHADO");
-                    return [item.date, item.symbol, item.type, `${item.profitPct.toFixed(2)}%`, statusText];
-                });
-
-                doc.autoTable({
-                    head: [columns], body: rows, startY: 60, theme: 'grid',
-                    headStyles: { fillColor: [0, 0, 0], textColor: [0, 242, 255] },
-                    alternateRowStyles: { fillColor: [240, 240, 240] }
-                });
-
-                doc.save(`Extrato_${clientName.replace(/\s+/g, '')}.pdf`);
-            } catch (e) {
-                alert('Erro ao gerar relatório: ' + e.message);
-            }
-        }
-
-        // ── Init ─────────────────────────────────────────────
-        window.onload = async () => {
-            console.log("🚀 Elite Fluxo Alfa Dashboard V1.0 Official Loaded");
-            
-            const token = getToken();
-
-            // Portão de Segurança
-            if (!token) {
-                window.location.href = '/login.html';
-                return;
-            }
-
-            // Carregar Modo Leitura antes de buscar status
-            const isReadMode = localStorage.getItem('sifras_user_read_mode') === 'true';
-            document.getElementById('readModeToggle').checked = isReadMode;
-            if (isReadMode) document.body.classList.add('read-only-mode');
-
-            // Validação Real no Servidor
-            try {
-                const checkRes = await fetch(`${API_URL}/status`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (checkRes.status === 401 || checkRes.status === 403) {
-                    localStorage.removeItem('sifrasToken');
-                    localStorage.removeItem('sifras_token');
-                    sessionStorage.removeItem('gatewayOk');
-                    window.location.href = '/login.html';
-                    return;
-                }
-                const data = await checkRes.json();
-                updateUI(data);
-            } catch (e) {
-                window.location.href = '/login.html';
-                return;
-            }
-
-            // Restaurar dados salvos
-            const savedUser = localStorage.getItem('sifras_user') || localStorage.getItem('sifrasUser');
-            if (savedUser) document.getElementById('userNameLabel').innerText = savedUser;
-
-            const savedKey = localStorage.getItem('sifrasApiKey');
-            const savedSecret = localStorage.getItem('sifrasApiSecret');
-            const savedClient = localStorage.getItem('sifrasClientName');
-            if (savedKey) document.getElementById('apiKey').value = savedKey;
-            if (savedSecret) document.getElementById('apiSecret').value = savedSecret;
-            if (savedClient) document.getElementById('clientName').value = savedClient;
-
-            // Iniciar loop de atualização
-            refreshInterval = setInterval(fetchStatus, 3000);
-        };
 
         function toggleReadMode() {
             const isActive = document.getElementById('readModeToggle').checked;
             localStorage.setItem('sifras_user_read_mode', isActive);
             if (isActive) {
                 document.body.classList.add('read-only-mode');
-                // Forçar desativação imediata sem esperar o próximo tick
-                document.getElementById('btnStart').disabled = true;
-                document.getElementById('btnStart').style.opacity = '0.3';
-                document.getElementById('btnPanic').disabled = true;
-                document.querySelectorAll('.btn-secondary').forEach(b => b.disabled = true);
-                document.querySelectorAll('.fraction-btn').forEach(b => b.disabled = true);
             } else {
                 document.body.classList.remove('read-only-mode');
-                // O próximo fetchStatus restaurará o estado correto dos botões
             }
         }
+
+        // ── Status Loop ──────────────────────────────────────────────
+        async function fetchStatus() {
+            try {
+                const res = await authFetch(`${API_URL}/status`);
+                const data = await res.json();
+                updateUI(data);
+            } catch (e) {}
+        }
+
+        function updateUI(state) {
+            const badge = document.getElementById('sysStatusBadge');
+            let color = '#475569';
+            let label = 'STANDBY';
+            let pulse = false;
+
+            if (state.status === 'SCANNING') { color = '#00f5ff'; label = 'SCANNING'; pulse = true; }
+            else if (state.status === 'IN_TRADE') { color = '#00ff9f'; label = 'IN TRADE'; pulse = true; }
+            else if (state.status === 'PAUSED') { color = '#f59e0b'; label = 'COOLDOWN'; }
+
+            badge.innerHTML = `<div class="w-1.5 h-1.5 rounded-full ${pulse ? 'animate-blink' : ''}" style="background-color: ${color}"></div> ${label}`;
+            badge.style.borderColor = color + '44';
+            badge.style.color = color;
+
+            document.getElementById('userNameLabel').innerText = (localStorage.getItem('sifras_user') || 'MASTER').toUpperCase();
+            document.getElementById('valBalanceUSDT').innerText = `$ ${state.balanceUSDT ? state.balanceUSDT.toFixed(2) : '0.00'}`;
+            
+            // Stats
+            document.getElementById('valPivot').innerText = state.dashboardData?.pivotInfo?.pivot || 'RADAR OFF';
+            document.getElementById('valOpsCount').innerText = `${state.salesCount || 0} / 5`;
+            document.getElementById('diagLatency').innerText = `${state.lastLatency || 0} ms`;
+            
+            if (state.serverUptime) {
+                const h = Math.floor(state.serverUptime / 3600);
+                const m = Math.floor((state.serverUptime % 3600) / 60);
+                document.getElementById('diagUptime').innerText = `Uptime: ${h}h ${m}m`;
+            }
+
+            // PNL
+            const pnl = state.totalProfitPct || 0;
+            const pnlEl = document.getElementById('valRealizedBRL');
+            pnlEl.innerText = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+            pnlEl.style.color = pnl >= 0 ? 'var(--accent-emerald)' : 'var(--accent-ruby)';
+            document.getElementById('valProfitPool').innerText = `Meta Reforço: ${pnl.toFixed(1)}% / 50%`;
+
+            // Telemetria
+            const telemetry = document.getElementById('telemetryCard');
+            if (state.activeSymbol && state.status === 'IN_TRADE') {
+                telemetry.classList.remove('hidden');
+                setTimeout(() => telemetry.classList.remove('opacity-0'), 10);
+                
+                document.getElementById('telemetrySymbol').innerText = state.activeSymbol;
+                const buyP = state.buyPrice || 0;
+                const currP = state.currentPrice || buyP;
+                const tgtP = state.targetPrice || (buyP * 1.004);
+                
+                const curPnl = buyP > 0 ? ((currP - buyP) / buyP) * 100 : 0;
+                const pnlText = document.getElementById('telemetryPct');
+                pnlText.innerText = `${curPnl >= 0 ? '+' : ''}${curPnl.toFixed(2)}%`;
+                pnlText.style.color = curPnl >= 0 ? 'white' : 'var(--accent-ruby)';
+
+                document.getElementById('valTradeTarget').innerHTML = `
+                    <p>📥 ENTRADA: <span class="text-white">$${buyP.toFixed(8)}</span></p>
+                    <p>🔄 ATUAL: <span class="text-white">$${currP.toFixed(8)}</span></p>
+                    <p>🎯 ALVO: <span class="text-accent-emerald uppercase tracking-widest">$${tgtP.toFixed(8)} (+0.40%)</span></p>
+                `;
+
+                const minR = -6.0, maxR = 0.4;
+                let barW = ((curPnl - minR) / (maxR - minR)) * 100;
+                document.getElementById('telemetryBar').style.width = `${Math.min(100, Math.max(0, barW))}%`;
+            } else {
+                telemetry.classList.add('opacity-0');
+                setTimeout(() => telemetry.classList.add('hidden'), 500);
+            }
+
+            // Logs
+            const logPanel = document.getElementById('terminalLogs');
+            logPanel.innerHTML = (state.logs || []).map(l => {
+                let cls = 'log-info';
+                if (l.type === 'buy') cls = 'log-buy';
+                if (l.type === 'sell' || l.type === 'success') cls = 'log-sell';
+                if (l.type === 'error') cls = 'log-error';
+                return `<div class="log-entry ${cls}"><span class="opacity-30 text-[0.6rem] mr-2">[${l.timestamp || l.time}]</span> ${l.msg}</div>`;
+            }).join('');
+
+            // History
+            const histBody = document.getElementById('historyTableBody');
+            if (!state.history || state.history.length === 0) {
+                histBody.innerHTML = '<tr><td colspan="4" class="text-center py-12 text-slate-600 uppercase text-[0.6rem] font-black italic tracking-widest">Aguardando Execuções...</td></tr>';
+            } else {
+                histBody.innerHTML = state.history.slice(0, 10).map(h => `
+                    <tr>
+                        <td><span class="font-black text-white italic">${h.symbol}</span></td>
+                        <td><span class="text-[0.6rem] font-bold text-slate-500 uppercase">${h.type}</span></td>
+                        <td><span class="font-black ${h.profitPct >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'}">${h.profitPct > 0 ? '+' : ''}${h.profitPct.toFixed(2)}%</span></td>
+                        <td><span class="text-[0.65rem] text-slate-500 font-bold">${h.date}</span></td>
+                    </tr>
+                `).join('');
+            }
+
+            const totalEl = document.getElementById('totalProfit');
+            const p24h = state.profit24h || 0;
+            totalEl.innerHTML = `
+                <span class="text-slate-600 mr-4">Sessão 24H: <span class="${p24h >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'}">${p24h > 0 ? '+' : ''}${p24h.toFixed(2)}%</span></span>
+                TOTAL LÍQUIDO: <span class="text-accent-cyan">${(state.totalProfitPct || 0).toFixed(2)}%</span>
+            `;
+
+            // Profit Modal
+            const overlay = document.getElementById('profitOverlay');
+            if (state.dashboardData?.triggerProfitAnim) overlay.classList.add('show');
+            else overlay.classList.remove('show');
+        }
+
+        // ── System Actions ───────────────────────────────────────────
+        async function startSystem() {
+            const clientName = document.getElementById('clientName').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const apiSecret = document.getElementById('apiSecret').value;
+            if (!apiKey || !apiSecret) return alert("Configure as chaves da API Binance.");
+
+            const btn = document.getElementById('btnStart');
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Conectando...`;
+            btn.disabled = true; lucide.createIcons();
+
+            try {
+                const res = await authFetch(`${API_URL}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientName, apiKey, apiSecret, buyPercentage: selectedBuyRatio, mode: selectedMode })
+                });
+                if (res.ok) {
+                    localStorage.setItem('sifrasApiKey', apiKey);
+                    localStorage.setItem('sifrasApiSecret', apiSecret);
+                    localStorage.setItem('sifrasClientName', clientName);
+                } else {
+                    const d = await res.json();
+                    alert(`Falha: ${d.error || 'Erro desconhecido'}`);
+                }
+            } catch (e) { alert("Erro de conexão com o servidor."); }
+            btn.innerHTML = `<i data-lucide="zap" class="w-5 h-5"></i> Ativar Sniper Motor`;
+            btn.disabled = false; lucide.createIcons();
+        }
+
+        async function panicSell() { if (confirm("STOP GERAL: Vender todas as posições a mercado?")) await authFetch(`${API_URL}/panic`, { method: 'POST' }); }
+        async function resetApi() { if (confirm("Zerar todas as chaves e configurações locais?")) { localStorage.clear(); location.reload(); } }
+        async function resetHistory() { if (confirm("Zerar histórico de operações?")) await authFetch(`${API_URL}/reset-history`, { method: 'POST' }); }
+
+        async function downloadReport() {
+            try {
+                const res = await authFetch(`${API_URL}/status`);
+                const state = await res.json();
+                const history = state.history || [];
+                if (history.length === 0) return alert('Sem operações para exportar.');
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const client = document.getElementById('clientName').value || 'Sniper Investor';
+                doc.setFontSize(20); doc.text("SIFRAS SNIPER RELATÓRIO", 105, 20, null, null, "center");
+                doc.setFontSize(10); doc.text(`Operador: ${client} | Data: ${new Date().toLocaleString()}`, 20, 35);
+                const rows = history.map(h => [h.date, h.symbol, h.type, `${h.profitPct.toFixed(2)}%`, h.profitPct > 0 ? "GAIN" : "LOSS"]);
+                doc.autoTable({ head: [["Data", "Ativo", "Modo", "P&L", "Status"]], body: rows, startY: 45, theme: 'striped' });
+                doc.save(`Sniper_Report_${client.replace(/\s/g,'')}.pdf`);
+            } catch (e) { alert('Erro ao gerar PDF: ' + e.message); }
+        }
+
+        window.onload = async () => {
+            lucide.createIcons();
+            const token = getToken();
+            if (!token) { window.location.href = '/login.html'; return; }
+
+            // Restore
+            if (localStorage.getItem('sifras_user_read_mode') === 'true') {
+                document.getElementById('readModeToggle').checked = true;
+                document.body.classList.add('read-only-mode');
+            }
+            document.getElementById('clientName').value = localStorage.getItem('sifrasClientName') || '';
+            document.getElementById('apiKey').value = localStorage.getItem('sifrasApiKey') || '';
+            document.getElementById('apiSecret').value = localStorage.getItem('sifrasApiSecret') || '';
+
+            refreshInterval = setInterval(fetchStatus, 3000);
+            fetchStatus();
+        };
     </script>
 </body>
-
 </html>

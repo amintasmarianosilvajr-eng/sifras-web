@@ -3,101 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa — Gateway de Acesso</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <title>Sifras Alfa - Gateway de Acesso</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0a0a0a;
-            --cyber-blue: #ccff00;
-            --alert-red: #ff3366;
-            --text-main: #ffffff;
-            --glass-panel: rgba(18, 18, 18, 0.97);
-            --border-glow: rgba(204, 255, 0, 0.3);
+            --bg-deep: #05080c;
+            --accent-cyan: #00f5ff;
+            --accent-ruby: #ff2a6d;
+            --glass-bg: rgba(10, 15, 25, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.05);
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.07) 0%, transparent 70%), #111111;
-            color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-deep);
+            color: #f8fafc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-image: 
+                radial-gradient(circle at 50% 10%, rgba(0, 245, 255, 0.06) 0%, transparent 60%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
         }
-        .login-wrapper { width: 100%; max-width: 420px; padding: 20px; animation: fadeIn 0.5s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .logo-box { text-align: center; margin-bottom: 40px; }
-        .logo-text { font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 900; }
-        .logo-alfa { color: var(--cyber-blue); text-shadow: 0 0 20px rgba(204, 255, 0, 0.5); }
-        .logo-sub { color: #555; font-size: 0.8rem; letter-spacing: 3px; margin-top: 5px; text-transform: uppercase; }
-        .panel {
-            background: var(--glass-panel);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 35px;
-            box-shadow: 0 0 60px rgba(0,0,0,0.5), 0 0 30px rgba(204,255,0,0.03);
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 420px;
+            padding: 40px;
+            position: relative;
+            z-index: 10;
         }
-        .panel-title { font-family: 'Orbitron', sans-serif; font-size: 1rem; color: var(--cyber-blue); margin-bottom: 25px; display: flex; align-items: center; gap: 10px; }
-        .input-group { margin-bottom: 20px; }
-        .input-group label { display: block; margin-bottom: 8px; color: #a0aab5; font-size: 0.85rem; }
-        .input-group input {
-            width: 100%; padding: 14px 16px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 8px; color: #fff;
-            font-family: 'Outfit', sans-serif; font-size: 1rem; outline: none; transition: 0.3s;
+
+        .custom-input {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            height: 54px;
+            padding: 0 20px;
+            font-size: 1rem;
+            color: white;
+            transition: all 0.3s ease;
+            width: 100%;
+            text-align: center;
+            letter-spacing: 0.5em;
         }
-        .input-group input:focus { border-color: var(--cyber-blue); box-shadow: 0 0 12px var(--border-glow); }
-        .btn-login {
-            width: 100%; padding: 15px;
-            background: rgba(204, 255, 0, 0.1);
-            color: var(--cyber-blue);
-            border: 1px solid var(--cyber-blue);
-            border-radius: 8px;
-            font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 1rem;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; margin-top: 5px;
+
+        .custom-input:focus {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: var(--accent-cyan);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(0, 245, 255, 0.15);
         }
-        .btn-login:hover { background: var(--cyber-blue); color: #000; box-shadow: 0 0 25px var(--border-glow); }
-        .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-premium {
+            width: 100%;
+            height: 54px;
+            background: var(--accent-cyan);
+            color: #000;
+            border-radius: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.85rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(0, 245, 255, 0.3);
+        }
+
+        .btn-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 245, 255, 0.5);
+        }
+
+        .btn-premium:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .error-msg {
             display: none;
-            background: rgba(255, 51, 102, 0.1);
-            border: 1px solid rgba(255, 51, 102, 0.4);
-            color: var(--alert-red);
-            padding: 12px; border-radius: 8px; font-size: 0.9rem; margin-top: 15px; text-align: center;
+            margin-top: 20px;
+            padding: 12px;
+            background: rgba(255, 42, 109, 0.1);
+            border: 1px solid rgba(255, 42, 109, 0.2);
+            border-radius: 12px;
+            color: var(--accent-ruby);
+            font-size: 0.8rem;
+            text-align: center;
+            font-weight: 600;
         }
-        .error-msg.show { display: block; }
-        .footer-note { text-align: center; color: #333; font-size: 0.75rem; margin-top: 20px; }
+
+        .error-msg.show { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+        @keyframes scan {
+            0% { transform: translateY(-100%); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: translateY(100%); opacity: 0; }
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 100%;
+            background: linear-gradient(to bottom, transparent, var(--accent-cyan), transparent);
+            opacity: 0.1;
+            animation: scan 3s linear infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
     </style>
 </head>
 <body>
-    <div class="login-wrapper">
-        <div class="logo-box">
-            <img src="logo.png" alt="Fluxo Alfa Logo" style="width: 120px; border-radius: 12px; box-shadow: 0 0 15px rgba(204,255,0,0.3); margin-bottom: 5px;">
-            <div class="logo-text" style="margin-top: 10px;">SIFRAS <span class="logo-alfa">ALFA</span></div>
-            <div class="logo-sub">CONTROLE DE SEGURANÇA</div>
+
+    <div class="scan-line"></div>
+
+    <div class="glass-panel text-center">
+        <div class="mb-8 relative inline-block">
+            <div class="absolute inset-0 bg-accent-cyan/20 blur-2xl rounded-full"></div>
+            <img src="logo.png" alt="Logo" class="relative z-10 w-24 h-24 mx-auto rounded-3xl shadow-xl">
         </div>
-        <div class="panel">
-            <div class="panel-title"><i class="ph ph-shield-check"></i> Chave de Acesso Global</div>
-            <div class="input-group">
-                <label>Insira a chave para continuar</label>
-                <input type="password" id="inputGateway" placeholder="••••••••" autofocus>
+
+        <h1 class="text-2xl font-black italic uppercase italic tracking-tighter mb-1">
+            Sifras <span class="text-accent-cyan">Alfa</span>
+        </h1>
+        <p class="text-[0.6rem] text-slate-500 font-bold tracking-[0.4em] uppercase mb-10">Gateway de Segurança</p>
+
+        <div class="space-y-6">
+            <div class="space-y-2 text-left">
+                <label class="text-[0.65rem] text-slate-500 font-black uppercase tracking-widest ml-1">Chave de Acesso Sniper</label>
+                <input type="password" id="inputGateway" placeholder="••••••••" autofocus class="custom-input">
             </div>
-            <button class="btn-login" id="btnGateway" onclick="checkGateway()">
-                <i class="ph ph-key"></i> VALIDAR CHAVE
+
+            <button id="btnGateway" onclick="checkGateway()" class="btn-premium">
+                <i data-lucide="shield-check" class="w-5 h-5"></i> Validar Acesso
             </button>
-            <div class="error-msg" id="errorGateway">
-                <i class="ph ph-warning"></i> Chave de acesso incorreta.
-            </div>
         </div>
-        <div class="footer-note" style="color: #444; margin-top: 30px; letter-spacing: 0.5px;">
-            Fluxo Alfa - Um produto exclusivo Sifras Invest Financeiro LTDA<br>
-            CNPJ: 63.326.067/0001-30
+
+        <div id="errorGateway" class="error-msg">
+            <i data-lucide="alert-circle" class="w-4 h-4"></i> Chave de acesso inválida
+        </div>
+
+        <div class="mt-12 pt-8 border-t border-white/5 space-y-2">
+            <p class="text-[0.6rem] text-slate-600 font-bold uppercase tracking-wider">Sifras Invest Financeiro LTDA</p>
+            <p class="text-[0.55rem] text-slate-700 font-bold mono">CNPJ: 63.326.067/0001-30</p>
         </div>
     </div>
+
     <script>
-        document.getElementById('inputGateway').addEventListener('keydown', (e) => { if (e.key === 'Enter') checkGateway(); });
+        lucide.createIcons();
+
+        document.getElementById('inputGateway').addEventListener('keydown', (e) => { 
+            if (e.key === 'Enter') checkGateway(); 
+        });
 
         async function checkGateway() {
             const accessKey = document.getElementById('inputGateway').value;
@@ -106,7 +174,9 @@
             if (!accessKey) return;
 
             btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Verificando...`;
             errorMsg.classList.remove('show');
+            lucide.createIcons();
 
             try {
                 const res = await fetch('/gateway', {
@@ -121,10 +191,13 @@
                     errorMsg.classList.add('show');
                 }
             } catch (e) {
-                errorMsg.innerHTML = 'Erro de conexão com o servidor.';
+                errorMsg.innerHTML = '<i data-lucide="wifi-off" class="w-4 h-4"></i> Falha na conexão com o servidor';
                 errorMsg.classList.add('show');
+                lucide.createIcons();
             }
             btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="shield-check" class="w-5 h-5"></i> Validar Acesso`;
+            lucide.createIcons();
         }
     </script>
 </body>

@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const axios = require('axios');
+const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 const app = express();
@@ -40,7 +41,8 @@ function createInitialState(username) {
         alfaPhase: 'COUNTDOWN',
         lastCoin: '', history: [], logs: [], balanceUSDT: 0, balanceUSDC: 0,
         dashboardData: { topRanking: [], pivotInfo: null, volatilityMetrics: null },
-        isLoopActive: false, activeSymbol: null, buyPrice: 0, targetPrice: 0, currentPrice: 0, buyQty: 0,
+        isLoopActive: false,
+        activePositions: [], // Array de { symbol, buyPrice, targetPrice, buyQty }
         buyPercentage: 0.99, pauseUntil: null, totalProfitPct: 0
     };
 }
@@ -74,6 +76,114 @@ function saveUserState(rawUsername) {
 // MERCADO (SYNC BINANCE)
 // ------------------------------------------------------------
 let globalMarket = { top10: [], top30USDC: [], coinJumps: {}, coinJumps20s: {}, lastLatency: 0 };
+let symbolRules = {}; // Cache de precisão e stepSize
+let tickerHistory = {}; // Armazena timestamps e preços p/ os últimos 15s
+let binanceWS = null;
+
+async function fetchExchangeInfo() {
+    try {
+        const res = await axios.get('https://api.binance.com/api/v3/exchangeInfo');
+        res.data.symbols.forEach(s => {
+            const lot = s.filters.find(f => f.filterType === 'LOT_SIZE');
+            const isMonitoring = s.permissions?.includes('LEVERAGED') === false && s.tags?.includes('monitoring');
+            const isFanToken = ['PSG','BAR','ACM','CITY','ASR','LAZIO','PORTO','SANTOS','ALPINE','OG','JUV'].some(t => s.symbol.startsWith(t));
+            const isDelisting = s.status !== 'TRADING' || s.tags?.includes('delisting');
+
+            if (lot) {
+                const stepSize = parseFloat(lot.stepSize);
+                symbolRules[s.symbol] = {
+                    stepSize: stepSize,
+                    precision: Math.log10(1 / stepSize),
+                    blacklisted: isMonitoring || isFanToken || isDelisting
+                };
+            }
+        });
+        console.log("✅ Filtros de Segurança Mapeados (Monitoring/Fans/Delist)");
+    } catch (e) {
+        console.error("❌ Erro ExchangeInfo:", e.message);
+    }
+}
+fetchExchangeInfo();
+
+function startBinanceWS() {
+    if (binanceWS) binanceWS.terminate();
+    binanceWS = new WebSocket('wss://stream.binance.com:9443/ws/!miniTicker@arr');
+
+    binanceWS.on('message', (data) => {
+        const tickers = JSON.parse(data);
+        const now = Date.now();
+        
+        tickers.forEach(t => {
+            const symbol = t.s;
+            const price = parseFloat(t.c);
+            
+            if (!tickerHistory[symbol]) tickerHistory[symbol] = [];
+            tickerHistory[symbol].push({ t: now, p: price });
+            
+            // Limpa histórico antigo (> 16s)
+            tickerHistory[symbol] = tickerHistory[symbol].filter(h => now - h.t <= 16000);
+            
+            // Lógica de Gatilho para Usuários Ativos no modo OPERACIONAL
+            checkTriggers(symbol, price, now);
+        });
+    });
+
+    binanceWS.on('error', () => setTimeout(startBinanceWS, 5000));
+    binanceWS.on('close', () => setTimeout(startBinanceWS, 5000));
+}
+
+async function checkTriggers(symbol, currentPrice, now) {
+    for (const [username, state] of userStates.entries()) {
+        if (!state.isLoopActive) continue;
+
+        // Lógica de Compra: Sempre comprar se houver espaço (Até 10 operações)
+        if (state.activePositions.length < 10) {
+            // Pular a primeira moeda (#01) - Compras da 2ª à 10ª
+            const top2to10 = globalMarket.top10.slice(1, 10);
+            
+            // Verifica se a moeda já está em operação
+            const alreadyOpen = state.activePositions.some(p => p.symbol === symbol);
+            if (!alreadyOpen) {
+                // Filtro de Segurança
+                const isBlacklisted = symbolRules[symbol]?.blacklisted;
+                if (isBlacklisted) continue;
+
+                const isInTargetRange = top2to10.some(c => c.symbol === symbol);
+                if (isInTargetRange) {
+                    const history = tickerHistory[symbol] || [];
+                    if (history.length > 2) {
+                        const targetTime = now - 15000;
+                        let lp = history[0];
+                        for (let i = 1; i < history.length; i++) {
+                            if (Math.abs(targetTime - history[i].t) < Math.abs(targetTime - lp.t)) lp = history[i];
+                        }
+                        const change = ((currentPrice - lp.p) / lp.p) * 100;
+
+                        if (change >= 0.2) {
+                            addLog(username, `🚀 GATILHO COMPRA (${state.activePositions.length + 1}/10): ${symbol} +${change.toFixed(2)}%`, 'success');
+                            // Registra posição pendente para evitar double-buy enquanto a API processa
+                            state.activePositions.push({ symbol, buyPrice: currentPrice, pending: true });
+                            await executeRealBuy(username, symbol, currentPrice);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Lógica de Venda Individual: Se bater 0.5% bruto (compra USDT)
+        const positionIndex = state.activePositions.findIndex(p => p.symbol === symbol && !p.pending);
+        if (positionIndex !== -1) {
+            const pos = state.activePositions[positionIndex];
+            const target = pos.buyPrice * 1.005; // 0.5% conforme nova instrução
+            if (currentPrice >= target) {
+                addLog(username, `🎯 ALVO 0.5% ATINGIDO: Vendendo ${symbol} (Retornando ao ciclo)`, 'sell');
+                await executeRealSell(username, symbol, 'TAKE_PROF_0.5');
+            }
+        }
+    }
+}
+
+startBinanceWS();
 
 async function startMarketLoop() {
     try {
@@ -205,26 +315,130 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
 
 async function executeRealBuy(username, symbol, price) {
     const state = userStates.get(username);
-    addLog(username, `🛒 COMPRANDO: ${symbol} a $${price.toFixed(6)}`, 'buy');
-    const side = 'BUY';
-    // Implementação simplificada de Market Buy
-    const quoteBase = symbol.endsWith('USDC') ? 'USDC' : 'USDT';
-    const res = await binanceRequest(username, '/api/v3/order', 'POST', { symbol, side, type: 'MARKET', quoteOrderQty: '20' });
-    if (res.error) addLog(username, `❌ Erro na Compra: ${res.msg}`, 'error');
-    else state.status = 'IN_TRADE';
+    addLog(username, `🛒 COMPRA REAL: ${symbol} a $${price.toFixed(8)} | Alvo: +0.5%`, 'buy');
+    
+    // Calcula quantidade baseada em $20 de capital (mínimo seguro)
+    const res = await binanceRequest(username, '/api/v3/order', 'POST', { 
+        symbol, 
+        side: 'BUY', 
+        type: 'MARKET', 
+        quoteOrderQty: '20' 
+    });
+    
+    if (res.error) {
+        addLog(username, `❌ Falha na Compra Real: ${res.msg}`, 'error');
+        state.activePositions = state.activePositions.filter(p => p.symbol !== symbol);
+    } else {
+        const buyQty = parseFloat(res.executedQty);
+        const buyPrice = parseFloat(res.fills?.[0]?.price || price);
+        
+        // Atualiza a posição de pending para ativa
+        const pos = state.activePositions.find(p => p.symbol === symbol);
+        if (pos) {
+            pos.pending = false;
+            pos.buyQty = buyQty;
+            pos.buyPrice = buyPrice;
+        }
+        addLog(username, `📦 Posicionado: ${buyQty} ${symbol.replace('USDT','')}`, 'success');
+    }
 }
 
 async function executeRealSell(username, symbol, reason) {
-    const state = userStates.get(username);
-    addLog(username, `💰 VENDENDO: ${symbol} (${reason})`, 'sell');
-    const res = await binanceRequest(username, '/api/v3/order', 'POST', { symbol, side: 'SELL', type: 'MARKET', quantity: state.buyQty || '0.1' });
-    if (res.error) {
-        addLog(username, `❌ Erro na Venda: ${res.msg}`, 'error');
+    // Antes de vender, busca o saldo real do ativo para descontar taxas (ex: 0.1% taker)
+    const asset = symbol.replace('USDT', '');
+    const account = await binanceRequest(username, '/api/v3/account');
+    
+    const pos = state.activePositions.find(p => p.symbol === symbol);
+    let sellQty = 0;
+    
+    if (!account.error) {
+        const balance = account.balances.find(b => b.asset === asset);
+        if (balance) {
+            const rawBalance = parseFloat(balance.free);
+            const rules = symbolRules[symbol];
+            
+            if (rules) {
+                // Cálculo ultra-preciso de Lot Size (Step Size)
+                sellQty = Math.floor(rawBalance / rules.stepSize + 0.00000001) * rules.stepSize;
+                const finalQty = parseFloat(sellQty.toFixed(rules.precision)); // Força a precisão correta da moeda
+                
+                console.log(`[SELL DEBUG] ${symbol} | Free: ${rawBalance} | RulesStep: ${rules.stepSize} | Precision: ${rules.precision} | Final: ${finalQty}`);
+                addLog(username, `📉 Ajuste Venda: ${rawBalance} -> ${finalQty} ${asset}`, 'info');
+                sellQty = finalQty;
+            } else {
+                sellQty = rawBalance;
+            }
+        }
+    }
+
+    if (sellQty <= 0) {
+        addLog(username, `❌ Erro: Saldo de ${asset} insuficiente para venda. Removendo posição.`, 'error');
+        state.activePositions = state.activePositions.filter(p => p.symbol !== symbol);
         return false;
     }
-    state.status = 'SCANNING';
-    state.activeSymbol = null;
-    state.history.unshift({ symbol, date: new Date().toLocaleString(), profitPct: 0.4 });
+
+    console.log(`[SELL] Enviando ordem MARKET SELL ${symbol} | Qty: ${sellQty}`);
+
+    let res = await binanceRequest(username, '/api/v3/order', 'POST', { 
+        symbol, 
+        side: 'SELL', 
+        type: 'MARKET', 
+        quantity: sellQty.toString().includes('e') ? sellQty.toFixed(8) : sellQty.toString() 
+    });
+
+    // Se falhar por insuficiência de saldo, tenta uma "Venda de Segurança" (99.7% do saldo)
+    if (res.error && res.msg?.toLowerCase().includes('insufficient balance')) {
+        addLog(username, `⚠️ Saldo Impreciso em ${symbol}. Tentando Venda de Segurança (99.7%)...`, 'error');
+        
+        // Re-consulta o saldo atualizado e aplica 99.7%
+        const lastCheck = await binanceRequest(username, '/api/v3/account');
+        if (!lastCheck.error) {
+            const b = lastCheck.balances.find(bal => bal.asset === asset);
+            if (b) {
+                const freshBal = parseFloat(b.free);
+                const rules = symbolRules[symbol];
+                let safeQty = freshBal * 0.997; // Margem de segurança para garantir a execução
+                if (rules) {
+                    safeQty = Math.floor(safeQty / rules.stepSize + 0.00000001) * rules.stepSize;
+                    sellQty = parseFloat(safeQty.toFixed(rules.precision));
+                } else {
+                    sellQty = parseFloat(safeQty.toFixed(8));
+                }
+                
+                res = await binanceRequest(username, '/api/v3/order', 'POST', { 
+                    symbol, 
+                    side: 'SELL', 
+                    type: 'MARKET', 
+                    quantity: sellQty.toString().includes('e') ? sellQty.toFixed(8) : sellQty.toString() 
+                });
+            }
+        }
+    }
+
+    if (res.error) {
+        addLog(username, `❌ Falha Crítica na Venda: ${res.msg}. Removendo posição forçadamente.`, 'error');
+        state.activePositions = state.activePositions.filter(p => p.symbol !== symbol);
+        return false;
+    }
+
+    const sellPrice = parseFloat(res.fills?.[0]?.price || 0);
+    const buyPrice = pos ? pos.buyPrice : sellPrice;
+    const pnlPct = ((sellPrice - buyPrice) / buyPrice) * 100;
+    
+    // Remove a posição ativa
+    state.activePositions = state.activePositions.filter(p => p.symbol !== symbol);
+    
+    state.history.unshift({ 
+        symbol, 
+        date: new Date().toLocaleString(), 
+        profitPct: pnlPct,
+        type: 'REAL'
+    });
+    
+    state.balanceUSDT = (state.balanceUSDT || 0) + (pnlPct > 0 ? (20 * (pnlPct/100)) : 0);
+    state.totalProfitPct = (state.totalProfitPct || 0) + pnlPct;
+    
+    addLog(username, `🏁 ${symbol} Finalizado. PNL: ${pnlPct.toFixed(3)}%`, 'info');
     saveUserState(username);
     return true;
 }
@@ -275,12 +489,21 @@ app.get('/status', requireAuth, (req, res) => {
     res.json({ ...state, globalLatency: globalMarket.lastLatency });
 });
 
-app.post('/start', requireAuth, (req, res) => {
+app.post('/start', requireAuth, async (req, res) => {
     const { mode, apiKey, apiSecret, clientName } = req.body;
     let username = req.username;
     if (mode === 'ALFA_USDC') username += '_ALFA_USDC';
     const state = loadUserState(username);
     Object.assign(state, { mode, apiKey, apiSecret, clientName, isLoopActive: true, status: 'SCANNING' });
+    
+    // Busca Saldo Real ao Iniciar
+    const account = await binanceRequest(username, '/api/v3/account');
+    if (!account.error) {
+        const usdt = account.balances.find(b => b.asset === 'USDT');
+        state.balanceUSDT = parseFloat(usdt?.free || 0);
+        addLog(username, `✅ Conectado! Saldo Inicial: $${state.balanceUSDT.toFixed(2)}`, 'success');
+    }
+
     saveUserState(username);
     res.json({ success: true });
 });
@@ -291,8 +514,49 @@ app.post('/stop', requireAuth, (req, res) => {
     const state = loadUserState(username);
     state.isLoopActive = false;
     state.status = 'OFFLINE';
+    state.activePositions = [];
     saveUserState(username);
     res.json({ success: true });
+});
+
+// ENDPOINTS ADMIN
+app.get('/admin/overview', (req, res) => {
+    const list = Array.from(userStates.entries()).map(([username, state]) => ({
+        username,
+        status: state.isLoopActive ? 'OPERANDO' : 'OFFLINE',
+        isApproved: true,
+        activePositions: state.activePositions,
+        balanceUSDT: state.balanceUSDT,
+        totalProfitPct: state.totalProfitPct,
+        logsCount: state.logs.length,
+        isLoopActive: state.isLoopActive
+    }));
+    res.json({ users: list });
+});
+
+app.post('/admin/stop-user', (req, res) => {
+    const { targetUser } = req.body;
+    const state = userStates.get(targetUser);
+    if (state) {
+        state.isLoopActive = false;
+        state.activePositions = [];
+        state.status = 'OFFLINE';
+        saveUserState(targetUser);
+        res.json({ success: true });
+    } else res.status(404).json({ error: 'Usuário não encontrado' });
+});
+
+app.post('/admin/stop-all', (req, res) => {
+    let count = 0;
+    userStates.forEach(state => {
+        if (state.isLoopActive) {
+            state.isLoopActive = false;
+            state.activePositions = [];
+            state.status = 'OFFLINE';
+            count++;
+        }
+    });
+    res.json({ success: true, count });
 });
 
 const PORT = process.env.PORT || 3014;

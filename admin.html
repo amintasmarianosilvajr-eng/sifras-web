@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sifras Alfa 1.0 — Painel Administrativo</title>
-    <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         :root {
-            --bg-dark: #060a10;
-            --cyber-blue: #00ffc8;
-            --cyber-gold: #00b4ff;
+            --bg-dark: #0a0a0a;
+            --cyber-blue: #ccff00;
+            --cyber-gold: #f3ba2f;
             --alert-red: #ff3366;
-            --cyber-green: #00ffc8;
-            --text-main: #e8f0ff;
-            --glass-panel: rgba(8, 12, 20, 0.65);
-            --border-glow: rgba(0, 255, 200, 0.12);
+            --cyber-green: #ccff00;
+            --text-main: #ffffff;
+            --glass-panel: rgba(18, 18, 18, 0.95);
+            --border-glow: rgba(204, 255, 0, 0.3);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -23,21 +23,20 @@
         body {
             background-color: var(--bg-dark);
             color: var(--text-main);
-            font-family: 'Oxanium', sans-serif;
-            background: radial-gradient(circle at 50% 0%, rgba(0, 255, 200, 0.05) 0%, transparent 70%), #060a10;
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.05) 0%, transparent 70%), #111111;
             min-height: 100vh;
             padding: 10px;
-            zoom: 0.9;
+            zoom: 0.9; /* Força escala para caber tudo */
             -webkit-transform: scale(0.9);
             -webkit-transform-origin: top center;
-            -moz-transform: scale(0.9);
+            -moz-transform: scale(0.9); /* Firefox */
             -moz-transform-origin: top center;
             transform: scale(0.9);
             transform-origin: top center;
-            backdrop-filter: blur(24px);
         }
 
-        h1, h2, .orbitron { font-family: 'Share Tech Mono', monospace; }
+        h1, h2, .orbitron { font-family: 'Orbitron', sans-serif; }
 
         .container { 
             width: 100% !important; 

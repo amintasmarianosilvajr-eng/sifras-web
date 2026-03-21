@@ -4,7 +4,7 @@
  */
 
 const CONFIG = {
-    BINANCE_API: 'https://api.binance.com/api/v3',
+    BINANCE_API: '/proxy-binance/api/v3',
     UPDATE_INTERVAL: 2000,
     PROXIMITY_THRESHOLD: 30.0,
     VOLATILITY_THRESHOLD: 0.1,

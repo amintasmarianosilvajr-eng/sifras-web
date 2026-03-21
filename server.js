@@ -696,6 +696,36 @@ app.post('/check-api', async (req, res) => {
     }
 });
 
+// --- PROXY BINANCE (FIX CORS) ---
+app.all('/proxy-binance/*', async (req, res) => {
+    try {
+        const path = req.params[0] || '';
+        const query = req.url.split('?')[1] || '';
+        const url = `https://api.binance.com/${path}${query ? '?' + query : ''}`;
+        
+        const headers = {};
+        if (req.headers['x-mbx-apikey']) headers['X-MBX-APIKEY'] = req.headers['x-mbx-apikey'];
+        if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
+
+        const config = {
+            method: req.method,
+            url: url,
+            headers: headers,
+            data: req.body,
+            timeout: 15000
+        };
+
+        const response = await axios(config);
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({ error: 'Proxy Error', msg: error.message });
+        }
+    }
+});
+
 const PORT = process.env.PORT || 3014;
 app.listen(PORT, '0.0.0.0', () => console.log(`🚀 ALFA MASTER PRO na Porta ${PORT}`));
 

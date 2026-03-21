@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxo Alfa — Teste Pós-Cadastro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --cyber-blue: #ccff00;
+            --alert-red: #ff3366;
+            --text-main: #ffffff;
+            --glass-panel: rgba(18, 18, 18, 0.97);
+            --border-glow: rgba(204, 255, 0, 0.3);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.07) 0%, transparent 70%), #111111;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 40px 20px;
+            background: var(--glass-panel);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 0 60px rgba(0,0,0,0.5), 0 0 30px rgba(204,255,0,0.03);
+            animation: fadeIn 0.8s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .logo-box { margin-bottom: 30px; }
+        .logo-box img {
+            width: 180px; /* Tamanho médio */
+            border-radius: 16px;
+            box-shadow: 0 0 25px rgba(204,255,0,0.4);
+            animation: pulseLogo 2s infinite ease-in-out;
+        }
+        @keyframes pulseLogo {
+            0% { box-shadow: 0 0 15px rgba(204,255,0,0.2); transform: scale(1); }
+            50% { box-shadow: 0 0 35px rgba(204,255,0,0.6); transform: scale(1.02); }
+            100% { box-shadow: 0 0 15px rgba(204,255,0,0.2); transform: scale(1); }
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            color: var(--cyber-blue);
+            margin-bottom: 10px;
+        }
+        p {
+            color: #a0aab5;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        .btn-proceed {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px;
+            background: rgba(204, 255, 0, 0.1);
+            color: var(--cyber-blue);
+            border: 1px solid var(--cyber-blue);
+            border-radius: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+        .btn-proceed:hover {
+            background: var(--cyber-blue);
+            color: #000;
+            box-shadow: 0 0 25px var(--border-glow);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-box">
+            <img src="logo.png" alt="Fluxo Alfa Logo">
+        </div>
+        <h1>VERIFICAÇÃO CONCLUÍDA</h1>
+        <p>Acesso liberado. O seu teste de enter pós-cadastro foi validado com sucesso.</p>
+        <a href="/dashboard" class="btn-proceed">
+            <i class="ph ph-rocket-launch"></i> ACESSAR PAINEL
+        </a>
+    </div>
+</body>
+</html>

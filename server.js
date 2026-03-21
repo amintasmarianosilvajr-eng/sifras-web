@@ -610,6 +610,25 @@ app.post('/admin/stop-all', (req, res) => {
 
 app.post('/admin/change-password', (req, res) => res.json({ success: true }));
 
+app.post('/check-api', async (req, res) => {
+    const { apiKey, apiSecret } = req.body;
+    if (!apiKey || !apiSecret) return res.status(400).json({ error: 'Faltando chaves' });
+
+    try {
+        const timestamp = Date.now();
+        const query = `timestamp=${timestamp}`;
+        const signature = crypto.createHmac('sha256', apiSecret).update(query).digest('hex');
+        const response = await axios.get(`https://api.binance.com/api/v3/account?${query}&signature=${signature}`, {
+            headers: { 'X-MBX-APIKEY': apiKey }
+        });
+        const balances = (response.data.balances || []).filter(b => parseFloat(b.free) > 0);
+        res.json({ success: true, balances });
+    } catch (e) {
+        res.status(401).json({ error: 'Chaves Inválidas ou Sem Permissão Spot' });
+    }
+});
+
 const PORT = process.env.PORT || 3014;
 app.listen(PORT, '0.0.0.0', () => console.log(`🚀 ALFA MASTER PRO na Porta ${PORT}`));
+
 

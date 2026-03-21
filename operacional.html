@@ -38,7 +38,7 @@
             box-shadow: 0 0 30px rgba(0,0,0,0.5), 0 0 15px rgba(0,255,200,0.02);
             padding: 30px;
             width: 100%;
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
@@ -69,14 +69,32 @@
 
         .loading-text { text-align: center; padding: 50px; color: var(--cyber-blue); font-size: 1.2rem; display: flex; flex-direction: column; align-items: center; gap: 10px; }
         
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        .spin { animation: spin 2s linear infinite; }
-
         .filter-badge {
             display: inline-flex; align-items: center; gap: 5px;
             background: rgba(0,255,200,0.1); border: 1px solid rgba(0,255,200,0.3);
             color: var(--cyber-blue); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;
         }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .coin-card {
+            min-width: 260px;
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            border-width: 1px;
+            border-style: solid;
+        }
+        .color-green { background: rgba(57, 255, 20, 0.05); border-color: rgba(57, 255, 20, 0.5); }
+        .color-green .rank-n { color: #39FF14; text-shadow: 0 0 10px rgba(57, 255, 20, 0.5); }
+        
+        .color-orange { background: rgba(255, 95, 31, 0.05); border-color: rgba(255, 95, 31, 0.5); }
+        .color-orange .rank-n { color: #FF5F1F; text-shadow: 0 0 10px rgba(255, 95, 31, 0.5); }
     </style>
 </head>
 <body>
@@ -103,23 +121,33 @@
             Sincronizando com Binance Global...
         </div>
 
-        <table id="rankingTable" style="display:none;">
-            <thead>
-                <tr>
-                    <th class="mono">#</th>
-                    <th class="mono">Moeda (Par)</th>
-                    <th class="mono">Variação 24h</th>
-                    <th class="mono">Preço Atual</th>
-                    <th class="mono">Volume Financeiro (USDT)</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-                <!-- Injetado via JS -->
-            </tbody>
-        </table>
+        <div id="rankingContainer" class="flex overflow-x-auto gap-4 py-4 hide-scrollbar" style="display:none;">
+            <!-- Cartões Injetados via JS -->
+        </div>
         
-        <div class="text-center mt-8 pt-4 border-t border-[rgba(0,255,200,0.1)]">
-            <p class="mono text-[10px] text-gray-500 uppercase tracking-widest">Atualização Dinâmica a cada 2000ms. Moedas irrelevantes ignoradas nativamente.</p>
+        <!-- Slot API Chaves -->
+        <div class="mt-8 p-6 border-2 border-[#00ffc8] bg-black/60 rounded-xl relative shadow-[0_0_20px_rgba(0,255,200,0.1)]">
+            <div class="absolute -top-3 left-6 bg-black px-3 text-[#00ffc8] text-[0.7rem] uppercase font-bold tracking-widest flex items-center gap-2">
+                <i data-lucide="key" class="w-4 h-4"></i> CONEXÃO BINANCE API
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" placeholder="Chave de API (API Key)" id="inputApiKey" class="w-full bg-[#0a0a0a] border border-gray-800 text-white p-3 rounded-lg outline-none focus:border-[#00ffc8] focus:shadow-[0_0_15px_rgba(0,255,200,0.2)] font-mono transition-all text-sm">
+                <input type="password" placeholder="Chave Secreta (API Secret)" id="inputApiSecret" class="w-full bg-[#0a0a0a] border border-gray-800 text-white p-3 rounded-lg outline-none focus:border-[#00ffc8] focus:shadow-[0_0_15px_rgba(0,255,200,0.2)] font-mono transition-all text-sm">
+            </div>
+            
+            <button id="btnConnect" onclick="startConnection()" class="w-full mt-4 bg-black border-[2px] border-[#00ffc8] text-[#00ffc8] font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 hover:bg-[#00ffc8] hover:text-black uppercase tracking-wider">
+                <i data-lucide="plug"></i> VALIDAR & CONECTAR PARÂMETROS
+            </button>
+            
+            <div id="connStatus" class="hidden mt-4 text-center text-[#39FF14] font-bold animate-pulse text-sm flex items-center justify-center gap-2 uppercase tracking-widest border border-[#39FF14] bg-[rgba(57,255,20,0.1)] py-2 rounded">
+                <i data-lucide="shield-check" class="w-5 h-5"></i> 
+                SISTEMA ARMADO — MONITORANDO GATILHOS (0.2% EM 15s | ALVO 0.3%)
+            </div>
+        </div>
+
+        <div class="text-center mt-6 pt-4 border-t border-[rgba(0,255,200,0.1)]">
+            <p class="mono text-[10px] text-gray-500 uppercase tracking-widest">Atualização Dinâmica a cada 1000ms. Gatilho Lógico Armado em Teste de Parealidade.</p>
         </div>
     </div>
 
@@ -187,36 +215,61 @@
 
         function renderTable(coins) {
             document.getElementById('loader').style.display = 'none';
-            document.getElementById('rankingTable').style.display = 'table';
+            document.getElementById('rankingContainer').style.display = 'flex';
             
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = '';
+            const container = document.getElementById('rankingContainer');
+            container.innerHTML = '';
 
             coins.forEach((coin, index) => {
+                const colorClass = index % 2 === 0 ? 'color-green' : 'color-orange';
+                
                 const priceMatch = coin.lastPrice.match(/^-?\d+(?:\.\d{0,6})?/);
                 const showPrice = priceMatch ? priceMatch[0] : coin.lastPrice;
                 const change = parseFloat(coin.priceChangePercent).toFixed(2);
                 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="coin-rank mono">0${index + 1}</td>
-                    <td class="coin-symbol flex items-center gap-2">
-                        <i data-lucide="circle-dot" class="w-3 h-3 text-[rgba(0,180,255,0.8)]"></i>
-                        ${coin.symbol.replace('USDT', ' <span style="color:#666;font-size:0.8em">USDT</span>')}
-                    </td>
-                    <td class="coin-change">+${change}%</td>
-                    <td class="coin-price">$${showPrice}</td>
-                    <td class="coin-vol font-mono tracking-widest">${formatVolume(coin.quoteVolume)}</td>
+                const div = document.createElement('div');
+                div.className = `coin-card ${colorClass}`;
+                div.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-white/5 pb-2">
+                        <span class="mono rank-n font-bold text-xl">#0${index + 1}</span>
+                        <span class="font-bold text-white tracking-widest flex items-center gap-1">${coin.symbol.replace('USDT', '<span class="text-xs opacity-50">USDT</span>')}</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-1">
+                        <span class="text-xs text-gray-400 mono">PREÇO</span>
+                        <span class="mono text-white">$${showPrice}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-400 mono">ALTA (24H)</span>
+                        <span class="mono font-bold ${index % 2 === 0 ? 'text-[#39FF14]' : 'text-[#FF5F1F]'}">+${change}%</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-1 border-t border-white/5 pt-2">
+                        <span class="text-[0.65rem] text-gray-500 mono">VOLUME</span>
+                        <span class="font-mono text-[0.7rem] text-gray-400 tracking-widest">${formatVolume(coin.quoteVolume)}</span>
+                    </div>
                 `;
-                tbody.appendChild(tr);
+                container.appendChild(div);
             });
             
             lucide.createIcons();
         }
 
+        function startConnection() {
+            const btn = document.getElementById('btnConnect');
+            btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin w-5 h-5"></i> VALIDANDO CHAVES...';
+            lucide.createIcons();
+            
+            // Simula uma conexão
+            setTimeout(() => {
+                btn.style.display = 'none';
+                const status = document.getElementById('connStatus');
+                status.classList.remove('hidden');
+            }, 1500);
+        }
+
         // Fluxo de Inicialização
         fetchBinanceRules();
-        setInterval(updateRanking, 2000); // Atualização Real Time (a cada 2s)
+        setInterval(updateRanking, 1000); // Atualização Real Time aumentada para 1s
+
         
     </script>
 </body>

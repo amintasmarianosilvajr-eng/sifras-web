@@ -131,17 +131,24 @@ function startBinanceWS() {
 
         
         globalMarket.top10 = usdtValid.slice(0, 50);
+
+        // Coleta todos os símbolos que precisam ser monitorados (Top 50 + Posições Ativas)
+        const symbolsToMonitor = new Set(globalMarket.top10.map(c => c.symbol));
+        for (const state of userStates.values()) {
+            state.activePositions.forEach(p => symbolsToMonitor.add(p.symbol));
+        }
         
         tickers.forEach(t => {
             const symbol = t.s;
-            const price = parseFloat(t.c);
-            if (globalMarket.top10.some(c => c.symbol === symbol)) {
+            if (symbolsToMonitor.has(symbol)) {
+                const price = parseFloat(t.c);
                 if (!tickerHistory[symbol]) tickerHistory[symbol] = [];
                 tickerHistory[symbol].push({ t: now, p: price });
                 if (tickerHistory[symbol].length > 40) tickerHistory[symbol] = tickerHistory[symbol].filter(h => now - h.t <= 20000);
                 checkTriggers(symbol, price, now);
             }
         });
+
     });
 
 

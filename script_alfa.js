@@ -9,6 +9,8 @@ const CONFIG = {
     PROXIMITY_THRESHOLD: 30.0,
     VOLATILITY_THRESHOLD: 0.1,
     VOLATILITY_WINDOW: 10000,
+    GROWTH_THRESHOLD: 0.15,      // Novo gatilho: 0.15%
+    GROWTH_WINDOW: 20000,        // Janela de 20 segundos
     COOLDOWN_OPERATIONS: 5,
     TARGET_PROFIT: 0.9,
     BLACKLIST: [
@@ -18,6 +20,7 @@ const CONFIG = {
 };
 
 let volatilityTracker = {};
+let rapidGrowthTracker = {};     // Rastreador dedicado para o gatilho de 20s
 let operationHistory = { 1: [], 2: [] };
 let totalProfitAcc = { 1: 0.0, 2: 0.0 };
 let activeSlots = {
@@ -160,6 +163,19 @@ async function fetchTopGainers() {
 
 // --- Lógica Alfa ---
 function analyzeFluxoAlfa(ranking) {
+    // 1. MONITORAMENTO AMPLO: Gatilho 0.15% em 20s (Rank #2 ao #15)
+    for (let i = 1; i < 15; i++) {
+        const coin = ranking[i];
+        if (!coin) continue;
+
+        if (checkRapidGrowth(coin)) {
+            addLog(`⚡ GATILHO RÁPIDO: ${coin.symbol.replace('USDT', '')} +${CONFIG.GROWTH_THRESHOLD}% em 20s (Rank #${i + 1})`, 'proximity');
+            executeTrade(coin);
+            return; // Interrompe para focar na execução da compra detectada
+        }
+    }
+
+    // 2. LÓGICA DE PROXIMIDADE (BASE BINARY/ALFA)
     const c2 = ranking[1], c4 = ranking[3], c6 = ranking[5];
     if (!c2 || !c4 || !c6) return;
 
@@ -184,14 +200,47 @@ function analyzeFluxoAlfa(ranking) {
 
     const box = document.getElementById('decision-box');
     if (target) {
-        lastAlfaTarget = target; // armazena o parâmetro natural atual
+        lastAlfaTarget = target; 
         box.classList.add('active');
-        box.textContent = `ALVO DETECTADO: ${target.symbol}`;
+        box.textContent = `ALVO PROXIMIDADE: ${target.symbol}`;
         if (checkVolatility(target)) executeTrade(target);
     } else {
         box.classList.remove('active');
         box.textContent = "AGUARDANDO PROXIMIDADE ALFA...";
     }
+}
+
+function checkRapidGrowth(coin) {
+    const now = Date.now();
+    const symbol = coin.symbol;
+    
+    if (!rapidGrowthTracker[symbol]) {
+        rapidGrowthTracker[symbol] = [];
+    }
+
+    // Armazenar histórico de preço
+    rapidGrowthTracker[symbol].push({ price: coin.price, timestamp: now });
+
+    // Limpar dados com mais de 30 segundos para manter performance
+    rapidGrowthTracker[symbol] = rapidGrowthTracker[symbol].filter(h => now - h.timestamp <= 30000);
+
+    // Buscar o preço mais próximo de 20 segundos atrás (janela de 18s a 25s)
+    const pastPricePoint = rapidGrowthTracker[symbol].find(h => 
+        (now - h.timestamp) >= (CONFIG.GROWTH_WINDOW - 2000) && 
+        (now - h.timestamp) <= (CONFIG.GROWTH_WINDOW + 5000)
+    );
+
+    if (pastPricePoint) {
+        const jump = ((coin.price - pastPricePoint.price) / pastPricePoint.price) * 100;
+        if (jump >= CONFIG.GROWTH_THRESHOLD) {
+            // Evita disparar repetidamente para a mesma moeda em curto tempo (cooldown local de 1 min)
+            if (!rapidGrowthTracker[symbol].lastFired || (now - rapidGrowthTracker[symbol].lastFired > 60000)) {
+                rapidGrowthTracker[symbol].lastFired = now;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 function checkVolatility(coin) {

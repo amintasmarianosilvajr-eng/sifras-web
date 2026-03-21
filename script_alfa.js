@@ -12,8 +12,8 @@ const CONFIG = {
     GROWTH_THRESHOLD: 0.15,      // Novo gatilho: 0.15%
     GROWTH_WINDOW: 20000,        // Janela de 20 segundos
     COOLDOWN_OPERATIONS: 5,
-    TARGET_PROFIT: 0.4,         // Ajuste Test Drive (1h)
-    STOP_LOSS: 4.0,             // Proteção alargada
+    TARGET_PROFIT: 0.4,         
+    STOP_LOSS: 2.0,             // Novo Stop Loss de 2%
     BLACKLIST: [
         'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG',
         'JASMY', 'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF'
@@ -175,8 +175,8 @@ async function fetchTopGainers() {
 
 // --- Lógica Alfa ---
 function analyzeFluxoAlfa(ranking) {
-    // 1. MONITORAMENTO AMPLO: Gatilho 0.15% em 20s (Rank #2 ao #15)
-    for (let i = 1; i < 15; i++) {
+    // 1. MONITORAMENTO AMPLO: Gatilho 0.15% em 20s (Rank #2 ao #10)
+    for (let i = 1; i < 10; i++) {
         const coin = ranking[i];
         if (!coin) continue;
 
@@ -425,16 +425,16 @@ function updateActiveTradeMonitor(currentPrice) {
     if (pnl >= CONFIG.TARGET_PROFIT && !closingTrade) {
         closingTrade = true; // travar para não disparar duas vezes
         addLog(`🎯 META ALCANÇADA: +${pnl.toFixed(2)}% — Comprando USDT e reposicionando!`, 'sell');
-        buyUsdtAndReposition();
+        buyUsdtAndReposition(pnl);
     } else if (pnl <= -CONFIG.STOP_LOSS && !closingTrade) {
         closingTrade = true;
         addLog(`🛑 STOP LOSS: ${pnl.toFixed(2)}% — Protegendo capital e mudando de alvo!`, 'error');
-        buyUsdtAndReposition();
+        buyUsdtAndReposition(pnl);
     }
 }
 
 // Chamada quando a meta é atingida: VENDE moeda, compra USDT e REPOSICIONA
-async function buyUsdtAndReposition() {
+async function buyUsdtAndReposition(pnlValue = 0) {
     if (!currentTrade) { closingTrade = false; return; }
     const monitoringSlots = [1, 2].filter(id => activeSlots[id].monitoring);
     const prevCoin = { ...currentTrade }; // snapshot antes de limpar
@@ -480,15 +480,16 @@ async function buyUsdtAndReposition() {
         const result = await sendBinanceOrder(id, 'SELL', prevCoin.fullSymbol, coinQty);
         if (result.ok) {
             usdtOk = true;
-            totalProfitAcc[id] += CONFIG.TARGET_PROFIT;
+            totalProfitAcc[id] += pnlValue;
             operationHistory[id].push({
                 symbol: prevCoin.symbol,
                 buyPrice: prevCoin.buyPrice,
                 sellPrice: prevCoin.targetPrice,
-                profit: CONFIG.TARGET_PROFIT,
+                profit: pnlValue,
+                timestamp: Date.now(),
                 time: new Date().toLocaleString()
             });
-            addLog(`💰 Venda registrada! Lucro acumulado Slot #${id}: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
+            addLog(`💰 Saída registrada! PNL: ${pnlValue.toFixed(2)}% | Total Slot #${id}: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
         }
     }
 
@@ -718,7 +719,29 @@ function disconnectSlot(id) {
     connBtn.textContent = 'CONECTAR SLOT'; connBtn.onclick = () => connectSlot(id);
 }
 
+function updatePnlOverall() {
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    let totalPnl1h = 0;
+
+    [1, 2].forEach(id => {
+        const history = operationHistory[id] || [];
+        history.forEach(op => {
+            if (op.timestamp && (now - op.timestamp <= oneHour)) {
+                totalPnl1h += op.profit;
+            }
+        });
+    });
+
+    const el = document.getElementById('pnl-1h');
+    if (el) {
+        el.textContent = `${(totalPnl1h >= 0 ? '+' : '')}${totalPnl1h.toFixed(2)}%`;
+        el.style.color = totalPnl1h >= 0 ? 'var(--accent-green)' : 'var(--danger)';
+    }
+}
+
 function updateUI(ranking) {
+    updatePnlOverall();
     const list = document.getElementById('ranking-list');
     list.innerHTML = '';
     ranking.slice(0, 10).forEach((c, idx) => {

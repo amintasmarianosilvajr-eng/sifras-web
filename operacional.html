@@ -57,11 +57,15 @@
                 <div class="header-stats">
                     <div class="stat-badge">
                         <span class="label">LUCRO ALVO</span>
-                        <span class="value" id="target-profit">0.9%</span>
+                        <span class="value" id="target-profit">0.4%</span>
+                    </div>
+                    <div class="stat-badge">
+                        <span class="label">PNL 1H (LUCRO)</span>
+                        <span class="value" id="pnl-1h" style="color: var(--accent-green);">0.00%</span>
                     </div>
                     <div class="stat-badge">
                         <span class="label">VOLATILIDADE</span>
-                        <span class="value">0.1% / 10s</span>
+                        <span class="value">0.15% / 20s</span>
                     </div>
                     <div class="stat-badge" style="min-width: 200px;">
                         <span class="label">CONTADOR DE CICLO</span>
@@ -183,14 +187,15 @@
                         </div>
                         <div class="progress-box">
                             <div class="progress-labels">
-                                <span>-1.00%</span>
+                                <span id="stop-label">-2.00%</span>
                                 <span>ENTRADA (0.00%)</span>
-                                <span id="target-label">META (+0.90%)</span>
+                                <span id="target-label">META (+0.40%)</span>
                             </div>
                             <div class="progress-bar-container">
                                 <div class="progress-marker zero-marker"></div>
                                 <div class="progress-fill" id="trade-progress-fill"></div>
                             </div>
+                        </div>
                         </div>
                     </div>
                 </div>

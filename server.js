@@ -192,15 +192,17 @@ async function checkTriggers(symbol, currentPrice, now) {
         }
 
         // Lógica de Venda Individual: Alvo 0.4% (Conforme Nova Instrução)
-        const positionIndex = state.activePositions.findIndex(p => p.symbol === symbol && !p.pending);
+        const positionIndex = state.activePositions.findIndex(p => p.symbol === symbol && !p.pending && !p.selling);
         if (positionIndex !== -1) {
             const pos = state.activePositions[positionIndex];
-            const target = pos.buyPrice * 1.004; // 0.4% Alvo
+            const target = pos.buyPrice * 1.004; // Alvo exato de 0.4%
             if (currentPrice >= target) {
-                addLog(username, `🎯 Sniper: VENDA NO ALVO 0.4% -> [${symbol}]`, 'sell');
+                pos.selling = true; // Trava de segurança contra re-venda
+                addLog(username, `🎯 Sniper: ALVO 0.40% ATINGIDO -> [${symbol}] | Buy: ${pos.buyPrice} -> Now: ${currentPrice}`, 'sell');
                 await executeRealSell(username, symbol, 'TAKE_PROF_0.4');
             }
         }
+
 
 
     }
@@ -321,7 +323,7 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
 
 async function executeRealBuy(username, symbol, price) {
     const state = userStates.get(username);
-    addLog(username, `🛒 COMPRA REAL: ${symbol} a $${price.toFixed(8)} | Alvo: +0.5%`, 'buy');
+    addLog(username, `🛒 Sniper: COMPRA EXECUTADA [${symbol}] a $${price.toFixed(6)} | Alvo: 0.4%`, 'buy');
     
     // Calcula quantidade baseada em $20 de capital (mínimo seguro)
     const res = await binanceRequest(username, '/api/v3/order', 'POST', { 
@@ -330,6 +332,7 @@ async function executeRealBuy(username, symbol, price) {
         type: 'MARKET', 
         quoteOrderQty: '20' 
     });
+
     
     if (res.error) {
         addLog(username, `❌ Falha na Compra Real: ${res.msg}`, 'error');

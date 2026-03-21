@@ -130,9 +130,12 @@ function startBinanceWS() {
             .sort((a,b) => b.change - a.change); 
 
         
+        // Cache de Preço Global (Para redundância de venda)
+        globalMarket.allTickersMap = new Map();
+        usdtValid.forEach(c => globalMarket.allTickersMap.set(c.symbol, c.price));
+
         globalMarket.top10 = usdtValid.slice(0, 50);
 
-        // Coleta todos os símbolos que precisam ser monitorados (Top 50 + Posições Ativas)
         const symbolsToMonitor = new Set(globalMarket.top10.map(c => c.symbol));
         for (const state of userStates.values()) {
             state.activePositions.forEach(p => symbolsToMonitor.add(p.symbol));
@@ -149,6 +152,7 @@ function startBinanceWS() {
             }
         });
 
+
     });
 
 
@@ -160,61 +164,62 @@ async function checkTriggers(symbol, currentPrice, now) {
     for (const [username, state] of userStates.entries()) {
         if (!state.isLoopActive) continue;
 
-        // Lógica de Compra: Sempre comprar se houver espaço (Até 10 operações)
-        if (state.activePositions.length < 10) {
-            // Ranks permitidos: #2, #4, #6, #8, #10 (Índices 1, 3, 5, 7, 9)
+        // Lógica de Compra: REGULARIDADE COM CADÊNCIA (Max 5 slots, Delay 30s)
+        const canBuyMore = state.activePositions.length < 5;
+        const cooldownOk = !state.lastBuyTime || (now - state.lastBuyTime > 30000);
+
+        if (canBuyMore && cooldownOk && !state.isBuying) {
+            // Ranks permitidos: #2, #4, #6, #8, #10
             const allowedIndices = [1, 3, 5, 7, 9];
             const targetSymbols = allowedIndices.map(i => globalMarket.top10[i]?.symbol).filter(Boolean);
             
-            // Verifica se a moeda já está em operação
             const alreadyOpen = state.activePositions.some(p => p.symbol === symbol);
             if (!alreadyOpen && targetSymbols.includes(symbol)) {
-                // Filtro de Segurança
                 if (symbolRules[symbol]?.blacklisted) continue;
 
                 const history = tickerHistory[symbol] || [];
                 if (history.length > 5) {
-                    const targetTime = now - 15000; // Intervalo de 15 segundos (Nova Instrução)
+                    const targetTime = now - 15000; 
                     let lp = history[0];
                     for (let i = 1; i < history.length; i++) {
                         if (Math.abs(targetTime - history[i].t) < Math.abs(targetTime - lp.t)) lp = history[i];
                     }
                     const change = ((currentPrice - lp.p) / lp.p) * 100;
 
-                    if (change >= 0.15) { // Gatilho 0.15% (Nova Instrução)
+                    if (change >= 0.15) { 
+                        state.isBuying = true;
+                        state.lastBuyTime = now;
                         const rankPos = globalMarket.top10.findIndex(c => c.symbol === symbol) + 1;
-                        addLog(username, `🔥 Sniper: COMPRA EXECUTADA Rank #${rankPos} -> [${symbol}] +${change.toFixed(2)}% em 15s`, 'success');
+                        addLog(username, `🔥 Sniper: GATILHO Rank #${rankPos} -> [${symbol}] (+${change.toFixed(2)}%)`, 'success');
                         
                         const target = currentPrice * 1.004;
-                        addLog(username, `🔍 Audit: Monitorando Venda para ${symbol}. Alvo: $${target.toFixed(6)} (+0.4%)`, 'info');
+                        addLog(username, `🔍 Audit: Alvo Venda $${target.toFixed(6)}`, 'info');
                         
                         state.activePositions.push({ symbol, buyPrice: currentPrice, pending: true, targetPrice: target });
-                        await executeRealBuy(username, symbol, currentPrice);
+                        executeRealBuy(username, symbol, currentPrice).finally(() => {
+                            state.isBuying = false;
+                        });
                     }
-
                 }
             }
         }
 
-        // Lógica de Venda Individual: Alvo 0.4% (Conforme Nova Instrução)
+        // Lógica de Venda Individual: Alvo 0.4%
         const positionIndex = state.activePositions.findIndex(p => p.symbol === symbol && !p.pending && !p.selling);
         if (positionIndex !== -1) {
             const pos = state.activePositions[positionIndex];
-            const target = pos.buyPrice * 1.004; // Alvo exato de 0.4%
+            const target = pos.buyPrice * 1.004;
             if (currentPrice >= target) {
-                pos.selling = true; // Trava de segurança contra re-venda
-                addLog(username, `🎯 Sniper: ALVO 0.40% ATINGIDO -> [${symbol}] | Buy: ${pos.buyPrice} -> Now: ${currentPrice}`, 'sell');
+                pos.selling = true;
+                addLog(username, `🎯 Sniper: ALVO 0.40% ATINGIDO -> [${symbol}]`, 'sell');
                 await executeRealSell(username, symbol, 'TAKE_PROF_0.4');
             }
         }
-
-
-
     }
 }
 
-
 startBinanceWS();
+
 
 async function startMarketLoop() {
     try {
@@ -228,18 +233,19 @@ async function startMarketLoop() {
                 for (const pos of state.activePositions) {
                     if (pos.pending || pos.selling) continue;
                     
-                    // Busca preço ultra-fresco do cache global
-                    const ticker = globalMarket.top10.find(t => t.symbol === pos.symbol);
-                    if (ticker) {
+                    // Busca preço ultra-fresco no cache global de TODAS as moedas (Garante venda absoluta)
+                    const currentPrice = globalMarket.allTickersMap?.get(pos.symbol);
+                    if (currentPrice) {
                         const target = pos.buyPrice * 1.004;
-                        if (ticker.price >= target) {
+                        if (currentPrice >= target) {
                             pos.selling = true;
-                            addLog(username, `🎯 Sniper RE-CHECK: Alvo 0.4% Alcançado -> [${pos.symbol}] ($${ticker.price} >= $${target.toFixed(6)})`, 'sell');
+                            addLog(username, `🎯 Sniper RE-CHECK: Alvo 0.4% Alcançado -> [${pos.symbol}] ($${currentPrice} >= $${target.toFixed(6)})`, 'sell');
                             await executeRealSell(username, pos.symbol, 'REDUNDANT_LOOP_SELL');
                         }
                     }
                 }
             }
+
             if (state.isLoopActive) {
                 if (state.mode === 'ALFA_USDC') await runAlfaUSDCScanner(username);
                 else await runFluxoAlfaScanner(username);

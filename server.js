@@ -127,7 +127,7 @@ function startBinanceWS() {
             }))
             .filter(t => t.volume >= 1000000 && !symbolRules[t.symbol]?.blacklisted) // 1M+ Vol para capturar Top Gainers
             .filter(t => !['USDC','FDUSD','TUSD','DAI','EUR','TRY','BRL','PAXG'].some(stable => t.symbol.includes(stable)))
-            .sort((a,b) => b.change - a.change);
+            .sort((a,b) => b.change - a.change); 
 
         
         globalMarket.top10 = usdtValid.slice(0, 50);

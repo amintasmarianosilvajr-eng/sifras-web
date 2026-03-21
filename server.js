@@ -249,6 +249,7 @@ async function reinforceAlfaFromUSDC(username) {
 // ------------------------------------------------------------
 app.get('/', (req, res) => res.sendFile(path.join(process.cwd(), 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(process.cwd(), 'admin.html')));
+app.get('/operacional', (req, res) => res.sendFile(path.join(process.cwd(), 'operacional.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(process.cwd(), 'dashboard.html')));
 app.get('/painel_alfa', (req, res) => res.sendFile(path.join(process.cwd(), 'dashboard.html')));
 

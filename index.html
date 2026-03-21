@@ -1,131 +1,259 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa — Gateway de Acesso</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <style>
-        :root {
-            --bg-dark: #0a0a0a;
-            --cyber-blue: #ccff00;
-            --alert-red: #ff3366;
-            --text-main: #ffffff;
-            --glass-panel: rgba(18, 18, 18, 0.97);
-            --border-glow: rgba(204, 255, 0, 0.3);
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: radial-gradient(circle at 50% 0%, rgba(204, 255, 0, 0.07) 0%, transparent 70%), #111111;
-            color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-wrapper { width: 100%; max-width: 420px; padding: 20px; animation: fadeIn 0.5s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .logo-box { text-align: center; margin-bottom: 40px; }
-        .logo-text { font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 900; }
-        .logo-alfa { color: var(--cyber-blue); text-shadow: 0 0 20px rgba(204, 255, 0, 0.5); }
-        .logo-sub { color: #555; font-size: 0.8rem; letter-spacing: 3px; margin-top: 5px; text-transform: uppercase; }
-        .panel {
-            background: var(--glass-panel);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 35px;
-            box-shadow: 0 0 60px rgba(0,0,0,0.5), 0 0 30px rgba(204,255,0,0.03);
-        }
-        .panel-title { font-family: 'Orbitron', sans-serif; font-size: 1rem; color: var(--cyber-blue); margin-bottom: 25px; display: flex; align-items: center; gap: 10px; }
-        .input-group { margin-bottom: 20px; }
-        .input-group label { display: block; margin-bottom: 8px; color: #a0aab5; font-size: 0.85rem; }
-        .input-group input {
-            width: 100%; padding: 14px 16px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 8px; color: #fff;
-            font-family: 'Outfit', sans-serif; font-size: 1rem; outline: none; transition: 0.3s;
-        }
-        .input-group input:focus { border-color: var(--cyber-blue); box-shadow: 0 0 12px var(--border-glow); }
-        .btn-login {
-            width: 100%; padding: 15px;
-            background: rgba(204, 255, 0, 0.1);
-            color: var(--cyber-blue);
-            border: 1px solid var(--cyber-blue);
-            border-radius: 8px;
-            font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 1rem;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; margin-top: 5px;
-        }
-        .btn-login:hover { background: var(--cyber-blue); color: #000; box-shadow: 0 0 25px var(--border-glow); }
-        .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
-        .error-msg {
-            display: none;
-            background: rgba(255, 51, 102, 0.1);
-            border: 1px solid rgba(255, 51, 102, 0.4);
-            color: var(--alert-red);
-            padding: 12px; border-radius: 8px; font-size: 0.9rem; margin-top: 15px; text-align: center;
-        }
-        .error-msg.show { display: block; }
-        .footer-note { text-align: center; color: #333; font-size: 0.75rem; margin-top: 20px; }
-    </style>
-</head>
-<body>
-    <div class="login-wrapper">
-        <div class="logo-box">
-            <img src="logo.png" alt="Fluxo Alfa Logo" style="width: 120px; border-radius: 12px; box-shadow: 0 0 15px rgba(204,255,0,0.3); margin-bottom: 5px;">
-            <div class="logo-text" style="margin-top: 10px;">SIFRAS <span class="logo-alfa">ALFA</span></div>
-            <div class="logo-sub">CONTROLE DE SEGURANÇA</div>
-        </div>
-        <div class="panel">
-            <div class="panel-title"><i class="ph ph-shield-check"></i> Chave de Acesso Global</div>
-            <div class="input-group">
-                <label>Insira a chave para continuar</label>
-                <input type="password" id="inputGateway" placeholder="••••••••" autofocus>
-            </div>
-            <button class="btn-login" id="btnGateway" onclick="checkGateway()">
-                <i class="ph ph-key"></i> VALIDAR CHAVE
-            </button>
-            <div class="error-msg" id="errorGateway">
-                <i class="ph ph-warning"></i> Chave de acesso incorreta.
-            </div>
-        </div>
-        <div class="footer-note" style="color: #444; margin-top: 30px; letter-spacing: 0.5px;">
-            Fluxo Alfa - Um produto exclusivo Sifras Invest Financeiro LTDA<br>
-            CNPJ: 63.326.067/0001-30
-        </div>
+<!doctype html>
+<html lang="pt-BR" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Fluxo Alfa</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&amp;family=Share+Tech+Mono&amp;display=swap" rel="stylesheet">
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; }
+
+    .matrix-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.6; filter: blur(40px); }
+      50% { opacity: 1; filter: blur(60px); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes typeIn {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+
+    @keyframes blinkCaret {
+      0%, 100% { border-right-color: transparent; }
+      50% { border-right-color: #00ffc8; }
+    }
+
+    @keyframes hexSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes scanline {
+      0% { top: -10%; }
+      100% { top: 110%; }
+    }
+
+    .anim-slide-up {
+      animation: slideUp 0.8s ease-out forwards;
+      opacity: 0;
+    }
+
+    .anim-delay-1 { animation-delay: 0.3s; }
+    .anim-delay-2 { animation-delay: 0.6s; }
+    .anim-delay-3 { animation-delay: 0.9s; }
+    .anim-delay-4 { animation-delay: 1.2s; }
+    .anim-delay-5 { animation-delay: 1.5s; }
+
+    .hex-ring {
+      animation: hexSpin 20s linear infinite;
+    }
+    .hex-ring-reverse {
+      animation: hexSpin 30s linear infinite reverse;
+    }
+
+    .scanline-bar {
+      position: absolute;
+      left: 0; width: 100%; height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0,255,200,0.15), transparent);
+      animation: scanline 4s linear infinite;
+      pointer-events: none;
+    }
+
+    .glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      animation: pulseGlow 5s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      animation: pulseGlow 2s ease-in-out infinite;
+    }
+
+    .glass-card {
+      background: rgba(8, 12, 20, 0.65);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(0, 255, 200, 0.12);
+    }
+
+    .nb-symbol {
+      font-family: 'Share Tech Mono', monospace;
+      color: rgba(0, 255, 200, 0.06);
+      font-size: 14px;
+      position: absolute;
+      white-space: nowrap;
+      pointer-events: none;
+      user-select: none;
+    }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full overflow-auto" style="background: #060a10; font-family: 'Oxanium', sans-serif;"><!-- Matrix Rain Canvas -->
+  <canvas id="matrixCanvas" class="matrix-canvas"></canvas><!-- Ambient Glow Orbs -->
+  <div class="glow-orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(0,255,200,0.08),transparent);top:10%;left:-5%;"></div>
+  <div class="glow-orb" style="width:500px;height:500px;background:radial-gradient(circle,rgba(0,180,255,0.06),transparent);bottom:5%;right:-10%;animation-delay:2s;"></div>
+  <div class="glow-orb" style="width:300px;height:300px;background:radial-gradient(circle,rgba(140,80,255,0.05),transparent);top:50%;left:60%;animation-delay:3.5s;"></div><!-- Scanline -->
+  <div class="scanline-bar"></div><!-- Main Content -->
+  <div id="mainWrapper" class="relative z-10 w-full h-full flex items-center justify-center p-4 sm:p-8">
+   <div class="w-full max-w-2xl mx-auto"><!-- Hex Rings Decoration -->
+    <div class="relative flex justify-center mb-8 anim-slide-up">
+     <svg class="hex-ring" width="90" height="90" viewbox="0 0 90 90" fill="none"><polygon points="45,5 80,25 80,65 45,85 10,65 10,25" stroke="rgba(0,255,200,0.2)" stroke-width="1" fill="none" /> <polygon points="45,15 70,30 70,60 45,75 20,60 20,30" stroke="rgba(0,255,200,0.1)" stroke-width="0.5" fill="none" />
+     </svg>
+     <svg class="hex-ring-reverse absolute" width="130" height="130" viewbox="0 0 130 130" fill="none" style="top:-20px;"><polygon points="65,5 120,35 120,95 65,125 10,95 10,35" stroke="rgba(0,180,255,0.1)" stroke-width="0.5" fill="none" />
+     </svg>
+     <div class="absolute flex items-center justify-center" style="top:50%;left:50%;transform:translate(-50%,-50%);"><i data-lucide="hexagon" style="width:36px;height:36px;color:rgba(0,255,200,0.7);"></i>
+     </div>
+    </div><!-- Glass Card -->
+    <div class="glass-card rounded-2xl p-8 sm:p-12 text-center relative overflow-hidden"><!-- Top Status Bar -->
+     <div class="anim-slide-up anim-delay-1 flex items-center justify-center gap-2 mb-6">
+      <div class="status-dot" id="statusDot" style="background:#00ffc8;box-shadow:0 0 10px #00ffc8;"></div><span id="statusText" class="text-xs tracking-widest uppercase" style="color:#00ffc8;font-family:'Share Tech Mono',monospace;">Sistema ativo • Núcleo estável</span>
+     </div><!-- Welcome Label -->
+     <div class="anim-slide-up anim-delay-2 mb-3"><span id="welcomeText" class="text-sm sm:text-base tracking-[0.3em] uppercase" style="color:rgba(0,180,255,0.8);font-family:'Share Tech Mono',monospace;">⟡ Bem-vindo ao núcleo operacional ⟡</span>
+     </div><!-- Main Title -->
+     <h1 id="systemTitle" class="anim-slide-up anim-delay-2 text-3xl sm:text-5xl font-bold tracking-tight mb-2" style="color:#e8f0ff;text-shadow:0 0 30px rgba(0,255,200,0.2);">Sistema Fluxo Alfa</h1><!-- Subtitle -->
+     <h2 id="systemSubtitle" class="anim-slide-up anim-delay-3 text-lg sm:text-xl font-light tracking-[0.15em] uppercase mb-8" style="color:rgba(0,255,200,0.7);">Operacional Não Binário</h2><!-- Divider -->
+     <div class="anim-slide-up anim-delay-3 flex items-center justify-center gap-3 mb-8">
+      <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,rgba(0,255,200,0.4));"></div><i data-lucide="diamond" style="width:12px;height:12px;color:rgba(0,255,200,0.5);"></i>
+      <div style="width:60px;height:1px;background:linear-gradient(90deg,rgba(0,255,200,0.4),transparent);"></div>
+     </div><!-- Info Cards -->
+     <div class="anim-slide-up anim-delay-4 grid grid-cols-3 gap-3 sm:gap-4 mb-8">
+      <div class="rounded-xl p-3 sm:p-4" style="background:rgba(0,255,200,0.04);border:1px solid rgba(0,255,200,0.08);"><i data-lucide="activity" style="width:20px;height:20px;color:#00ffc8;margin:0 auto 6px;display:block;"></i>
+       <div class="text-xs uppercase tracking-wider" style="color:rgba(0,255,200,0.5);font-family:'Share Tech Mono',monospace;">
+        Fluxo
+       </div>
+       <div class="text-sm font-semibold mt-1" style="color:#e8f0ff;">
+        Ternário
+       </div>
+      </div>
+      <div class="rounded-xl p-3 sm:p-4" style="background:rgba(0,180,255,0.04);border:1px solid rgba(0,180,255,0.08);"><i data-lucide="cpu" style="width:20px;height:20px;color:#00b4ff;margin:0 auto 6px;display:block;"></i>
+       <div class="text-xs uppercase tracking-wider" style="color:rgba(0,180,255,0.5);font-family:'Share Tech Mono',monospace;">
+        Núcleo
+       </div>
+       <div class="text-sm font-semibold mt-1" style="color:#e8f0ff;">
+        Quântico
+       </div>
+      </div>
+      <div class="rounded-xl p-3 sm:p-4" style="background:rgba(140,80,255,0.04);border:1px solid rgba(140,80,255,0.08);"><i data-lucide="shield-check" style="width:20px;height:20px;color:#8c50ff;margin:0 auto 6px;display:block;"></i>
+       <div class="text-xs uppercase tracking-wider" style="color:rgba(140,80,255,0.5);font-family:'Share Tech Mono',monospace;">
+        Modo
+       </div>
+       <div class="text-sm font-semibold mt-1" style="color:#e8f0ff;">
+        Protegido
+       </div>
+      </div>
+     </div><!-- Terminal Line -->
+     <div class="anim-slide-up anim-delay-5 rounded-lg p-3 text-left" style="background:rgba(0,0,0,0.4);border:1px solid rgba(0,255,200,0.08);">
+      <div class="flex items-center gap-2" style="font-family:'Share Tech Mono',monospace;font-size:12px;color:rgba(0,255,200,0.6);"><span style="color:#00ffc8;">▸</span> <span id="terminalText">inicializando fluxo_alfa.nb :: base_ternária ativa :: protocolo_Ψ carregado</span> <span class="inline-block w-2 h-4 ml-1" style="background:#00ffc8;animation:blinkCaret 1s step-end infinite;"></span>
+      </div>
+     </div><!-- BOTÃO DE ACESSO -->
+     <div class="anim-slide-up anim-delay-5 mt-8 mb-2">
+      <a href="/gateway.html" class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border border-[#00ffc8] text-[#00ffc8] tracking-[0.2em] uppercase font-bold text-sm transition-all hover:bg-[rgba(0,255,200,0.15)] hover:shadow-[0_0_20px_rgba(0,255,200,0.4)] hover:scale-105" style="text-decoration: none;">
+        <i data-lucide="scan-line" style="width:18px;height:18px;"></i> INICIAR CADASTRO SEGURO
+      </a>
+     </div><!-- Corner Decorations -->
+     <div class="absolute top-3 left-3 w-4 h-4" style="border-top:1px solid rgba(0,255,200,0.3);border-left:1px solid rgba(0,255,200,0.3);"></div>
+     <div class="absolute top-3 right-3 w-4 h-4" style="border-top:1px solid rgba(0,255,200,0.3);border-right:1px solid rgba(0,255,200,0.3);"></div>
+     <div class="absolute bottom-3 left-3 w-4 h-4" style="border-bottom:1px solid rgba(0,255,200,0.3);border-left:1px solid rgba(0,255,200,0.3);"></div>
+     <div class="absolute bottom-3 right-3 w-4 h-4" style="border-bottom:1px solid rgba(0,255,200,0.3);border-right:1px solid rgba(0,255,200,0.3);"></div>
+    </div><!-- Footer -->
+    <div class="anim-slide-up anim-delay-5 text-center mt-6"><span class="text-xs tracking-widest uppercase" style="color:rgba(0,255,200,0.25);font-family:'Share Tech Mono',monospace;"> fluxo.alfa.v3.7 :: camada_não_binária </span>
     </div>
-    <script>
-        document.getElementById('inputGateway').addEventListener('keydown', (e) => { if (e.key === 'Enter') checkGateway(); });
+   </div>
+  </div>
+  <script>
+    // Non-binary matrix rain
+    const canvas = document.getElementById('matrixCanvas');
+    const ctx = canvas.getContext('2d');
 
-        async function checkGateway() {
-            const accessKey = document.getElementById('inputGateway').value;
-            const btn = document.getElementById('btnGateway');
-            const errorMsg = document.getElementById('errorGateway');
-            if (!accessKey) return;
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
-            btn.disabled = true;
-            errorMsg.classList.remove('show');
+    // Non-binary symbols: ternary digits, special glyphs, quantum notation
+    const symbols = ['0','1','2','Ψ','Δ','Ω','Σ','λ','π','∞','◊','⟐','⟡','∇','⊕','⊗','⟨','⟩','α','β','γ','τ','φ','ξ','3','4','5','6','7','8','9','A','B','C','D','E','F','±','≈','≠','∴'];
 
-            try {
-                const res = await fetch('/gateway', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ accessKey })
-                });
-                if (res.ok) {
-                    sessionStorage.setItem('gatewayOk', 'true');
-                    window.location.href = '/dashboard';
-                } else {
-                    errorMsg.classList.add('show');
-                }
-            } catch (e) {
-                errorMsg.innerHTML = 'Erro de conexão com o servidor.';
-                errorMsg.classList.add('show');
-            }
-            btn.disabled = false;
+    const fontSize = 14;
+    let columns = Math.floor(canvas.width / fontSize);
+    let drops = new Array(columns).fill(1);
+    let speeds = [];
+    let colors = [];
+
+    function initColumns() {
+      columns = Math.floor(canvas.width / fontSize);
+      drops = [];
+      speeds = [];
+      colors = [];
+      for (let i = 0; i < columns; i++) {
+        drops.push(Math.random() * -100);
+        speeds.push(0.3 + Math.random() * 0.7);
+        const r = Math.random();
+        if (r < 0.6) colors.push([0, 255, 200]);
+        else if (r < 0.85) colors.push([0, 180, 255]);
+        else colors.push([140, 80, 255]);
+      }
+    }
+    initColumns();
+    window.addEventListener('resize', initColumns);
+
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(6, 10, 16, 0.08)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < drops.length; i++) {
+        const sym = symbols[Math.floor(Math.random() * symbols.length)];
+        const [r, g, b] = colors[i];
+        const alpha = 0.15 + Math.random() * 0.25;
+        ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+        ctx.font = `${fontSize}px 'Share Tech Mono', monospace`;
+        ctx.fillText(sym, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.98) {
+          drops[i] = 0;
         }
-    </script>
+        drops[i] += speeds[i];
+      }
+      requestAnimationFrame(drawMatrix);
+    }
+    drawMatrix();
+
+    // Terminal text cycling
+    const terminalLines = [
+      'inicializando fluxo_alfa.nb :: base_ternária ativa :: protocolo_Ψ carregado',
+      'verificando camadas quânticas :: integridade 99.7% :: sem anomalias',
+      'sincronizando núcleos não-binários :: Ψ₁ ↔ Ψ₂ :: coerência estável',
+      'mapeando estados ternários :: {0,1,2,Ψ} :: superposição confirmada',
+      'fluxo de dados: 2.4Tb/s :: latência: 0.003ms :: canal seguro ativo',
+      'protocolo_Ω em execução :: criptografia pós-quântica :: nível máximo',
+    ];
+    let lineIdx = 0;
+    const termEl = document.getElementById('terminalText');
+
+    setInterval(() => {
+      lineIdx = (lineIdx + 1) % terminalLines.length;
+      if (termEl) termEl.textContent = terminalLines[lineIdx];
+    }, 4000);
+
+    lucide.createIcons();
+  </script>
 </body>
 </html>

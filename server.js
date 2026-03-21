@@ -323,15 +323,38 @@ async function binanceRequest(username, endpoint, method = 'GET', params = {}) {
 
 async function executeRealBuy(username, symbol, price) {
     const state = userStates.get(username);
-    addLog(username, `🛒 Sniper: COMPRA EXECUTADA [${symbol}] a $${price.toFixed(6)} | Alvo: 0.4%`, 'buy');
     
-    // Calcula quantidade baseada em $20 de capital (mínimo seguro)
+    // Verifica saldo real de USDT antes da compra
+    const account = await binanceRequest(username, '/api/v3/account');
+    if (account.error) {
+        addLog(username, `❌ Erro ao consultar saldo para compra: ${account.msg}`, 'error');
+        state.activePositions = state.activePositions.filter(p => p.symbol !== symbol);
+        return;
+    }
+
+    const usdtBal = parseFloat(account.balances.find(b => b.asset === 'USDT')?.free || 0);
+    let amountToBuy = 20; // Padrão
+
+    if (usdtBal < 11) {
+        addLog(username, `❌ Saldo insuficiente ($${usdtBal.toFixed(2)} USDT). Mínimo Binance é ~$11.`, 'error');
+        state.activePositions = state.activePositions.filter(p => p.symbol !== symbol);
+        return;
+    }
+
+    if (usdtBal < 20) {
+        amountToBuy = usdtBal * 0.98; // Usa 98% do saldo se tiver menos que $20 (margem para taxas)
+        addLog(username, `⚠️ Saldo reduzido: Ajustando compra para $${amountToBuy.toFixed(2)} USDT`, 'info');
+    }
+
+    addLog(username, `🛒 Sniper: COMPRA EXECUTADA [${symbol}] | Valor: $${amountToBuy.toFixed(2)}`, 'buy');
+    
     const res = await binanceRequest(username, '/api/v3/order', 'POST', { 
         symbol, 
         side: 'BUY', 
         type: 'MARKET', 
-        quoteOrderQty: '20' 
+        quoteOrderQty: amountToBuy.toFixed(2) 
     });
+
 
     
     if (res.error) {

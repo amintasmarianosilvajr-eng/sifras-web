@@ -532,17 +532,62 @@ app.post('/stop', requireAuth, (req, res) => {
 
 // ENDPOINTS ADMIN
 app.get('/admin/overview', (req, res) => {
-    const list = Array.from(userStates.entries()).map(([username, state]) => ({
-        username,
-        status: state.isLoopActive ? 'OPERANDO' : 'OFFLINE',
-        isApproved: true,
-        activePositions: state.activePositions,
-        balanceUSDT: state.balanceUSDT,
-        totalProfitPct: state.totalProfitPct,
-        logsCount: state.logs.length,
-        isLoopActive: state.isLoopActive
-    }));
-    res.json({ users: list });
+    const list = Array.from(userStates.entries()).map(([username, state]) => {
+        const topPos = state.activePositions?.[0] || {};
+        return {
+            username,
+            status: state.isLoopActive ? (state.activePositions?.length > 0 ? 'IN_TRADE' : 'SCANNING') : 'OFFLINE',
+            isApproved: state.isApproved !== false,
+            activePositions: state.activePositions || [],
+            balanceUSDT: state.balanceUSDT || 0,
+            totalProfitPct: state.totalProfitPct || 0,
+            liquidPnlPool: state.liquidPnlPool || 0,
+            realizedProfitBRL: state.realizedProfitBRL || 0,
+            salesCount: state.salesCount || 0,
+            activeSymbol: topPos.symbol || '---',
+            buyPrice: topPos.buyPrice || 0,
+            currentPrice: tickerHistory[topPos.symbol]?.slice(-1)[0]?.p || topPos.buyPrice || 0,
+            targetPrice: topPos.targetPrice || 0,
+            buyAmountUSDT: topPos.buyAmountUSDT || 0,
+            currentStep: state.mode || 'ALFA_USDT',
+            isLoopActive: state.isLoopActive
+        };
+    });
+    res.json({ 
+        users: list,
+        globalLatency: globalMarket.lastLatency,
+        serverUptime: Math.floor((Date.now() - serverStartTime) / 1000),
+        serverIp: 'Nuclear/Railway'
+    });
+});
+
+app.post('/admin/approve-user', (req, res) => {
+    const { targetUser } = req.body;
+    const state = userStates.get(targetUser);
+    if (state) {
+        state.isApproved = true;
+        saveUserState(targetUser);
+        res.json({ success: true });
+    } else res.status(404).json({ error: 'Faltando dados' });
+});
+
+app.post('/admin/anti-restart', (req, res) => {
+    const { targetUser } = req.body;
+    const state = userStates.get(targetUser);
+    if (state) {
+        state.activePositions = [];
+        state.status = 'SCANNING';
+        saveUserState(targetUser);
+        res.json({ success: true });
+    } else res.status(404).json({ error: 'Faltando dados' });
+});
+
+app.post('/admin/delete-user', (req, res) => {
+    const { targetUser } = req.body;
+    const userFile = path.join(DATA_DIR, `trade_${targetUser.toLowerCase()}.json`);
+    if (fs.existsSync(userFile)) fs.unlinkSync(userFile);
+    userStates.delete(targetUser.toLowerCase());
+    res.json({ success: true });
 });
 
 app.post('/admin/stop-user', (req, res) => {
@@ -570,5 +615,8 @@ app.post('/admin/stop-all', (req, res) => {
     res.json({ success: true, count });
 });
 
+app.post('/admin/change-password', (req, res) => res.json({ success: true }));
+
 const PORT = process.env.PORT || 3014;
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 ALFA USDC MASTER ELITE V1.0 na Porta ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 ALFA MASTER PRO na Porta ${PORT}`));
+

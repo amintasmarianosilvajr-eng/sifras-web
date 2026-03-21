@@ -84,12 +84,12 @@ async function fetchExchangeInfo() {
     try {
         const res = await axios.get('https://api.binance.com/api/v3/exchangeInfo');
         res.data.symbols.forEach(s => {
+            const isMonitoring = s.tags?.includes('monitoring') || s.tags?.includes('seed');
+            const isFanToken = ['PSG','BAR','ACM','CITY','ASR','LAZIO','PORTO','SANTOS','ALPINE','OG','JUV','LAZIO'].some(t => s.symbol.startsWith(t));
+            const isDelisting = s.status !== 'TRADING' || s.tags?.includes('delisting') || s.tags?.includes('break');
+            
             const lot = s.filters.find(f => f.filterType === 'LOT_SIZE');
             const notional = s.filters.find(f => f.filterType === 'NOTIONAL' || f.filterType === 'MIN_NOTIONAL' || f.filterType === 'QUOTE_ORDER_QTY_MARKET_ALLOWED');
-            
-            const isMonitoring = s.permissions?.includes('LEVERAGED') === false && s.tags?.includes('monitoring');
-            const isFanToken = ['PSG','BAR','ACM','CITY','ASR','LAZIO','PORTO','SANTOS','ALPINE','OG','JUV'].some(t => s.symbol.startsWith(t));
-            const isDelisting = s.status !== 'TRADING' || s.tags?.includes('delisting');
 
             if (lot) {
                 const stepSize = parseFloat(lot.stepSize);
@@ -101,7 +101,7 @@ async function fetchExchangeInfo() {
                 };
             }
         });
-        console.log("✅ Filtros de Segurança Mapeados (Monitoring/Fans/Delist)");
+        console.log("✅ Filtros Sniper: Seed/Monitoring/Fans/Delist (100% Spot Pair)");
     } catch (e) {
         console.error("❌ Erro ExchangeInfo:", e.message);
     }
@@ -110,46 +110,39 @@ fetchExchangeInfo();
 
 function startBinanceWS() {
     if (binanceWS) binanceWS.terminate();
-    // !ticker@arr fornece volume e variação 24h em tempo real
     binanceWS = new WebSocket('wss://stream.binance.com:9443/ws/!ticker@arr');
 
     binanceWS.on('message', (data) => {
         const tickers = JSON.parse(data);
         const now = Date.now();
         
-        // 1. Atualiza Rank Global Interno para Gatilhos (Performance: Filtro Rápido)
+        // PAREAMENTO FIEL AO RANKING SPOT BINANCE
         const usdtValid = tickers
             .filter(t => t.s.endsWith('USDT'))
             .map(t => ({
                 symbol: t.s,
                 price: parseFloat(t.c),
                 change: parseFloat(t.P),
-                volume: parseFloat(t.q) // Quote volume (USDT)
+                volume: parseFloat(t.q)
             }))
-            .filter(t => t.volume >= 30000000 && !symbolRules[t.symbol]?.blacklisted) // Volume > 30M e sem Monitoring/Fans
+            .filter(t => t.volume >= 30000000 && !symbolRules[t.symbol]?.blacklisted)
+            .filter(t => !['USDC','FDUSD','TUSD','DAI','EUR','TRY','BRL','PAXG'].some(stable => t.symbol.includes(stable))) // Remove Stable/FIAT
             .sort((a,b) => b.change - a.change);
         
-        globalMarket.top10 = usdtValid.slice(0, 50); // Mantemos até o 50 para garantir margem
+        globalMarket.top10 = usdtValid.slice(0, 50);
         
-        // 2. Processa Gatilhos Individuais
         tickers.forEach(t => {
             const symbol = t.s;
             const price = parseFloat(t.c);
-            
-            // Somente moedas no Top 50 interessam ao motor
             if (globalMarket.top10.some(c => c.symbol === symbol)) {
                 if (!tickerHistory[symbol]) tickerHistory[symbol] = [];
                 tickerHistory[symbol].push({ t: now, p: price });
-                
-                // Cleanup apenas se necessário (intervalado ou por tamanho)
-                if (tickerHistory[symbol].length > 40) {
-                    tickerHistory[symbol] = tickerHistory[symbol].filter(h => now - h.t <= 20000);
-                }
-                
+                if (tickerHistory[symbol].length > 40) tickerHistory[symbol] = tickerHistory[symbol].filter(h => now - h.t <= 20000);
                 checkTriggers(symbol, price, now);
             }
         });
     });
+
 
     binanceWS.on('error', () => setTimeout(startBinanceWS, 5000));
     binanceWS.on('close', () => setTimeout(startBinanceWS, 5000));
@@ -182,7 +175,7 @@ async function checkTriggers(symbol, currentPrice, now) {
 
                     if (change >= 0.2) {
                         const rankPos = globalMarket.top10.findIndex(c => c.symbol === symbol) + 1;
-                        addLog(username, `🚀 GATILHO COMPRA (RANK #${rankPos}): ${symbol} +${change.toFixed(2)}% em 20s`, 'success');
+                        addLog(username, `🔥 Sniper: COMPRA EXECUTADA Rank #${rankPos} -> [${symbol}] +${change.toFixed(2)}% em 20s`, 'success');
                         state.activePositions.push({ symbol, buyPrice: currentPrice, pending: true });
                         await executeRealBuy(username, symbol, currentPrice);
                     }
@@ -190,16 +183,17 @@ async function checkTriggers(symbol, currentPrice, now) {
             }
         }
 
-        // Lógica de Venda Individual: Alvo 0.4%
+        // Lógica de Venda Individual: Alvo 1.5% (Margem de Segurança)
         const positionIndex = state.activePositions.findIndex(p => p.symbol === symbol && !p.pending);
         if (positionIndex !== -1) {
             const pos = state.activePositions[positionIndex];
-            const target = pos.buyPrice * 1.004; // 0.4% conforme instrução
+            const target = pos.buyPrice * 1.015; // 1.5% para compensar taxas/latência
             if (currentPrice >= target) {
-                addLog(username, `🎯 ALVO 0.4% ATINGIDO: Vendendo ${symbol}`, 'sell');
-                await executeRealSell(username, symbol, 'TAKE_PROF_0.4');
+                addLog(username, `💰 Sniper: VENDA NO ALVO -> [${symbol}] atingiu +1.50% lucro`, 'sell');
+                await executeRealSell(username, symbol, 'TAKE_PROF_1.5');
             }
         }
+
     }
 }
 

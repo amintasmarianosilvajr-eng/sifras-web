@@ -343,11 +343,15 @@ async function executeRealBuy(username, symbol, price) {
 }
 
 async function executeRealSell(username, symbol, reason) {
+    const state = userStates.get(username);
+    if (!state) return false;
+
     // Antes de vender, busca o saldo real do ativo para descontar taxas (ex: 0.1% taker)
     const asset = symbol.replace('USDT', '');
     const account = await binanceRequest(username, '/api/v3/account');
     
     const pos = state.activePositions.find(p => p.symbol === symbol);
+
     let sellQty = 0;
     
     if (!account.error) {

@@ -311,17 +311,17 @@
                 activeList.innerHTML = '<p class="text-gray-600 text-center text-[0.6rem] py-8 italic uppercase animate-pulse">Monitorando Ranks Pares...</p>';
             }
 
-            // Logs
+            // Logs: NEWS FIRST (Mais recentes no Topo)
             if (data.logs && data.logs.length > 0) {
                 const logEl = document.getElementById('logConsole');
-                logEl.innerHTML = data.logs.slice(-50).map(l => {
+                logEl.innerHTML = [...data.logs].reverse().slice(0, 50).map(l => {
                     let col = 'text-gray-500';
                     if (l.type === 'success' || l.type === 'buy') col = 'text-white border-l border-white/20 pl-2 bg-white/5';
                     if (l.type === 'sell') col = 'text-[#00ffc8] font-bold bg-[#00ffc8]/5 pl-2';
                     return `<div class="mb-1 py-1 ${col}">[${l.time}] ${l.msg}</div>`;
                 }).join('');
-                logEl.scrollTop = logEl.scrollHeight;
             }
+
         }
 
         async function validateAPI() {

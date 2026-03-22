@@ -618,6 +618,7 @@ async function emergencyStop() {
     
     updateCycleUI();
     addLog(`✅ SISTEMA PARADO. Ciclo resetado. Reinicie o monitoramento quando quiser.`, 'system');
+    updateMasterToggleUI(false); // Stop
 }
 
 function updateCycleUI() {
@@ -715,6 +716,7 @@ function toggleMonitoring(id) {
         btn.textContent = 'INICIAR MONITORAMENTO'; btn.classList.remove('on');
         addLog(`[SISTEMA] Monitoramento do Terminal ${id} Suspenso.`, 'system');
     }
+    updateMasterToggleUI(activeSlots[id].monitoring);
 }
 
 function disconnectSlot(id) {
@@ -734,6 +736,7 @@ function disconnectSlot(id) {
         headerPnl.textContent = 'Aguardando...';
         headerPnl.style.color = 'var(--text-muted)';
     }
+    updateMasterToggleUI(false); // Disconnect
 }
 
 function updateUI(ranking) {
@@ -854,5 +857,49 @@ async function syncBinanceBalance() {
         }
     } catch (e) {
         console.error("Erro ao sincronizar Saldo Estimado:", e);
+    }
+}
+
+
+function masterToggle() {
+    const slot1 = activeSlots[1];
+    
+    // Se o motor já está rodando (Monitoramento ativo ou Trade ativo)
+    if (slot1.monitoring || currentTrade) {
+        addLog('[COMANDO_MESTRE] Iniciando protocolo de interrupção...', 'system');
+        emergencyStop(); // Já desliga tudo e zera variáveis
+    } else {
+        // Se estiver desligado -> Ligar
+        addLog('[COMANDO_MESTRE] Energizando núcleo principal...', 'system');
+        
+        // 1. Validar e Conectar (se não conectado)
+        if (!slot1.connected) {
+            connectSlot(1);
+        }
+        
+        // 2. Se a conexão passou, habilita monitoramento
+        if (activeSlots[1].connected) {
+            if (!activeSlots[1].monitoring) toggleMonitoring(1);
+        } else {
+            addLog('⚠️ Impossível conectar. Verifique Chaves API no Slot Inferior.', 'error');
+        }
+    }
+}
+
+function updateMasterToggleUI(isMonitoring) {
+    const btn = document.getElementById('master-toggle-btn');
+    if (!btn) return;
+    if (isMonitoring) {
+        btn.innerHTML = 'DESCONECTAR';
+        btn.style.background = 'rgba(255,77,77,0.15)';
+        btn.style.borderColor = 'var(--danger)';
+        btn.style.color = 'var(--danger)';
+        btn.style.animation = 'blink 1.5s infinite';
+    } else {
+        btn.innerHTML = 'CONECTAR';
+        btn.style.background = 'rgba(0,255,136,0.15)';
+        btn.style.borderColor = 'var(--accent-green)';
+        btn.style.color = 'var(--accent-green)';
+        btn.style.animation = 'none';
     }
 }

@@ -70,18 +70,18 @@
                             style="font-size: 0.85rem; font-weight: 700; color: var(--accent-green);"> CICLO:
                             <strong>0</strong> / 10 operações</span>
                     </div>
-                    <button onclick="emergencyStop()" style="
-                        background: rgba(255,77,77,0.15);
-                        border: 2px solid var(--danger);
-                        color: var(--danger);
+                    <button id="master-toggle-btn" onclick="masterToggle()" style="
+                        background: rgba(0,255,136,0.15);
+                        border: 2px solid var(--accent-green);
+                        color: var(--accent-green);
                         padding: 10px 20px;
                         border-radius: 12px;
                         font-weight: 800;
                         font-size: 0.85rem;
                         cursor: pointer;
-                        animation: blink 1.5s infinite;
                         letter-spacing: 1px;
-                    "> STOP GERAL</button>
+                        transition: all 0.3s ease;
+                    "> CONECTAR</button>
                 </div>
             </header>
 

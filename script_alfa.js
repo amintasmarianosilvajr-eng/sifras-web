@@ -67,11 +67,10 @@ function loadSavedData() {
             activeSlots[id].secret = data.secret;
             activeSlots[id].clientName = data.name;
             
-            // Auto Memorização e Auto-Conexão
+            // Auto Memorização Apenas Visual (Auto-Conexão Removida a pedido do usuário)
             if (data.key && data.secret) {
                 setTimeout(() => {
-                    connectSlot(id);
-                    addLog('[SISTEMA] Credenciais Operacionais recuperadas da base.', 'system');
+                    addLog('[SISTEMA] Credenciais Operacionais preenchidas. Aguardando conexão manual do usuário.', 'system');
                 }, 800);
             }
         }
@@ -726,7 +725,7 @@ function disconnectSlot(id) {
     const actBtn = document.getElementById(`activate-${id}`);
     actBtn.classList.add('disabled'); actBtn.classList.remove('on');
     const connBtn = document.querySelector(`#slot-${id} .btn-connect`);
-    connBtn.textContent = 'CONECTAR SLOT'; connBtn.onclick = () => connectSlot(id);
+    connBtn.textContent = '1. CONECTAR'; connBtn.onclick = () => connectSlot(id);
     
     // Reseta o header visual
     const headerPnl = document.getElementById('header-realtime-pnl');
@@ -872,16 +871,15 @@ function masterToggle() {
         // Se estiver desligado -> Ligar
         addLog('[COMANDO_MESTRE] Energizando núcleo principal...', 'system');
         
-        // 1. Validar e Conectar (se não conectado)
+        // 1. Validar Conexão Previa
         if (!slot1.connected) {
-            connectSlot(1);
+            addLog('⚠️ Impossível iniciar: Por favor, clique no botão "1. CONECTAR" na aba inferior para autenticar suas chaves primeiro.', 'error');
+            return;
         }
         
         // 2. Se a conexão passou, habilita monitoramento
-        if (activeSlots[1].connected) {
-            if (!activeSlots[1].monitoring) toggleMonitoring(1);
-        } else {
-            addLog('⚠️ Impossível conectar. Verifique Chaves API no Slot Inferior.', 'error');
+        if (!slot1.monitoring) {
+            toggleMonitoring(1);
         }
     }
 }

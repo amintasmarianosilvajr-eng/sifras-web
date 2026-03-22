@@ -1,4 +1,47 @@
-/* ======== OFFCIAL FLUXO ALFA LOGO PALETTE ======== */
+const fs = require('fs');
+const path = require('path');
+
+const dir = 'c:\\Users\\user\\Desktop\\Sifras_Web';
+const files = fs.readdirSync(dir);
+const htmlFiles = files.filter(f => f.endsWith('.html'));
+
+// PALETA OFICIAL DO LOGO "FLUXO ALFA"
+// Fundo: Azul Marinho Muito Profundo (#060B19 a #0C152B)
+// Acento Principal: Verde Lima Translúcido (#90C23A)
+// Acento Secundário: Verde Musgo/Esmeralda (#4D9127)
+// Tons Neutros/Letras: Prata Metálico/Slate (#D9DFE3 / #9CA3AF)
+
+htmlFiles.forEach(file => {
+    const fullPath = path.join(dir, file);
+    let content = fs.readFileSync(fullPath, 'utf8');
+    
+    // Substituir as cores da versão Luxo/Marrom pelas Cores da Logo no Tailwind (Dashboard e Admin)
+    if (file === 'dashboard.html' || file === 'admin.html') {
+        const replacements = [
+            { old: /--bg-deep: #734E20;/g, new: '--bg-deep: #060B19;' },                 // Dark Navy
+            { old: /--accent-cyan: #F2D64B;/g, new: '--accent-cyan: #90C23A;' },         // Lime Green
+            { old: /--accent-emerald: #BAD9D3;/g, new: '--accent-emerald: #4D9127;' },   // Dark Green
+            { old: /--accent-ruby: #D9A648;/g, new: '--accent-ruby: #9CA3AF;' },         // Silver/Slate
+            { old: /--glass-bg: #8AA6A3;/g, new: '--glass-bg: #111A2E;' },               // Card Navy
+            { old: /--glass-border: #D9A648;/g, new: '--glass-border: rgba(144, 194, 58, 0.4);' }, // Green Border
+            { old: /text-\[#734E20\]/g, new: 'text-[#D9DFE3]' }, // Correção de contrastes (Marrom pra Prata)
+            { old: /text-\[#D9A648\]/g, new: 'text-[#90C23A]' }, // Bronze pra Verde Lima
+            { old: /text-\[#BAD9D3\]/g, new: 'text-[#FFFFFF]' }, // Menta pra Branco
+            { old: /bg-\[#BAD9D3\]\/10/g, new: 'bg-[#90C23A]/10' }, // Fundos menta para Fundos Lima translúcidos
+            { old: /border-\[#D9A648\]\/30/g, new: 'border-[#90C23A]/30' }, // Bordas bronze para Verde Lima
+            { old: /background: #734E20;/g, new: 'background: #060B19;' } // Fundo pesado para Navy
+        ];
+
+        replacements.forEach(r => content = content.replace(r.old, r.new));
+    }
+    
+    fs.writeFileSync(fullPath, content);
+});
+
+// Refatorar o CSS Puro (style_alfa.css) do zero para refletir a logo
+const cssPath = path.join(dir, 'style_alfa.css');
+if (fs.existsSync(cssPath)) {
+    const cssContent = `/* ======== OFFCIAL FLUXO ALFA LOGO PALETTE ======== */
 :root {
     --bg-dark: #060B19;            /* Deep Navy Background */
     --sidebar-bg: #0A1121;         /* Slightly lighter Navy */
@@ -376,3 +419,8 @@ h1, h2, h3, .logo-text, .badge, .btn-stop, .btn-secondary, .btn-activate, .btn-c
 .rank-item .change { color: var(--primary); font-weight: 800; }
 
 @keyframes pulse { 0% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0.6; transform: scale(1); } }
+`;
+    fs.writeFileSync(cssPath, cssContent);
+}
+
+console.log('Paleta da Logomarca Fluxo Alfa aplicada!');

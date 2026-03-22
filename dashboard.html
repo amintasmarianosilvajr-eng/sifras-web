@@ -11,12 +11,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-deep: #05080c;
-            --accent-cyan: #00f5ff;
-            --accent-emerald: #00ff9f;
-            --accent-ruby: #ff2a6d;
-            --glass-bg: rgba(10, 15, 25, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.05);
+            --bg-deep: #060B19;
+            --accent-cyan: #90C23A;
+            --accent-emerald: #4D9127;
+            --accent-ruby: #9CA3AF;
+            --glass-bg: #111A2E;
+            --glass-border: rgba(144, 194, 58, 0.4);
             --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
         }
 
@@ -126,7 +126,7 @@
 
         .telemetry-progress {
             height: 40px;
-            background: rgba(0, 0, 0, 0.5);
+            background: #060B19;
             border-radius: 12px;
             overflow: hidden;
             position: relative;
@@ -210,7 +210,7 @@
                 <div class="absolute inset-0 bg-accent-cyan/20 blur-3xl rounded-full"></div>
                 <img src="logo.png" alt="Logo" class="relative z-10 w-full h-full rounded-3xl shadow-2xl">
             </div>
-            <h2 class="text-4xl font-black italic uppercase tracking-tighter text-white">Target Atingido!</h2>
+            <h2 class="text-4xl font-black italic uppercase tracking-tighter text-[#FFFFFF]">Target Atingido!</h2>
             <p class="text-accent-cyan font-bold tracking-[0.3em] uppercase mt-4">Sniper Elite Operando com Sucesso</p>
         </div>
     </div>
@@ -224,29 +224,29 @@
                 <div>
                     <h1 class="text-lg font-black uppercase italic tracking-tight">Sifras <span class="text-accent-cyan">Master Pro</span></h1>
                     <div class="flex items-center gap-2 mt-0.5">
-                        <span class="text-[0.6rem] text-slate-500 font-bold tracking-widest uppercase mono">Algoritmo Sniper v4.2</span>
+                        <span class="text-[0.6rem] text-[#D9DFE3] font-bold tracking-widest uppercase mono">Algoritmo Sniper v4.2</span>
                         <div class="w-1 h-1 rounded-full bg-slate-700"></div>
                         <span class="text-[0.6rem] text-accent-emerald font-bold tracking-widest uppercase mono">Nuvem 24h</span>
                     </div>
                 </div>
             </div>
 
-            <nav class="hidden lg:flex items-center gap-4 bg-white/5 p-1 rounded-xl border border-white/5">
+            <nav class="hidden lg:flex items-center gap-4 bg-[#90C23A]/10 p-1 rounded-xl border border-[#90C23A]/30">
                 <a href="/dashboard"
-                    class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20">📋
+                    class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20">
                     Monitoramento</a>
                 <a href="/operacional"
-                    class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase text-slate-400 hover:text-white hover:bg-white/5 transition-all">🛰️
+                    class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase text-[#90C23A] hover:text-[#FFFFFF] hover:bg-[#90C23A]/10 transition-all">️
                     Operacional Alfa</a>
                 <a href="/admin"
-                    class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase text-slate-400 hover:text-white hover:bg-white/5 transition-all">⚙️
+                    class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase text-[#90C23A] hover:text-[#FFFFFF] hover:bg-[#90C23A]/10 transition-all">️
                     Admin</a>
             </nav>
 
             <div class="flex items-center gap-6">
                 <!-- READ MODE -->
-                <div class="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-full border border-white/5">
-                    <span class="text-[0.6rem] text-slate-500 font-bold uppercase tracking-widest">Leitura</span>
+                <div class="flex items-center gap-3 bg-[#90C23A]/10 px-4 py-2 rounded-full border border-[#90C23A]/30">
+                    <span class="text-[0.6rem] text-[#D9DFE3] font-bold uppercase tracking-widest">Leitura</span>
                     <label class="switch">
                         <input type="checkbox" id="readModeToggle" onchange="toggleReadMode()">
                         <span class="slider"></span>
@@ -255,17 +255,17 @@
 
                 <!-- BALANCES -->
                 <div class="flex items-center gap-3">
-                    <div class="bg-white/5 px-4 py-2 rounded-xl border border-white/5 text-center">
-                        <p class="text-[0.5rem] text-slate-500 uppercase font-black mono mb-1">Balanço USDT</p>
-                        <p id="valBalanceUSDT" class="text-xs font-bold mono text-white">$ 0.00</p>
+                    <div class="bg-[#90C23A]/10 px-4 py-2 rounded-xl border border-[#90C23A]/30 text-center">
+                        <p class="text-[0.5rem] text-[#D9DFE3] uppercase font-black mono mb-1">Balanço USDT</p>
+                        <p id="valBalanceUSDT" class="text-xs font-bold mono text-[#FFFFFF]">$ 0.00</p>
                     </div>
-                    <div class="bg-white/5 px-4 py-2 rounded-xl border border-white/5 text-center">
-                        <p class="text-[0.5rem] text-slate-500 uppercase font-black mono mb-1">Usuário</p>
+                    <div class="bg-[#90C23A]/10 px-4 py-2 rounded-xl border border-[#90C23A]/30 text-center">
+                        <p class="text-[0.5rem] text-[#D9DFE3] uppercase font-black mono mb-1">Usuário</p>
                         <p id="userNameLabel" class="text-xs font-bold text-accent-cyan uppercase tracking-tighter">---</p>
                     </div>
                 </div>
 
-                <button onclick="doLogout()" class="w-10 h-10 rounded-full bg-accent-ruby/10 border border-accent-ruby/20 text-accent-ruby flex items-center justify-center hover:bg-accent-ruby hover:text-white transition-all">
+                <button onclick="doLogout()" class="w-10 h-10 rounded-full bg-accent-ruby/10 border border-accent-ruby/20 text-accent-ruby flex items-center justify-center hover:bg-accent-ruby hover:text-[#FFFFFF] transition-all">
                     <i data-lucide="log-out" class="w-4 h-4"></i>
                 </button>
             </div>
@@ -276,43 +276,43 @@
             <!-- CONTROLS SIDEBAR -->
             <div class="glass-panel p-6 space-y-6">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Motor de Comando</h2>
-                    <div id="sysStatusBadge" class="flex items-center gap-2 text-[0.6rem] font-bold text-slate-500 px-2 py-1 rounded-full bg-white/5 border border-white/5">
+                    <h2 class="text-xs font-black uppercase tracking-[0.2em] text-[#90C23A]">Motor de Comando</h2>
+                    <div id="sysStatusBadge" class="flex items-center gap-2 text-[0.6rem] font-bold text-[#D9DFE3] px-2 py-1 rounded-full bg-[#90C23A]/10 border border-[#90C23A]/30">
                         <div class="w-1.5 h-1.5 rounded-full bg-slate-600"></div> OFFLINE
                     </div>
                 </div>
 
                 <div class="space-y-4 interactive">
                     <div class="space-y-1">
-                        <label class="text-[0.6rem] text-slate-500 uppercase font-black ml-1">Identificação Cliente</label>
+                        <label class="text-[0.6rem] text-[#D9DFE3] uppercase font-black ml-1">Identificação Cliente</label>
                         <input type="text" id="clientName" placeholder="NOME DO OPERADOR" class="custom-input mono">
                     </div>
                     <div class="space-y-1">
-                        <label class="text-[0.6rem] text-slate-500 uppercase font-black ml-1">Binance API Key</label>
+                        <label class="text-[0.6rem] text-[#D9DFE3] uppercase font-black ml-1">Binance API Key</label>
                         <input type="password" id="apiKey" placeholder="CONECTAR CHAVE" class="custom-input mono">
                     </div>
                     <div class="space-y-1">
-                        <label class="text-[0.6rem] text-slate-500 uppercase font-black ml-1">Binance API Secret</label>
+                        <label class="text-[0.6rem] text-[#D9DFE3] uppercase font-black ml-1">Binance API Secret</label>
                         <input type="password" id="apiSecret" placeholder="IDENTIFICAR SEGREDO" class="custom-input mono">
                     </div>
 
                     <div class="space-y-2">
-                        <label class="text-[0.6rem] text-slate-500 uppercase font-black ml-1">Modalidade Snipering</label>
+                        <label class="text-[0.6rem] text-[#D9DFE3] uppercase font-black ml-1">Modalidade Snipering</label>
                         <div class="flex gap-2">
                             <button id="modeAlfaUSDT" class="btn-mode active" onclick="selectMode('ALFA_USDT', this)">ALFA USDT</button>
                             <button id="modeAlfaUSDC" class="btn-mode" onclick="selectMode('ALFA_USDC', this)">ALFA USDC</button>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+                    <div class="flex items-center gap-3 p-3 bg-[#90C23A]/10 rounded-xl border border-white/10">
                         <input type="checkbox" id="chkLoop" checked class="w-5 h-5 accent-accent-cyan bg-transparent">
                         <span class="text-[0.65rem] font-bold uppercase text-slate-300">Fluxo Contínuo Sniper</span>
                     </div>
 
                     <div class="grid grid-cols-4 gap-2">
-                        <button class="fraction-btn text-[0.6rem] font-black p-2 rounded-lg bg-white/5 border border-white/5 hover:border-accent-cyan/50 transition-all" onclick="selectFraction(0.25, this)">25%</button>
-                        <button class="fraction-btn text-[0.6rem] font-black p-2 rounded-lg bg-white/5 border border-white/5 hover:border-accent-cyan/50 transition-all" onclick="selectFraction(0.50, this)">50%</button>
-                        <button class="fraction-btn text-[0.6rem] font-black p-2 rounded-lg bg-white/5 border border-white/5 hover:border-accent-cyan/50 transition-all" onclick="selectFraction(0.75, this)">75%</button>
+                        <button class="fraction-btn text-[0.6rem] font-black p-2 rounded-lg bg-[#90C23A]/10 border border-[#90C23A]/30 hover:border-accent-cyan/50 transition-all" onclick="selectFraction(0.25, this)">25%</button>
+                        <button class="fraction-btn text-[0.6rem] font-black p-2 rounded-lg bg-[#90C23A]/10 border border-[#90C23A]/30 hover:border-accent-cyan/50 transition-all" onclick="selectFraction(0.50, this)">50%</button>
+                        <button class="fraction-btn text-[0.6rem] font-black p-2 rounded-lg bg-[#90C23A]/10 border border-[#90C23A]/30 hover:border-accent-cyan/50 transition-all" onclick="selectFraction(0.75, this)">75%</button>
                         <button class="fraction-btn active text-[0.6rem] font-black p-2 rounded-lg bg-accent-cyan/10 border border-accent-cyan text-accent-cyan" onclick="selectFraction(1.00, this)">100%</button>
                     </div>
 
@@ -325,11 +325,11 @@
                     </button>
                 </div>
 
-                <div class="pt-4 border-t border-white/5 grid grid-cols-2 gap-2">
-                    <button class="text-[0.6rem] font-bold uppercase p-2 text-slate-500 hover:text-white transition-all flex items-center justify-center gap-2" onclick="resetApi()">
+                <div class="pt-4 border-t border-[#90C23A]/30 grid grid-cols-2 gap-2">
+                    <button class="text-[0.6rem] font-bold uppercase p-2 text-[#D9DFE3] hover:text-[#FFFFFF] transition-all flex items-center justify-center gap-2" onclick="resetApi()">
                         <i data-lucide="key-round" class="w-3 h-3"></i> Reset Chaves
                     </button>
-                    <button class="text-[0.6rem] font-bold uppercase p-2 text-slate-500 hover:text-white transition-all flex items-center justify-center gap-2" onclick="downloadReport()">
+                    <button class="text-[0.6rem] font-bold uppercase p-2 text-[#D9DFE3] hover:text-[#FFFFFF] transition-all flex items-center justify-center gap-2" onclick="downloadReport()">
                         <i data-lucide="file-down" class="w-3 h-3"></i> Gerar Extrato
                     </button>
                 </div>
@@ -341,24 +341,24 @@
                 <!-- TOP STATS -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div class="stat-card">
-                        <p class="text-[0.6rem] text-slate-500 uppercase font-black tracking-widest mb-2">Fator Sniper</p>
-                        <p id="valPivot" class="text-xl font-black text-white italic truncate">---</p>
-                        <p id="valDistances" class="text-[0.6rem] text-slate-400 font-bold mono mt-2">D2: 0% | D6: 0%</p>
+                        <p class="text-[0.6rem] text-[#D9DFE3] uppercase font-black tracking-widest mb-2">Fator Sniper</p>
+                        <p id="valPivot" class="text-xl font-black text-[#FFFFFF] italic truncate">---</p>
+                        <p id="valDistances" class="text-[0.6rem] text-[#90C23A] font-bold mono mt-2">D2: 0% | D6: 0%</p>
                     </div>
                     <div class="stat-card">
-                        <p class="text-[0.6rem] text-slate-500 uppercase font-black tracking-widest mb-2">Ciclo de Vendas</p>
-                        <p id="valOpsCount" class="text-xl font-black text-white italic">0 / 5</p>
-                        <p id="valCooldown" class="text-[0.6rem] text-slate-400 font-bold mono mt-2 text-accent-emerald">Aguardando Filtro</p>
+                        <p class="text-[0.6rem] text-[#D9DFE3] uppercase font-black tracking-widest mb-2">Ciclo de Vendas</p>
+                        <p id="valOpsCount" class="text-xl font-black text-[#FFFFFF] italic">0 / 5</p>
+                        <p id="valCooldown" class="text-[0.6rem] text-[#90C23A] font-bold mono mt-2 text-accent-emerald">Aguardando Filtro</p>
                     </div>
                     <div class="stat-card" style="border-bottom: 2px solid var(--accent-cyan)">
-                        <p class="text-[0.6rem] text-slate-500 uppercase font-black tracking-widest mb-2">P&L Acumulado (%)</p>
+                        <p class="text-[0.6rem] text-[#D9DFE3] uppercase font-black tracking-widest mb-2">P&L Acumulado (%)</p>
                         <p id="valRealizedBRL" class="text-2xl font-black text-accent-cyan italic">+0.00%</p>
-                        <p id="valProfitPool" class="text-[0.6rem] text-slate-400 font-bold mono mt-2">Meta Reforço: 50%</p>
+                        <p id="valProfitPool" class="text-[0.6rem] text-[#90C23A] font-bold mono mt-2">Meta Reforço: 50%</p>
                     </div>
                     <div class="stat-card">
-                        <p class="text-[0.6rem] text-slate-500 uppercase font-black tracking-widest mb-2">Latência Global</p>
-                        <p id="diagLatency" class="text-xl font-black text-white italic">-- ms</p>
-                        <p id="diagUptime" class="text-[0.6rem] text-slate-400 font-bold mono mt-2">Uptime: 00h 00m</p>
+                        <p class="text-[0.6rem] text-[#D9DFE3] uppercase font-black tracking-widest mb-2">Latência Global</p>
+                        <p id="diagLatency" class="text-xl font-black text-[#FFFFFF] italic">-- ms</p>
+                        <p id="diagUptime" class="text-[0.6rem] text-[#90C23A] font-bold mono mt-2">Uptime: 00h 00m</p>
                     </div>
                 </div>
 
@@ -368,28 +368,28 @@
                         <div class="text-center md:text-left">
                             <h3 class="text-xs font-black uppercase tracking-[0.3em] text-accent-cyan mb-2">Trade em Monitoramento</h3>
                             <div class="flex items-center gap-4">
-                                <span id="telemetrySymbol" class="text-4xl font-black italic text-white tracking-tighter">---</span>
+                                <span id="telemetrySymbol" class="text-4xl font-black italic text-[#FFFFFF] tracking-tighter">---</span>
                                 <div class="px-2 py-1 rounded bg-accent-cyan/10 text-accent-cyan text-[0.6rem] font-black uppercase">Live Sniper</div>
                             </div>
-                            <div id="valTradeTarget" class="mt-4 space-y-1 text-[0.65rem] mono font-bold text-slate-500">
-                                <p>📥 ENTRADA: <span class="text-white">$---</span></p>
-                                <p>🔄 ATUAL: <span class="text-white">$---</span></p>
-                                <p>🎯 ALVO: <span class="text-accent-emerald uppercase tracking-widest">+0.40% TAKE</span></p>
+                            <div id="valTradeTarget" class="mt-4 space-y-1 text-[0.65rem] mono font-bold text-[#D9DFE3]">
+                                <p> ENTRADA: <span class="text-[#FFFFFF]">$---</span></p>
+                                <p> ATUAL: <span class="text-[#FFFFFF]">$---</span></p>
+                                <p> ALVO: <span class="text-accent-emerald uppercase tracking-widest">+0.40% TAKE</span></p>
                             </div>
                         </div>
 
                         <div class="flex-1 w-full max-w-xl">
                             <div class="flex justify-between items-end mb-4">
                                 <div class="text-center">
-                                    <span class="text-[0.5rem] text-slate-500 uppercase font-black block mb-1">Pixel Loss</span>
-                                    <span class="text-xs font-bold mono text-slate-400">-6.00%</span>
+                                    <span class="text-[0.5rem] text-[#D9DFE3] uppercase font-black block mb-1">Pixel Loss</span>
+                                    <span class="text-xs font-bold mono text-[#90C23A]">-6.00%</span>
                                 </div>
                                 <div class="text-center">
                                     <span class="text-[0.6rem] text-accent-cyan uppercase font-black block mb-2">Variação Real</span>
-                                    <span id="telemetryPct" class="text-5xl font-black italic text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">+0.00%</span>
+                                    <span id="telemetryPct" class="text-5xl font-black italic text-[#FFFFFF] drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">+0.00%</span>
                                 </div>
                                 <div class="text-center">
-                                    <span class="text-[0.5rem] text-slate-500 uppercase font-black block mb-1">Sniper Meta</span>
+                                    <span class="text-[0.5rem] text-[#D9DFE3] uppercase font-black block mb-1">Sniper Meta</span>
                                     <span class="text-xs font-bold mono text-accent-emerald">+0.40%</span>
                                 </div>
                             </div>
@@ -397,10 +397,10 @@
                                 <div id="telemetryBar" class="telemetry-bar" style="width: 0%"></div>
                                 <!-- GRID LINES -->
                                 <div class="absolute inset-0 flex justify-between px-2">
-                                    <div class="w-px h-full bg-white/5"></div>
-                                    <div class="w-px h-full bg-white/5"></div>
-                                    <div class="w-px h-full bg-white/5"></div>
-                                    <div class="w-px h-full bg-white/5"></div>
+                                    <div class="w-px h-full bg-[#90C23A]/10"></div>
+                                    <div class="w-px h-full bg-[#90C23A]/10"></div>
+                                    <div class="w-px h-full bg-[#90C23A]/10"></div>
+                                    <div class="w-px h-full bg-[#90C23A]/10"></div>
                                 </div>
                             </div>
                             <p class="text-[0.5rem] text-center text-slate-600 uppercase font-black mt-3 tracking-widest">Processamento Grid-Alpha Sync 1.0s</p>
@@ -411,8 +411,8 @@
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <!-- HISTORY TABLE -->
                     <div class="glass-panel overflow-hidden">
-                        <div class="p-6 border-bottom border-white/5 flex items-center justify-between">
-                            <h3 class="text-xs font-black uppercase tracking-widest text-white">Extrato de Operações</h3>
+                        <div class="p-6 border-bottom border-[#90C23A]/30 flex items-center justify-between">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-[#FFFFFF]">Extrato de Operações</h3>
                             <button onclick="resetHistory()" class="text-[0.6rem] font-bold text-slate-600 hover:text-accent-ruby transition-all uppercase italic">Zerar Histórico</button>
                         </div>
                         <div class="overflow-x-auto">
@@ -440,7 +440,7 @@
                         <!-- TERMINAL LOGS -->
                         <div class="glass-panel p-6">
                             <div class="flex items-center justify-between mb-6">
-                                <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Audit Console</h3>
+                                <h3 class="text-xs font-black uppercase tracking-widest text-[#90C23A]">Audit Console</h3>
                                 <div class="flex items-center gap-1">
                                     <div class="w-1.5 h-1.5 rounded-full bg-accent-emerald animate-blink"></div>
                                     <span class="text-[0.5rem] font-bold uppercase mono text-slate-600">Sync Master</span>
@@ -458,8 +458,8 @@
                             </div>
                             <div>
                                 <h4 class="text-xs font-black uppercase text-accent-cyan mb-2">Suporte Sniper VIP</h4>
-                                <p class="text-[0.65rem] text-slate-400 font-bold mb-4">Acesso direto ao arquiteto do algoritmo via WhatsApp.</p>
-                                <a href="https://wa.me/5531997004567" target="_blank" class="text-[0.6rem] font-black uppercase py-2 px-4 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all inline-flex items-center gap-2">
+                                <p class="text-[0.65rem] text-[#90C23A] font-bold mb-4">Acesso direto ao arquiteto do algoritmo via WhatsApp.</p>
+                                <a href="https://wa.me/5531997004567" target="_blank" class="text-[0.6rem] font-black uppercase py-2 px-4 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-[#FFFFFF] transition-all inline-flex items-center gap-2">
                                     <i data-lucide="message-circle" class="w-3 h-3"></i> Abrir Chat VIP
                                 </a>
                             </div>
@@ -515,7 +515,7 @@
         function selectFraction(ratio, btn) {
             selectedBuyRatio = ratio;
             document.querySelectorAll('.fraction-btn').forEach(b => b.classList.remove('active', 'bg-accent-cyan/10', 'border-accent-cyan', 'text-accent-cyan'));
-            document.querySelectorAll('.fraction-btn').forEach(b => b.classList.add('bg-white/5', 'border-white/5'));
+            document.querySelectorAll('.fraction-btn').forEach(b => b.classList.add('bg-[#90C23A]/10', 'border-[#90C23A]/30'));
             btn.classList.add('active', 'bg-accent-cyan/10', 'border-accent-cyan', 'text-accent-cyan');
         }
 
@@ -590,9 +590,9 @@
                 pnlText.style.color = curPnl >= 0 ? 'white' : 'var(--accent-ruby)';
 
                 document.getElementById('valTradeTarget').innerHTML = `
-                    <p>📥 ENTRADA: <span class="text-white">$${buyP.toFixed(8)}</span></p>
-                    <p>🔄 ATUAL: <span class="text-white">$${currP.toFixed(8)}</span></p>
-                    <p>🎯 ALVO: <span class="text-accent-emerald uppercase tracking-widest">$${tgtP.toFixed(8)} (+0.40%)</span></p>
+                    <p> ENTRADA: <span class="text-[#FFFFFF]">$${buyP.toFixed(8)}</span></p>
+                    <p> ATUAL: <span class="text-[#FFFFFF]">$${currP.toFixed(8)}</span></p>
+                    <p> ALVO: <span class="text-accent-emerald uppercase tracking-widest">$${tgtP.toFixed(8)} (+0.40%)</span></p>
                 `;
 
                 const minR = -6.0, maxR = 0.4;
@@ -620,10 +620,10 @@
             } else {
                 histBody.innerHTML = state.history.slice(0, 10).map(h => `
                     <tr>
-                        <td><span class="font-black text-white italic">${h.symbol}</span></td>
-                        <td><span class="text-[0.6rem] font-bold text-slate-500 uppercase">${h.type}</span></td>
+                        <td><span class="font-black text-[#FFFFFF] italic">${h.symbol}</span></td>
+                        <td><span class="text-[0.6rem] font-bold text-[#D9DFE3] uppercase">${h.type}</span></td>
                         <td><span class="font-black ${h.profitPct >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'}">${h.profitPct > 0 ? '+' : ''}${h.profitPct.toFixed(2)}%</span></td>
-                        <td><span class="text-[0.65rem] text-slate-500 font-bold">${h.date}</span></td>
+                        <td><span class="text-[0.65rem] text-[#D9DFE3] font-bold">${h.date}</span></td>
                     </tr>
                 `).join('');
             }

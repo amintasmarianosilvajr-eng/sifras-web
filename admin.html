@@ -9,12 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-deep: #05080c;
-            --accent-cyan: #00f5ff;
-            --accent-emerald: #00ff9f;
-            --accent-ruby: #ff2a6d;
-            --glass-bg: rgba(10, 15, 25, 0.8);
-            --glass-border: rgba(255, 255, 255, 0.05);
+            --bg-deep: #060B19;
+            --accent-cyan: #90C23A;
+            --accent-emerald: #4D9127;
+            --accent-ruby: #9CA3AF;
+            --glass-bg: #111A2E;
+            --glass-border: rgba(144, 194, 58, 0.4);
         }
 
         body {
@@ -144,24 +144,24 @@
             </div>
             <div>
                 <h1 class="text-xl font-black uppercase italic tracking-tight">Sifras <span class="text-accent-cyan">Network Monitor</span></h1>
-                <p class="text-[0.6rem] text-slate-500 font-bold tracking-widest uppercase mono">Admin Control Panel v1.2</p>
+                <p class="text-[0.6rem] text-[#D9DFE3] font-bold tracking-widest uppercase mono">Admin Control Panel v1.2</p>
             </div>
         </div>
 
-        <nav class="hidden lg:flex items-center gap-4 bg-white/5 p-1 rounded-xl border border-white/5">
+        <nav class="hidden lg:flex items-center gap-4 bg-[#90C23A]/10 p-1 rounded-xl border border-[#90C23A]/30">
             <a href="/dashboard"
-                class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase text-slate-400 hover:text-white hover:bg-white/5 transition-all">📋
+                class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase text-[#90C23A] hover:text-[#FFFFFF] hover:bg-[#90C23A]/10 transition-all">
                 Monitoramento</a>
             <a href="/operacional"
-                class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase text-slate-400 hover:text-white hover:bg-white/5 transition-all">🛰️
+                class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase text-[#90C23A] hover:text-[#FFFFFF] hover:bg-[#90C23A]/10 transition-all">️
                 Operacional Alfa</a>
             <a href="/admin"
-                class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20">⚙️
+                class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20">️
                 Admin</a>
         </nav>
 
         <div class="flex items-center gap-4">
-            <span id="lastUpdateTime" class="text-[0.6rem] text-slate-500 font-bold uppercase mono mr-4">Sinc: --:--:--</span>
+            <span id="lastUpdateTime" class="text-[0.6rem] text-[#D9DFE3] font-bold uppercase mono mr-4">Sinc: --:--:--</span>
             <button onclick="stopAll()" id="btnStopAll" class="btn-stop-all">
                 <i data-lucide="octagon" class="w-4 h-4"></i> Stop All Network
             </button>
@@ -175,7 +175,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6 text-center">
         <div class="stat-card">
             <p class="stat-label">Clientes Online</p>
-            <p id="totalClients" class="stat-value text-white text-3xl font-black italic">0</p>
+            <p id="totalClients" class="stat-value text-[#FFFFFF] text-3xl font-black italic">0</p>
         </div>
         <div class="stat-card">
             <p class="stat-label">Em Operação</p>
@@ -183,7 +183,7 @@
         </div>
         <div class="stat-card">
             <p class="stat-label">Capital Sniper</p>
-            <p id="avgProfit" class="stat-value text-white text-2xl font-black mono">$ 0.00</p>
+            <p id="avgProfit" class="stat-value text-[#FFFFFF] text-2xl font-black mono">$ 0.00</p>
         </div>
         <div class="stat-card border-b-2 border-accent-emerald">
             <p class="stat-label">ROI Geral (%)</p>
@@ -191,7 +191,7 @@
         </div>
         <div class="stat-card border-b-2 border-accent-cyan">
             <p class="stat-label">Latência / Uptime</p>
-            <p id="netStatus" class="stat-value text-white text-xs font-bold mono mt-2 leading-relaxed">-- ms | 00h 00m</p>
+            <p id="netStatus" class="stat-value text-[#FFFFFF] text-xs font-bold mono mt-2 leading-relaxed">-- ms | 00h 00m</p>
         </div>
         <div class="stat-card">
             <p class="stat-label">Fator Rank #4</p>
@@ -214,8 +214,8 @@
                         <th>Telemetria / Etapa</th>
                         <th>Ativo Sniper</th>
                         <th>E: Compra ($)</th>
-                        <th>🔄 Atual ($)</th>
-                        <th>🎯 Alvo ($)</th>
+                        <th> Atual ($)</th>
+                        <th> Alvo ($)</th>
                         <th>Cap ($)</th>
                         <th>Balanço USDT</th>
                         <th>P&L Líquido</th>
@@ -225,7 +225,7 @@
                 </thead>
                 <tbody id="adminTableBody" class="mono">
                     <tr>
-                        <td colspan="12" class="text-center py-20 text-slate-500 uppercase text-[0.6rem] font-black italic tracking-widest">
+                        <td colspan="12" class="text-center py-20 text-[#D9DFE3] uppercase text-[0.6rem] font-black italic tracking-widest">
                             Estabelecendo conexão com a rede...
                         </td>
                     </tr>
@@ -240,7 +240,7 @@
     const ACCESS_KEY = localStorage.getItem('sifras_token');
 
     async function stopAll() {
-        if (!confirm('⚠️ EMERGÊNCIA: Parar TODOS os robôs da rede?')) return;
+        if (!confirm('️ EMERGÊNCIA: Parar TODOS os robôs da rede?')) return;
         const btn = document.getElementById('btnStopAll');
         btn.disabled = true;
         try {
@@ -366,7 +366,7 @@
 
             return `
             <tr>
-                <td class="font-black italic text-white uppercase tracking-tighter">${u.username}</td>
+                <td class="font-black italic text-[#FFFFFF] uppercase tracking-tighter">${u.username}</td>
                 <td>
                     ${!u.isApproved ? 
                         '<span class="status-pill status-red">Pendente</span>' : 
@@ -374,7 +374,7 @@
                     }
                 </td>
                 <td>
-                    <div class="text-[0.6rem] font-black text-slate-500 uppercase mb-1">${u.currentStep || 'SCAN'}</div>
+                    <div class="text-[0.6rem] font-black text-[#D9DFE3] uppercase mb-1">${u.currentStep || 'SCAN'}</div>
                     ${u.status === 'IN_TRADE' ? `
                         <div class="telemetry-mini-bar relative">
                             <div class="absolute h-full w-px bg-white/20" style="left:76.9%"></div>
@@ -388,24 +388,24 @@
                     ` : '<div class="text-slate-700 italic">---</div>'}
                 </td>
                 <td class="font-black text-accent-cyan">${u.activeSymbol || '---'}</td>
-                <td class="text-slate-400">$ ${Number(u.buyPrice || 0).toFixed(6)}</td>
+                <td class="text-[#90C23A]">$ ${Number(u.buyPrice || 0).toFixed(6)}</td>
                 <td class="font-bold">$ ${Number(u.currentPrice || 0).toFixed(6)}</td>
                 <td class="text-accent-emerald font-bold">$ ${Number(u.targetPrice || 0).toFixed(6)}</td>
-                <td class="text-white font-black">$ ${Number(u.buyAmountUSDT || 0).toFixed(2)}</td>
-                <td class="text-white font-black">$ ${Number(u.balanceUSDT || 0).toFixed(2)}</td>
+                <td class="text-[#FFFFFF] font-black">$ ${Number(u.buyAmountUSDT || 0).toFixed(2)}</td>
+                <td class="text-[#FFFFFF] font-black">$ ${Number(u.balanceUSDT || 0).toFixed(2)}</td>
                 <td class="${u.liquidPnlPool >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} font-black italic">
                     $ ${Number(u.liquidPnlPool || 0).toFixed(2)}
                 </td>
-                <td class="font-bold text-slate-500">${u.salesCount || 0}/5</td>
+                <td class="font-bold text-[#D9DFE3]">${u.salesCount || 0}/5</td>
                 <td>
-                    <div class="flex flex-wrap gap-2 text-white">
+                    <div class="flex flex-wrap gap-2 text-[#FFFFFF]">
                         ${!u.isApproved ? `
-                            <button onclick="approveUser('${u.username}')" class="btn-action bg-accent-emerald text-black">Aprovar</button>
+                            <button onclick="approveUser('${u.username}')" class="btn-action bg-accent-emerald text-[#D9DFE3]">Aprovar</button>
                         ` : `
                             <button onclick="antiRestartUser('${u.username}')" class="btn-action bg-accent-cyan/10 border border-accent-cyan/30 text-accent-cyan">Reset</button>
                             <button onclick="stopUser('${u.username}')" class="btn-action bg-accent-ruby/10 border border-accent-ruby/30 text-accent-ruby">Stop</button>
                         `}
-                        <button onclick="deleteUser('${u.username}')" class="btn-action bg-white/5 border border-white/10 text-slate-500 hover:text-white">Del</button>
+                        <button onclick="deleteUser('${u.username}')" class="btn-action bg-[#90C23A]/10 border border-white/10 text-[#D9DFE3] hover:text-[#FFFFFF]">Del</button>
                     </div>
                 </td>
             </tr>`;

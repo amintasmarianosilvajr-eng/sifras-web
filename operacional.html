@@ -4,12 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIFRAS PERSONAL | OPERACIONAL FLUXO ALFA</title>
+    <title>Sifras | Operacional Alfa</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style_alfa.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
@@ -19,28 +17,19 @@
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="logo-container">
-                <div class="logo-icon">S</div>
-                <div class="logo-text">SIFRAS<span>PERSONAL</span></div>
+                <div class="logo-text">SIFRAS <span>MASTER</span></div>
             </div>
 
             <nav class="nav-menu">
-                <a href="/dashboard" class="nav-item">
-                    <span class="nav-icon">📊</span> Painel Principal
-                </a>
-                <a href="/operacional" class="nav-item active" id="nav-dashboard">
-                    <span class="nav-icon">🛰️</span> Operacional Alfa
-                </a>
-                <a href="/admin" class="nav-item">
-                    <span class="nav-icon">⚙️</span> Configurações
-                </a>
+                <a href="/dashboard" class="nav-item">Painel Principal</a>
+                <a href="/operacional" class="nav-item active" id="nav-dashboard">Operacional Alfa</a>
+                <a href="/admin" class="nav-item">Configurações</a>
             </nav>
 
             <div class="sidebar-footer">
                 <div class="system-status">
-                    <div class="status-indicator">
-                        <span class="status-dot" id="system-status-dot"></span>
-                        <span class="status-text" id="system-status-text">SINCRONIZANDO...</span>
-                    </div>
+                    <span class="status-dot online" id="system-status-dot"></span>
+                    <span class="status-text" id="system-status-text">NETWORK SYNC</span>
                 </div>
             </div>
         </aside>
@@ -49,10 +38,8 @@
         <main class="main-content">
             <header class="top-header" id="main-header">
                 <div class="header-title">
-                    <h1>Sifras Web <span class="highlight">Operação Ciclos ALFA</span></h1>
-                    <p style="color: var(--accent-green); font-weight: bold;">🛰️ CONEXÃO BINANCE MAINNET (LIVE)
-                        — Reposição Automática Ativa
-                    </p>
+                    <h1>Módulo Operacional</h1>
+                    <p>CONEXÃO BINANCE MAINNET ATIVA</p>
                 </div>
                 <div class="header-stats">
                     <div class="stat-badge">
@@ -63,129 +50,49 @@
                         <span class="label">VOLATILIDADE</span>
                         <span class="value">0.1% / 10s</span>
                     </div>
-                    <div class="stat-badge" style="min-width: 200px;">
-                        <span class="label">CONTADOR DE CICLO</span>
-                        <span id="cycle-counter"
-                            style="font-size: 0.85rem; font-weight: 700; color: var(--accent-green);">🔄 CICLO:
-                            <strong>0</strong> / 10 operações</span>
+                    <div class="stat-badge">
+                        <span class="label">CICLO DE OPERAÇÃO</span>
+                        <span id="cycle-counter" class="value">0 / 10</span>
                     </div>
-                    <button onclick="emergencyStop()" style="
-                        background: rgba(255,77,77,0.15);
-                        border: 2px solid var(--danger);
-                        color: var(--danger);
-                        padding: 10px 20px;
-                        border-radius: 12px;
-                        font-weight: 800;
-                        font-size: 0.85rem;
-                        cursor: pointer;
-                        animation: blink 1.5s infinite;
-                        letter-spacing: 1px;
-                    ">🛑 STOP GERAL</button>
+                    <button onclick="emergencyStop()" class="btn-stop">EMERGENCY STOP</button>
                 </div>
             </header>
 
             <div class="dashboard-grid">
-                <!-- Slot Configuration Section -->
-                <div class="card slots-card">
-                    <div class="card-header">
-                        <h3>Configuração de Slots</h3>
-                        <span class="badge">2 SLOTS ATIVOS</span>
-                    </div>
-                    <div class="slots-container">
-                        <!-- Slot 1 -->
-                        <div class="slot" id="slot-1">
-                            <div class="slot-header">
-                                <span class="slot-id">SLOT #01</span>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <button class="btn-clear-slot" onclick="clearSlotData(1)"
-                                        title="Limpar tudo neste slot">🔄</button>
-                                    <span class="slot-status" id="slot-1-status">DESCONECTADO</span>
-                                </div>
-                            </div>
-                            <div class="slot-body">
-                                <input type="text" placeholder="NOME DO CLIENTE" class="slot-input" id="slot-1-name">
-                                <input type="password" placeholder="API KEY" class="slot-input" id="slot-1-key">
-                                <input type="password" placeholder="SECRET KEY" class="slot-input" id="slot-1-secret">
-                                <button class="btn-connect" onclick="connectSlot(1)">CONECTAR SLOT</button>
-                                <button class="btn-test-api disabled" id="test-1" onclick="testApiConnection(1)"
-                                    style="width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer; background: rgba(121, 40, 202, 0.2); border: 1px solid var(--accent-purple); color: var(--accent-purple);">TESTAR
-                                    API (SALDO)</button>
-                                <button class="btn-activate disabled" id="activate-1"
-                                    onclick="toggleMonitoring(1)">INICIAR MONITORAMENTO</button>
-                            </div>
-                        </div>
-
-                        <!-- Slot 2 -->
-                        <div class="slot" id="slot-2">
-                            <div class="slot-header">
-                                <span class="slot-id">SLOT #02</span>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <button class="btn-clear-slot" onclick="clearSlotData(2)"
-                                        title="Limpar tudo neste slot">🔄</button>
-                                    <span class="slot-status" id="slot-2-status">DESCONECTADO</span>
-                                </div>
-                            </div>
-                            <div class="slot-body">
-                                <input type="text" placeholder="NOME DO CLIENTE" class="slot-input" id="slot-2-name">
-                                <input type="password" placeholder="API KEY" class="slot-input" id="slot-2-key">
-                                <input type="password" placeholder="SECRET KEY" class="slot-input" id="slot-2-secret">
-                                <button class="btn-connect" onclick="connectSlot(2)">CONECTAR SLOT</button>
-                                <button class="btn-test-api disabled" id="test-2" onclick="testApiConnection(2)"
-                                    style="width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer; background: rgba(121, 40, 202, 0.2); border: 1px solid var(--accent-purple); color: var(--accent-purple);">TESTAR
-                                    API (SALDO)</button>
-                                <button class="btn-activate disabled" id="activate-2"
-                                    onclick="toggleMonitoring(2)">INICIAR MONITORAMENTO</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="pdf-container"
-                        style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <button class="btn-pdf" id="download-pdf-1"
-                            style="background: #2c3e50; border: 1px solid var(--card-border); color: #fff; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; font-size: 0.75rem;">
-                            <span>📄</span> PDF SLOT 1
-                        </button>
-                        <button class="btn-pdf" id="download-pdf-2"
-                            style="background: #2c3e50; border: 1px solid var(--card-border); color: #fff; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; font-size: 0.75rem;">
-                            <span>📄</span> PDF SLOT 2
-                        </button>
-                    </div>
-                </div>
-
                 <!-- Monitor de Operação Ativa -->
-                <div class="card active-trade-card hidden" id="active-trade-card">
+                <div class="card active-trade-card" id="active-trade-card">
                     <div class="card-header">
-                        <h3>Monitor de Operação Ativa</h3>
+                        <h3>Monitor de Ativos em Curso</h3>
                         <span class="badge live-badge">AO VIVO</span>
                     </div>
                     <div class="trade-monitor-body">
                         <div class="holding-info">
-                            <h1 id="monitoring-symbol">---</h1>
+                            <h1 id="monitoring-symbol">AGUARDANDO OPORTUNIDADE</h1>
                             <div class="price-info">
-                                <span class="label">P&L ATUAL</span>
+                                <span class="label">P&L SINTÉTICO</span>
                                 <h2 id="monitoring-pl">0.00%</h2>
                             </div>
                         </div>
 
                         <div class="trade-metrics">
                             <div class="metric">
-                                <span class="label">COMPRA</span>
+                                <span class="label">ENTRADA GLOBAL</span>
                                 <span class="value" id="monitoring-buy-price">$0.0000</span>
                             </div>
                             <div class="metric">
-                                <span class="label">ATUAL</span>
-                                <span class="value" id="monitoring-current-price">$0.0000</span>
+                                <span class="label">COTAÇÃO TEMPO REAL</span>
+                                <span class="value highlight-text" id="monitoring-current-price">$0.0000</span>
                             </div>
-                            <div class="metric highlight">
-                                <span class="label">ALVO (TAKE PROFIT)</span>
-                                <span class="value" id="monitoring-target-price">$0.0000</span>
+                            <div class="metric">
+                                <span class="label">ALVO DE SAÍDA</span>
+                                <span class="value highlight-accent" id="monitoring-target-price">$0.0000</span>
                             </div>
                         </div>
                         <div class="progress-box">
                             <div class="progress-labels">
-                                <span>-1.00%</span>
-                                <span>ENTRADA (0.00%)</span>
-                                <span id="target-label">META (+0.90%)</span>
+                                <span>RISCO LIMITADO</span>
+                                <span>PONTO DE ENTRADA</span>
+                                <span id="target-label">OBJECTIVO</span>
                             </div>
                             <div class="progress-bar-container">
                                 <div class="progress-marker zero-marker"></div>
@@ -195,65 +102,108 @@
                     </div>
                 </div>
 
-                <!-- Ranking / Indicator Analysis -->
-                <div class="card ranking-card">
+                <!-- Slots and Settings -->
+                <div class="card slots-card">
                     <div class="card-header">
-                        <h3>Top 10 Binance (24h)</h3>
-                        <span class="time-update" id="last-update">--:--:--</span>
+                        <h3>Identificação de Terminais</h3>
+                        <span class="badge">2 PORTAS ATIVAS</span>
                     </div>
-                    <div class="ranking-header-row">
-                        <span>MOEDA</span>
-                        <span>VAR. 24H</span>
-                    </div>
-                    <ul id="ranking-list" class="ranking-list">
-                        <li class="loading">Buscando dados...</li>
-                    </ul>
-                </div>
-
-                <!-- Alfa Indicator Logic View -->
-                <div class="card analysis-card">
-                    <div class="card-header">
-                        <h3>Proximidade Fluxo Alfa</h3>
-                        <button class="btn-clear" onclick="clearLogs()">Limpar Logs</button>
-                    </div>
-                    <div class="alfa-container">
-                        <div class="alfa-indicator">
-                            <label>INDICADORA (4º)</label>
-                            <div class="coin-highlight" id="alfa-4">---</div>
-                        </div>
-                        <div class="alfa-targets">
-                            <div class="target-box">
-                                <label>ALVO 1 (2º)</label>
-                                <div class="coin-box" id="alfa-2">---</div>
-                                <div class="proximity" id="prox-2">DIF: 0.00%</div>
+                    <div class="slots-container">
+                        <!-- Slot 1 -->
+                        <div class="slot" id="slot-1">
+                            <div class="slot-header">
+                                <span class="slot-id">Terminal Principal 01</span>
+                                <span class="slot-status" id="slot-1-status">OFFLINE</span>
                             </div>
-                            <div class="target-box">
-                                <label>ALVO 2 (6º)</label>
-                                <div class="coin-box" id="alfa-6">---</div>
-                                <div class="proximity" id="prox-6">DIF: 0.00%</div>
+                            <div class="slot-body">
+                                <div class="input-group">
+                                    <label>Identificador do Cliente</label>
+                                    <input type="text" placeholder="Entrar nome" class="slot-input" id="slot-1-name">
+                                </div>
+                                <div class="input-group">
+                                    <label>Chave de Acesso (API Key)</label>
+                                    <input type="password" placeholder="Key Binance" class="slot-input" id="slot-1-key">
+                                </div>
+                                <div class="input-group">
+                                    <label>Segredo Autenticador (API Secret)</label>
+                                    <input type="password" placeholder="Secret Binance" class="slot-input" id="slot-1-secret">
+                                </div>
+                                <div class="slot-actions">
+                                    <button class="btn-connect" onclick="connectSlot(1)">SINCRONIZAR</button>
+                                    <button class="btn-clear-slot" onclick="clearSlotData(1)">RESET</button>
+                                </div>
+                                <div class="slot-operations">
+                                    <button class="btn-secondary disabled" id="test-1" onclick="testApiConnection(1)">VALIDAR SALDO</button>
+                                    <button class="btn-activate disabled" id="activate-1" onclick="toggleMonitoring(1)">AUTORIZAR INÍCIO</button>
+                                </div>
                             </div>
                         </div>
-                        <div class="decision-box" id="decision-box">
-                            AGUARDANDO OPORTUNIDADE...
+
+                        <!-- Slot 2 -->
+                        <div class="slot" id="slot-2">
+                            <div class="slot-header">
+                                <span class="slot-id">Terminal Secundário 02</span>
+                                <span class="slot-status" id="slot-2-status">OFFLINE</span>
+                            </div>
+                            <div class="slot-body">
+                                <div class="input-group">
+                                    <label>Identificador do Cliente</label>
+                                    <input type="text" placeholder="Entrar nome" class="slot-input" id="slot-2-name">
+                                </div>
+                                <div class="input-group">
+                                    <label>Chave de Acesso (API Key)</label>
+                                    <input type="password" placeholder="Key Binance" class="slot-input" id="slot-2-key">
+                                </div>
+                                <div class="input-group">
+                                    <label>Segredo Autenticador (API Secret)</label>
+                                    <input type="password" placeholder="Secret Binance" class="slot-input" id="slot-2-secret">
+                                </div>
+                                <div class="slot-actions">
+                                    <button class="btn-connect" onclick="connectSlot(2)">SINCRONIZAR</button>
+                                    <button class="btn-clear-slot" onclick="clearSlotData(2)">RESET</button>
+                                </div>
+                                <div class="slot-operations">
+                                    <button class="btn-secondary disabled" id="test-2" onclick="testApiConnection(2)">VALIDAR SALDO</button>
+                                    <button class="btn-activate disabled" id="activate-2" onclick="toggleMonitoring(2)">AUTORIZAR INÍCIO</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Operational Logs -->
-                <div class="card logs-card">
-                    <div class="card-header">
-                        <h3>Monitor Operational Fluxo Alfa</h3>
+                
+                <div class="bottom-grid">
+                    <!-- Logs -->
+                    <div class="card logs-card">
+                        <div class="card-header">
+                            <h3>Auditoria Operacional</h3>
+                            <button class="btn-clear" onclick="clearLogs()">Esvaziar Registros</button>
+                        </div>
+                        <div class="log-monitor" id="log-monitor">
+                            <div class="log-entry system">SISTEMA: Rota de eventos estritamente inicializada e segura.</div>
+                        </div>
                     </div>
-                    <div class="log-monitor" id="log-monitor">
-                        <div class="log-entry system">[SISTEMA] Aguardando conexão dos slots...</div>
+
+                    <!-- Ranking -->
+                    <div class="card ranking-card">
+                        <div class="card-header">
+                            <h3>Volume Binance Top 10</h3>
+                            <span class="time-update" id="last-update">Sincronizando...</span>
+                        </div>
+                        <div class="ranking-header-row">
+                            <span>ATIVO VIRTUAL</span>
+                            <span>VARIAÇÃO 24H</span>
+                        </div>
+                        <ul id="ranking-list" class="ranking-list">
+                            <li class="loading">Recuperando blocos...</li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="script_alfa.js"></script>
 </body>
-
 </html>

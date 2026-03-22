@@ -484,7 +484,7 @@ async function buyUsdtAndReposition(actualPnl = 0) {
             coinQty = finalQty.toFixed(rules.precision);
             addLog(`[CONSULTA REALIZADA] Saldo exato recuperado: ${rawBal} → Ajustado: ${coinQty}`, 'system');
         } else {
-            addLog(`[FALHA DE LIQUIDAÇÃO] Margem de ativo (${prevCoin) é insuficiente para envio da ordem de venda.symbol}.`, 'error');
+            addLog(`[FALHA DE LIQUIDAÇÃO] Margem de ativo (${prevCoin.symbol}) é insuficiente para envio da ordem de venda.`, 'error');
             closingTrade = false;
             return;
         }

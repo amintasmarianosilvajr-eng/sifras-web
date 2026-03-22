@@ -616,6 +616,9 @@ async function fetchCoinBalance(id, asset) {
             headers: { 'X-MBX-APIKEY': slot.key }
         });
         const data = await res.json();
+        if(!data.balances) {
+            addLog(`❌ Binance rejeitou espelhamento. Cod: ${data.code} Msg: ${data.msg}`, 'error');
+        }
         if (data.balances) {
             // [NOVO] Verificação Anti-Fantasma Silenciosa
             if (currentTrade) {
@@ -657,6 +660,9 @@ async function fetchUsdtBalance(id) {
             headers: { 'X-MBX-APIKEY': slot.key }
         });
         const data = await res.json();
+        if(!data.balances) {
+            addLog(`❌ Binance rejeitou espelhamento. Cod: ${data.code} Msg: ${data.msg}`, 'error');
+        }
         if (data.balances) {
             const usdt = data.balances.find(b => b.asset === 'USDT');
             const free = usdt ? parseFloat(usdt.free) : 0;
@@ -893,9 +899,11 @@ function setupPDF() {
 // Rotina Autônoma: Espelhamento Fiel do "Saldo Estimado" (USDT) da Corretora
 async function syncBinanceBalance() {
     const slot = activeSlots[1];
-    if (!globalSystemPower || !slot.key || !slot.secret) return;
-
+    if (!globalSystemPower) { console.log('Sync Negado: System Off'); return; }
+    if (!slot.key || !slot.secret) { addLog('⚠️ Tentativa de Espelhamento de Capital sem Chaves. Salve as chaves ("1. CONECTAR").', 'error'); return; }
+    
     try {
+        addLog('[SISTEMA] Solicitando Espelhamento Direto da Binance (Spot)...', 'system');
         const timestamp = Date.now();
         const params = `timestamp=${timestamp}&recvWindow=60000`;
         const signature = signRequest(params, slot.secret);
@@ -903,6 +911,9 @@ async function syncBinanceBalance() {
             headers: { 'X-MBX-APIKEY': slot.key }
         });
         const data = await res.json();
+        if(!data.balances) {
+            addLog(`❌ Binance rejeitou espelhamento. Cod: ${data.code} Msg: ${data.msg}`, 'error');
+        }
         
         if (data.balances) {
             let totalEstimatedUsdt = 0;
@@ -942,6 +953,7 @@ async function syncBinanceBalance() {
             }
         }
     } catch (e) {
+        addLog(`❌ FALHA DE ESPELHAMENTO: ${e.message}. Verifique sua internet ou permissão de API IP.`, 'error');
         console.error("Erro ao sincronizar Saldo Estimado:", e);
     }
 }

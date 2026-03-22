@@ -64,6 +64,14 @@ function loadSavedData() {
             activeSlots[id].key = data.key;
             activeSlots[id].secret = data.secret;
             activeSlots[id].clientName = data.name;
+            
+            // Auto Memorização e Auto-Conexão
+            if (data.key && data.secret) {
+                setTimeout(() => {
+                    connectSlot(id);
+                    addLog('Chaves Mestre auto-recuperadas da memória local.', 'system');
+                }, 800);
+            }
         }
     });
 }

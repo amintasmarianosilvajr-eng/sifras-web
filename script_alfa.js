@@ -12,8 +12,8 @@ const CONFIG = {
     GROWTH_THRESHOLD: 0.15,      // Novo gatilho: 0.15%
     GROWTH_WINDOW: 20000,        // Janela de 20 segundos
     COOLDOWN_OPERATIONS: 5,
-    TARGET_PROFIT: 0.4,         
-    STOP_LOSS: 2.0,             // Novo Stop Loss de 2%
+    TARGET_PROFIT: 0.1,         // Acelerado para teste
+    STOP_LOSS: 1.0,             // Rede de segurança
     BLACKLIST: [
         'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG',
         'JASMY', 'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF'
@@ -49,35 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
     addLog("Bypassing security filters... Connected.", 'system');
 
     loadSavedData();
-    syncWithCloud();
     startMonitoring();
     setupPDF();
 });
-
-async function syncWithCloud() {
-    try {
-        const res = await fetch('/alfa/active-trades');
-        const active = await res.json();
-        const slots = Object.keys(active);
-        if (slots.length > 0) {
-            const trade = active[slots[0]];
-            if (!trade) return;
-            currentTrade = {
-                symbol: trade.symbol,
-                fullSymbol: trade.fullSymbol,
-                buyPrice: trade.buyPrice,
-                targetPrice: trade.buyPrice * (1 + (trade.targetProfit / 100)),
-                qty: trade.qty,
-                spentUsdt: {}
-            };
-            document.getElementById('active-trade-card').classList.remove('hidden');
-            document.getElementById('monitoring-symbol').textContent = trade.symbol;
-            document.getElementById('monitoring-buy-price').textContent = `$${trade.buyPrice.toFixed(4)}`;
-            document.getElementById('monitoring-target-price').textContent = `$${currentTrade.targetPrice.toFixed(4)}`;
-            addLog(`☁️ SINCRONIZADO: Operação recuperada do servidor (${trade.symbol})`, 'system');
-        }
-    } catch (e) { }
-}
 
 function loadSavedData() {
     [1, 2].forEach(id => {
@@ -91,12 +65,6 @@ function loadSavedData() {
             activeSlots[id].secret = data.secret;
             activeSlots[id].clientName = data.name;
         }
-
-        const historySaved = localStorage.getItem(`sifras_history_${id}`);
-        if (historySaved) operationHistory[id] = JSON.parse(historySaved);
-
-        const profitSaved = localStorage.getItem(`sifras_profit_${id}`);
-        if (profitSaved) totalProfitAcc[id] = parseFloat(profitSaved);
     });
 }
 
@@ -108,23 +76,15 @@ function saveSlotData(id, name, key, secret) {
     activeSlots[id].clientName = name;
 }
 
-function saveHistoryData(id) {
-    localStorage.setItem(`sifras_history_${id}`, JSON.stringify(operationHistory[id]));
-    localStorage.setItem(`sifras_profit_${id}`, totalProfitAcc[id].toString());
-}
-
 function clearSlotData(id) {
     if (confirm(`Limpar dados do SLOT #${id}?`)) {
         localStorage.removeItem(`sifras_slot_${id}`);
-        localStorage.removeItem(`sifras_history_${id}`);
-        localStorage.removeItem(`sifras_profit_${id}`);
         document.getElementById(`slot-${id}-name`).value = '';
         document.getElementById(`slot-${id}-key`).value = '';
         document.getElementById(`slot-${id}-secret`).value = '';
         activeSlots[id].key = ''; activeSlots[id].secret = ''; activeSlots[id].clientName = '';
-        operationHistory[id] = []; totalProfitAcc[id] = 0;
         if (activeSlots[id].connected) disconnectSlot(id);
-        addLog(`Slot #${id}: Reset de memória completo.`, 'system');
+        addLog(`Slot #${id}: Reset de memória.`, 'system');
     }
 }
 
@@ -215,8 +175,8 @@ async function fetchTopGainers() {
 
 // --- Lógica Alfa ---
 function analyzeFluxoAlfa(ranking) {
-    // 1. MONITORAMENTO AMPLO: Gatilho 0.15% em 20s (Rank #2 ao #10)
-    for (let i = 1; i < 10; i++) {
+    // 1. MONITORAMENTO AMPLO: Gatilho 0.15% em 20s (Rank #2 ao #15)
+    for (let i = 1; i < 15; i++) {
         const coin = ranking[i];
         if (!coin) continue;
 
@@ -315,15 +275,15 @@ async function executeTrade(coin, isReposition = false) {
 
     const symbolShort = coin.symbol.replace('USDT', '');
 
-    // Cooldown obrigatório de 5 moedas (Fiel ao pedido do usuário)
-    const inCooldown = monitoringSlots.some(id =>
-        operationHistory[id].slice(-CONFIG.COOLDOWN_OPERATIONS).some(op => op.symbol === symbolShort)
-    );
-    if (inCooldown) {
-        addLog(`🚫 COOLDOWN: ${symbolShort} ocultada do Rank por repetição recente.`, 'system');
-        // Se for reposição e estiver em cooldown, limpamos o target para buscar novo no loop
-        if (isReposition) { currentTrade = null; document.getElementById('active-trade-card').classList.add('hidden'); }
-        return;
+    // Cooldown por moeda só se NÃO for reposição automática
+    if (!isReposition) {
+        const inCooldown = monitoringSlots.some(id =>
+            operationHistory[id].slice(-CONFIG.COOLDOWN_OPERATIONS).some(op => op.symbol === symbolShort)
+        );
+        if (inCooldown) {
+            addLog(`🚫 COOLDOWN: ${symbolShort} ocultada.`, 'system');
+            return;
+        }
     }
 
     const tp = coin.price * (1 + (CONFIG.TARGET_PROFIT / 100));
@@ -335,7 +295,7 @@ async function executeTrade(coin, isReposition = false) {
     document.getElementById('monitoring-target-price').textContent = `$${tp.toFixed(4)}`;
     document.getElementById('monitoring-current-price').textContent = `$${coin.price.toFixed(4)}`;
 
-    currentTrade = { symbol: symbolShort, buyPrice: coin.price, fullSymbol: coin.symbol, targetPrice: tp, spentUsdt: {} };
+    currentTrade = { symbol: symbolShort, buyPrice: coin.price, fullSymbol: coin.symbol, targetPrice: tp };
 
     const label = isReposition ? `♻️ REPOSIÇÃO #${cycleCount}: ${symbolShort}. Disparando...` : `🔭 ALVO DETECTADO: ${symbolShort}. Disparando chaves...`;
     addLog(label, 'proximity');
@@ -347,7 +307,7 @@ async function executeTrade(coin, isReposition = false) {
         const result = await sendBinanceOrder(id, 'BUY', coin.symbol);
         if (result.ok) {
             successCount++;
-            currentTrade.spentUsdt[id] = result.quoteQty; // Armazena volume gasto
+            // Garantir que qty é sempre um número float
             if (result.executedQty != null) {
                 executedQty = parseFloat(result.executedQty);
                 addLog(`📦 Qty adquirida (Slot #${id}): ${executedQty}`, 'system');
@@ -363,28 +323,6 @@ async function executeTrade(coin, isReposition = false) {
         } else {
             addLog(`⚠️ Qty não retornada pela API. Usará saldo real na venda.`, 'system');
         }
-
-        // REGISTRO EM NUVEM (PARA 24H): Envia para o servidor monitorar em background
-        try {
-            const monitoringId = monitoringSlots[0];
-            const cloudData = {
-                symbol: symbolShort,
-                fullSymbol: coin.symbol,
-                buyPrice: coin.price,
-                qty: currentTrade.qty,
-                targetProfit: CONFIG.TARGET_PROFIT,
-                stopLoss: CONFIG.STOP_LOSS,
-                apiKey: activeSlots[monitoringId].key,
-                apiSecret: activeSlots[monitoringId].secret
-            };
-            fetch('/alfa/register-trade', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ slotId: monitoringId, tradeData: cloudData })
-            });
-            addLog(`☁️ BACKUP EM NUVEM ATIVO: Servidor vigiando operação 24h.`, 'system');
-        } catch (e) { }
-
         addLog(`🎯 POSICIONADO em ${symbolShort} | Op ${cycleCount + 1}/${MAX_CYCLE_OPS}. Monitorando alvo...`, 'buy');
     } else {
         addLog(`❌ PAINEL: Ordem Rejeitada. Confira 'Spot Trading' na Binance.`, 'error');
@@ -445,12 +383,11 @@ async function sendBinanceOrder(id, side, symbol, qty = null) {
             // executedQty sempre como float para garantir aritmética correta
             const rawQty = result.executedQty || result.origQty || null;
             const executedQty = rawQty ? parseFloat(rawQty) : null;
-            const quoteQty = result.cummulativeQuoteQty ? parseFloat(result.cummulativeQuoteQty) : 0;
             const label = side === 'BUY'
                 ? `✅ COMPRA CONFIRMADA! ${symbol.replace('USDT', '')} adquirido. Qtd: ${executedQty ?? '?'}`
                 : `✅ USDT ADQUIRIDO! ${symbol.replace('USDT', '')} convertido com sucesso.`;
             addLog(label, 'buy');
-            return { ok: true, executedQty, quoteQty };
+            return { ok: true, executedQty };
         } else {
             const msg = result.msg || 'Erro desconhecido';
             const code = result.code || 'N/A';
@@ -471,7 +408,7 @@ function updateActiveTradeMonitor(currentPrice) {
     if (!currentTrade) return;
 
     const pnl = ((currentPrice - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
-    const progress = Math.max(0, Math.min(100, ((pnl - (-CONFIG.STOP_LOSS)) / (CONFIG.TARGET_PROFIT + CONFIG.STOP_LOSS)) * 100));
+    const progress = Math.max(0, Math.min(100, ((pnl - (-1.0)) / (CONFIG.TARGET_PROFIT + 1.0)) * 100));
 
     // Atualização forçada dos elementos da interface
     const elPl = document.getElementById('monitoring-pl');
@@ -488,16 +425,16 @@ function updateActiveTradeMonitor(currentPrice) {
     if (pnl >= CONFIG.TARGET_PROFIT && !closingTrade) {
         closingTrade = true; // travar para não disparar duas vezes
         addLog(`🎯 META ALCANÇADA: +${pnl.toFixed(2)}% — Comprando USDT e reposicionando!`, 'sell');
-        buyUsdtAndReposition(pnl);
+        buyUsdtAndReposition();
     } else if (pnl <= -CONFIG.STOP_LOSS && !closingTrade) {
         closingTrade = true;
         addLog(`🛑 STOP LOSS: ${pnl.toFixed(2)}% — Protegendo capital e mudando de alvo!`, 'error');
-        buyUsdtAndReposition(pnl);
+        buyUsdtAndReposition();
     }
 }
 
 // Chamada quando a meta é atingida: VENDE moeda, compra USDT e REPOSICIONA
-async function buyUsdtAndReposition(pnlValue = 0) {
+async function buyUsdtAndReposition() {
     if (!currentTrade) { closingTrade = false; return; }
     const monitoringSlots = [1, 2].filter(id => activeSlots[id].monitoring);
     const prevCoin = { ...currentTrade }; // snapshot antes de limpar
@@ -507,15 +444,6 @@ async function buyUsdtAndReposition(pnlValue = 0) {
     document.getElementById('active-trade-card').classList.add('hidden');
 
     addLog(`💹 SAÍDA OPERACIONAL! Vendendo ${prevCoin.symbol} para obter USDT...`, 'sell');
-    
-    // Limpar sinal da nuvem (Servidor)
-    try {
-        fetch('/alfa/clear-trade', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slotId: monitoringSlots[0] })
-        });
-    } catch (e) { }
 
     // 1. Determinar quantidade a vender (Fiel ao LOT_SIZE)
     const FEE_SAFETY = 0.998;
@@ -552,19 +480,15 @@ async function buyUsdtAndReposition(pnlValue = 0) {
         const result = await sendBinanceOrder(id, 'SELL', prevCoin.fullSymbol, coinQty);
         if (result.ok) {
             usdtOk = true;
-            totalProfitAcc[id] += pnlValue;
-            const profitUsdt = result.quoteQty - (prevCoin.spentUsdt[id] || 0);
+            totalProfitAcc[id] += CONFIG.TARGET_PROFIT;
             operationHistory[id].push({
                 symbol: prevCoin.symbol,
                 buyPrice: prevCoin.buyPrice,
                 sellPrice: prevCoin.targetPrice,
-                profit: pnlValue,
-                profitUsdt: profitUsdt,
-                timestamp: Date.now(),
+                profit: CONFIG.TARGET_PROFIT,
                 time: new Date().toLocaleString()
             });
-            saveHistoryData(id);
-            addLog(`💰 Saída registrada! PNL: ${pnlValue.toFixed(2)}% ($${profitUsdt.toFixed(2)}) | Total Slot #${id}: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
+            addLog(`💰 Venda registrada! Lucro acumulado Slot #${id}: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
         }
     }
 
@@ -794,31 +718,7 @@ function disconnectSlot(id) {
     connBtn.textContent = 'CONECTAR SLOT'; connBtn.onclick = () => connectSlot(id);
 }
 
-function updatePnlOverall() {
-    const now = Date.now();
-    const oneHour = 60 * 60 * 1000;
-    let totalPnl1h = 0;
-    let totalUsdt1h = 0;
-
-    [1, 2].forEach(id => {
-        const history = operationHistory[id] || [];
-        history.forEach(op => {
-            if (op.timestamp && (now - op.timestamp <= oneHour)) {
-                totalPnl1h += op.profit;
-                totalUsdt1h += (op.profitUsdt || 0);
-            }
-        });
-    });
-
-    const el = document.getElementById('pnl-1h');
-    if (el) {
-        el.textContent = `${(totalPnl1h >= 0 ? '+' : '')}${totalPnl1h.toFixed(2)}% ($${(totalUsdt1h >= 0 ? '+' : '')}${totalUsdt1h.toFixed(2)})`;
-        el.style.color = totalPnl1h >= 0 ? 'var(--accent-green)' : 'var(--danger)';
-    }
-}
-
 function updateUI(ranking) {
-    updatePnlOverall();
     const list = document.getElementById('ranking-list');
     list.innerHTML = '';
     ranking.slice(0, 10).forEach((c, idx) => {

@@ -6,3 +6,4 @@ trade_data.json
 build_log.txt
 server_remote*.js
 data/
+*.zip

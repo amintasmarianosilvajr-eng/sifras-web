@@ -289,7 +289,7 @@ h1, h2, h3, .logo-text, .badge, .btn-stop, .btn-secondary, .btn-activate, .btn-c
 .progress-fill { height: 100%; width: 0%; background: var(--primary); transition: width 0.4s; border-radius: 20px; }
 
 /* ======== SLOTS CONFIGURATION ======== */
-.slots-container { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
+.slots-container { display: flex; flex-direction: column; gap: 3rem; }
 
 .slot {
     background: var(--sidebar-bg);
@@ -332,7 +332,7 @@ h1, h2, h3, .logo-text, .badge, .btn-stop, .btn-secondary, .btn-activate, .btn-c
 .btn-connect:hover { background: #fff; box-shadow: 0 0 20px var(--accent-glow); }
 .btn-clear-slot:hover { background: #fff; color: var(--bg-dark); }
 
-.slot-operations { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.slot-operations { display: grid; grid-template-columns: 1fr; gap: 15px; }
 
 .btn-secondary, .btn-activate {
     padding: 15px; border-radius: 20px; font-size: 0.8rem; font-weight: 800; cursor: pointer;

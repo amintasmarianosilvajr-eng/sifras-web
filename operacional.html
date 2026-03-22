@@ -81,13 +81,13 @@
                 <div class="card slots-card">
                     <div class="card-header">
                         <h3>Configuração de Slots</h3>
-                        <span class="badge">2 SLOTS ATIVOS</span>
+                        <span class="badge">TERMINAL ÚNICO</span>
                     </div>
                     <div class="slots-container">
                         <!-- Slot 1 -->
                         <div class="slot" id="slot-1">
                             <div class="slot-header">
-                                <span class="slot-id">SLOT #01</span>
+                                <span class="slot-id">CHAVE CENTRAL API</span>
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <button class="btn-clear-slot" onclick="clearSlotData(1)"
                                         title="Limpar tudo neste slot"></button>
@@ -107,40 +107,13 @@
                             </div>
                         </div>
 
-                        <!-- Slot 2 -->
-                        <div class="slot" id="slot-2">
-                            <div class="slot-header">
-                                <span class="slot-id">SLOT #02</span>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <button class="btn-clear-slot" onclick="clearSlotData(2)"
-                                        title="Limpar tudo neste slot"></button>
-                                    <span class="slot-status" id="slot-2-status">DESCONECTADO</span>
-                                </div>
-                            </div>
-                            <div class="slot-body">
-                                <input type="text" placeholder="NOME DO CLIENTE" class="slot-input" id="slot-2-name">
-                                <input type="password" placeholder="API KEY" class="slot-input" id="slot-2-key">
-                                <input type="password" placeholder="SECRET KEY" class="slot-input" id="slot-2-secret">
-                                <button class="btn-connect" onclick="connectSlot(2)">CONECTAR SLOT</button>
-                                <button class="btn-test-api disabled" id="test-2" onclick="testApiConnection(2)"
-                                    style="width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer; background: rgba(121, 40, 202, 0.2); border: 1px solid var(--accent-purple); color: var(--accent-purple);">TESTAR
-                                    API (SALDO)</button>
-                                <button class="btn-activate disabled" id="activate-2"
-                                    onclick="toggleMonitoring(2)">INICIAR MONITORAMENTO</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="pdf-container"
-                        style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="pdf-container"
+                        style="margin-top: 20px; display: grid; grid-template-columns: 1fr; gap: 10px;">
                         <button class="btn-pdf" id="download-pdf-1"
                             style="background: #2c3e50; border: 1px solid var(--card-border); color: #fff; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; font-size: 0.75rem;">
-                            <span></span> PDF SLOT 1
+                            <span></span> EMITIR ÚLTIMO PDF DE LUCRO
                         </button>
-                        <button class="btn-pdf" id="download-pdf-2"
-                            style="background: #2c3e50; border: 1px solid var(--card-border); color: #fff; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; font-size: 0.75rem;">
-                            <span></span> PDF SLOT 2
-                        </button>
+                        
                     </div>
                 </div>
 

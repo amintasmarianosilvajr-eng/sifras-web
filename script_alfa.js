@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadSavedData() {
-    [1, 2].forEach(id => {
+    [1].forEach(id => {
         const saved = localStorage.getItem(`sifras_slot_${id}`);
         if (saved) {
             const data = JSON.parse(saved);
@@ -269,7 +269,7 @@ function checkVolatility(coin) {
 
 // --- Execução Real ---
 async function executeTrade(coin, isReposition = false) {
-    const monitoringSlots = [1, 2].filter(id => activeSlots[id].monitoring);
+    const monitoringSlots = [1].filter(id => activeSlots[id].monitoring);
     if (monitoringSlots.length === 0) return;
     if (cycleOnPause) return; // bloqueado durante pausa do ciclo
 
@@ -436,7 +436,7 @@ function updateActiveTradeMonitor(currentPrice) {
 // Chamada quando a meta é atingida: VENDE moeda, compra USDT e REPOSICIONA
 async function buyUsdtAndReposition() {
     if (!currentTrade) { closingTrade = false; return; }
-    const monitoringSlots = [1, 2].filter(id => activeSlots[id].monitoring);
+    const monitoringSlots = [1].filter(id => activeSlots[id].monitoring);
     const prevCoin = { ...currentTrade }; // snapshot antes de limpar
 
     // Limpar currentTrade imediatamente para não re-entrar no monitor
@@ -591,14 +591,14 @@ async function emergencyStop() {
     // 1. Comprar USDT de emergência se houver posição aberta
     if (currentTrade) {
         addLog(`📡 STOP: Comprando USDT de emergência (${currentTrade.fullSymbol})...`, 'system');
-        const monitoringSlots = [1, 2].filter(id => activeSlots[id].monitoring);
+        const monitoringSlots = [1].filter(id => activeSlots[id].monitoring);
         for (const id of monitoringSlots) {
             await sendBinanceOrder(id, 'SELL', currentTrade.fullSymbol, currentTrade.qty ? currentTrade.qty.toFixed(8) : null);
         }
     }
 
     // 2. Parar monitoramento de todos os slots
-    [1, 2].forEach(id => {
+    [1].forEach(id => {
         if (activeSlots[id].monitoring) {
             activeSlots[id].monitoring = false;
             const btn = document.getElementById(`activate-${id}`);
@@ -755,7 +755,7 @@ function addLog(msg, type = 'system') {
 function clearLogs() { document.getElementById('log-monitor').innerHTML = ''; addLog("Logs limpos.", 'system'); }
 
 function setupPDF() {
-    [1, 2].forEach(id => {
+    [1].forEach(id => {
         const btn = document.getElementById(`download-pdf-${id}`);
         if (btn) btn.onclick = () => {
             const h = operationHistory[id], name = activeSlots[id].clientName || `S${id}`;

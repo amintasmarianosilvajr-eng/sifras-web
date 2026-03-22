@@ -11,12 +11,14 @@ const CONFIG = {
     VOLATILITY_WINDOW: 10000,
     GROWTH_THRESHOLD: 0.15,      // Novo gatilho: 0.15%
     GROWTH_WINDOW: 15000,        // Janela de 20 segundos
-    COOLDOWN_OPERATIONS: 5,
+    COOLDOWN_OPERATIONS: 3,
     TARGET_PROFIT: 0.4,         // Acelerado para teste
     STOP_LOSS: 2.0,             // Rede de segurança
     BLACKLIST: [
-        'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG',
-        'JASMY', 'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF'
+        /* Fan Tokens (Times de Futebol, Seleções e Escuderias) */
+        'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV',
+        /* Deslistadas, Risco e Monitoradas (Monitoring e Seed Tag Binance) */
+        'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF', 'MDX', 'LOOM', 'KP3R', 'DOCK', 'OAX', 'PROS', 'VITE', 'FOR', 'IRIS', 'NULS', 'FIDA', 'CVX', 'HARD', 'WNXM', 'GLM', 'AKRO'
     ]
 };
 

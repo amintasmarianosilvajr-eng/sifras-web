@@ -191,15 +191,15 @@ function analyzeFluxoAlfa(ranking) {
     const c2 = ranking[1], c4 = ranking[3], c6 = ranking[5];
     if (!c2 || !c4 || !c6) return;
 
-    document.getElementById('alfa-4').textContent = c4.symbol.replace('USDT', '');
-    document.getElementById('alfa-2').textContent = c2.symbol.replace('USDT', '');
-    document.getElementById('alfa-6').textContent = c6.symbol.replace('USDT', '');
+    
+    
+    
 
     const d2 = Math.abs(c2.vol - c4.vol);
     const d6 = Math.abs(c6.vol - c4.vol);
 
-    document.getElementById('prox-2').textContent = `DIF: ${d2.toFixed(3)}%`;
-    document.getElementById('prox-6').textContent = `DIF: ${d6.toFixed(3)}%`;
+    
+    
 
     let target = null;
     if (d2 < CONFIG.PROXIMITY_THRESHOLD || d6 < CONFIG.PROXIMITY_THRESHOLD) {
@@ -210,15 +210,14 @@ function analyzeFluxoAlfa(ranking) {
         }
     }
 
-    const box = document.getElementById('decision-box');
     if (target) {
         lastAlfaTarget = target; 
-        box.classList.add('active');
-        box.textContent = `ALVO PROXIMIDADE: ${target.symbol}`;
+        
+        
         if (checkVolatility(target)) executeTrade(target);
     } else {
         box.classList.remove('active');
-        box.textContent = "AGUARDANDO PROXIMIDADE ALFA...";
+        
     }
 }
 
@@ -719,16 +718,35 @@ function disconnectSlot(id) {
 }
 
 function updateUI(ranking) {
-    const list = document.getElementById('ranking-list');
-    list.innerHTML = '';
-    ranking.slice(0, 10).forEach((c, idx) => {
-        const pos = idx + 1;
-        const li = document.createElement('li');
-        li.className = 'rank-item';
-        let badge = (pos === 4) ? '<span class="badge" style="background:var(--primary)">IND</span>' :
-            (pos === 2 || pos === 6) ? '<span class="badge" style="background:var(--accent-purple)">ALVO</span>' : '';
-        li.innerHTML = `
-            <span class="symbol"><span class="pos">#${pos}</span> ${c.symbol.replace('USDT', '')} ${badge}</span>
+    const timeEl = document.getElementById('last-update');
+    if(timeEl) timeEl.textContent = new Date().toLocaleTimeString();
+    
+    const grid = document.getElementById('dynamic-targets-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    for (let i = 1; i < 10; i++) {
+        const coin = ranking[i];
+        if (!coin) continue;
+        const pos = i + 1;
+        
+        let badge = '';
+        if (pos === 4) badge = '<span class="badge badge-ind" style="background:var(--card-border); color:#fff; font-size:0.6rem; padding: 4px 8px;">IND</span>';
+        if (pos === 2 || pos === 6) badge = '<span class="badge badge-target" style="background:var(--primary); color:var(--bg-dark); font-size:0.6rem; padding: 4px 8px;">ALVO</span>';
+
+        const card = document.createElement('div');
+        card.className = 'target-slot-card';
+        card.innerHTML = `
+            <div class="ts-header">
+                <span class="ts-pos">#${pos}</span>
+                ${badge}
+            </div>
+            <div class="ts-coin">${coin.symbol.replace('USDT', '')}</div>
+            <div class="ts-vol ${coin.vol >= 0 ? 'up' : 'down'}">${coin.vol >= 0 ? '+' : ''}${coin.vol.toFixed(2)}%</div>
+        `;
+        grid.appendChild(card);
+    }
+}</span> ${c.symbol.replace('USDT', '')} ${badge}</span>
             <span class="change ${c.vol >= 0 ? 'up' : 'down'}">${c.vol.toFixed(2)}%</span>
         `;
         list.appendChild(li);

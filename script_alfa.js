@@ -305,6 +305,7 @@ async function executeTrade(coin, isReposition = false) {
     document.getElementById('monitoring-current-price').textContent = `$${coin.price.toFixed(4)}`;
 
     currentTrade = { symbol: symbolShort, buyPrice: coin.price, fullSymbol: coin.symbol, targetPrice: tp };
+    cycleCount++; // Incrementa no inicio da operação visualmente
 
     const label = isReposition ? `♻️ REPOSIÇÃO #${cycleCount}: ${symbolShort}. Disparando...` : `🔭 ALVO DETECTADO: ${symbolShort}. Disparando chaves...`;
     addLog(label, 'proximity');
@@ -332,10 +333,15 @@ async function executeTrade(coin, isReposition = false) {
         } else {
             addLog(`⚠️ Qty não retornada pela API. Usará saldo real na venda.`, 'system');
         }
-        addLog(`🎯 POSICIONADO em ${symbolShort} | Op ${cycleCount + 1}/${MAX_CYCLE_OPS}. Monitorando alvo...`, 'buy');
+        addLog(`🎯 POSICIONADO em ${symbolShort} | Op ${cycleCount}/${MAX_CYCLE_OPS}. Monitorando alvo...`, 'buy');
     } else {
         addLog(`❌ PAINEL: Ordem Rejeitada. Confira 'Spot Trading' na Binance.`, 'error');
-        setTimeout(() => { currentTrade = null; document.getElementById('active-trade-card').classList.add('hidden'); }, 15000);
+        setTimeout(() => { currentTrade = null; document.getElementById('active-trade-card').classList.add('hidden');
+    const headerPnl = document.getElementById('header-realtime-pnl');
+    if (headerPnl) {
+        headerPnl.textContent = 'Aguardando...';
+        headerPnl.style.color = 'var(--text-muted)';
+    } }, 15000);
     }
 }
 
@@ -451,6 +457,11 @@ async function buyUsdtAndReposition(actualPnl = 0) {
     // Limpar currentTrade imediatamente para não re-entrar no monitor
     currentTrade = null;
     document.getElementById('active-trade-card').classList.add('hidden');
+    const headerPnl = document.getElementById('header-realtime-pnl');
+    if (headerPnl) {
+        headerPnl.textContent = 'Aguardando...';
+        headerPnl.style.color = 'var(--text-muted)';
+    }
 
     addLog(`💹 SAÍDA OPERACIONAL! Vendendo ${prevCoin.symbol} para obter USDT...`, 'sell');
 
@@ -626,6 +637,11 @@ async function emergencyStop() {
     cycleOnPause = false;
     cycleResumeTime = null;
     document.getElementById('active-trade-card').classList.add('hidden');
+    const headerPnl = document.getElementById('header-realtime-pnl');
+    if (headerPnl) {
+        headerPnl.textContent = 'Aguardando...';
+        headerPnl.style.color = 'var(--text-muted)';
+    }
     updateCycleUI();
     addLog(`✅ SISTEMA PARADO. Ciclo resetado. Reinicie o monitoramento quando quiser.`, 'system');
 }

@@ -532,8 +532,19 @@ async function buyUsdtAndReposition(actualPnl = 0) {
             coinQty = finalQty.toFixed(rules.precision);
             addLog(`[CONSULTA REALIZADA] Saldo exato recuperado: ${rawBal} → Ajustado: ${coinQty}`, 'system');
         } else {
-            addLog(`[FALHA DE LIQUIDAÇÃO] Margem de ativo (${prevCoin.symbol}) é insuficiente para envio da ordem de venda.`, 'error');
+            addLog(`⚙️ [ANTI-FANTASMA] Saldo de ${prevCoin.symbol} zerado na Binance. Assumindo Venda Manual/Externa. Abortando operação fantasma.`, 'error');
+            currentTrade = null;
+            localStorage.removeItem('sifras_active_trade');
+            document.getElementById('active-trade-card').classList.add('hidden');
             closingTrade = false;
+            syncBinanceBalance();
+            
+            const headerPnl = document.getElementById('header-realtime-pnl');
+            if (headerPnl) {
+                headerPnl.innerHTML = 'Aguardando...';
+                headerPnl.style.color = 'var(--text-muted)';
+                if (headerPnl.previousElementSibling) headerPnl.previousElementSibling.textContent = 'PNL ATUAL';
+            }
             return;
         }
     }
@@ -606,6 +617,26 @@ async function fetchCoinBalance(id, asset) {
         });
         const data = await res.json();
         if (data.balances) {
+            // [NOVO] Verificação Anti-Fantasma Silenciosa
+            if (currentTrade) {
+                const baseAsset = currentTrade.symbol.replace('USDT', '');
+                const b = data.balances.find(bal => bal.asset === baseAsset);
+                const actualBal = b ? parseFloat(b.free) + parseFloat(b.locked) : 0;
+                
+                if (currentTrade.qty && actualBal < (currentTrade.qty * 0.1)) {
+                    addLog(`⚙️ [ANTI-FANTASMA] Ativo ${baseAsset} sumiu da corretora (Transferência/Venda externa?). Exterminando operação Zumbi da memória!`, 'system');
+                    currentTrade = null;
+                    localStorage.removeItem('sifras_active_trade');
+                    document.getElementById('active-trade-card').classList.add('hidden');
+                    
+                    const hdPnl = document.getElementById('header-realtime-pnl');
+                    if (hdPnl) {
+                        hdPnl.innerHTML = 'Aguardando...';
+                        hdPnl.style.color = 'var(--text-muted)';
+                        if (hdPnl.previousElementSibling) hdPnl.previousElementSibling.textContent = 'PNL ATUAL';
+                    }
+                }
+            }
             const bal = data.balances.find(b => b.asset === asset);
             const free = bal ? parseFloat(bal.free) : 0;
             return free > 0 ? free.toFixed(6) : null;
@@ -862,7 +893,7 @@ function setupPDF() {
 // Rotina Autônoma: Espelhamento Fiel do "Saldo Estimado" (USDT) da Corretora
 async function syncBinanceBalance() {
     const slot = activeSlots[1];
-    if (!globalSystemPower || !slot.key || !slot.secret || currentTrade) return;
+    if (!globalSystemPower || !slot.key || !slot.secret) return;
 
     try {
         const timestamp = Date.now();

@@ -187,21 +187,27 @@ h1, h2, h3, .logo-text, .badge, .btn-stop, .btn-secondary, .btn-activate, .btn-c
 
 .card {
     background: var(--card-bg);
-    border: 1px solid var(--card-border);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 30px;
     padding: 3rem;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 15px rgba(46, 59, 82, 0.3);
     position: relative;
     overflow: hidden;
 }
 
+
 .card::before {
     content: ''; position: absolute;
-    top: 0; left: 0; right: 0; height: 4px;
-    background: var(--primary);
+    top: 0; left: 0; right: 0; height: 1px;
+    background: #6B7280; /* Linha discreta cinza claro superior */
+    box-shadow: 0 0 10px rgba(107, 114, 128, 0.5); /* Sombra grafite */
 }
 
-.card.active-trade-card { border-color: var(--primary); box-shadow: 0 0 30px var(--accent-glow); }
+
+.card.active-trade-card { 
+    border: 1px solid #4A5568; /* Cinza grafite */
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(74, 85, 104, 0.3); /* Sombra destacando em grafite */
+}
 
 .card-header {
     display: flex;

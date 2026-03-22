@@ -427,10 +427,14 @@ function updateActiveTradeMonitor(currentPrice) {
     const elPl = document.getElementById('monitoring-pl');
     const elCurrent = document.getElementById('monitoring-current-price');
     const elFill = document.getElementById('trade-progress-fill');
-
-    if (elPl) {
-        elPl.textContent = `${(pnl >= 0 ? '+' : '')}${pnl.toFixed(2)}%`;
-        elPl.style.color = pnl >= 0 ? 'var(--accent-green)' : 'var(--danger)';
+    
+    // Atualiza o Top Header PNL
+    const headerPnl = document.getElementById('header-realtime-pnl');
+    const headerLabel = document.querySelector('#header-realtime-pnl').previousElementSibling;
+    if (headerPnl) {
+        if (headerLabel) headerLabel.textContent = 'PNL DA OPERAÇÃO';
+        headerPnl.textContent = `${(pnl >= 0 ? '+' : '')}${pnl.toFixed(2)}%`;
+        headerPnl.style.color = pnl >= 0 ? 'var(--accent-green)' : 'var(--danger)';
     }
     if (elCurrent) elCurrent.textContent = `$${currentPrice.toFixed(4)}`;
     if (elFill) elFill.style.width = `${progress}%`;
@@ -455,11 +459,7 @@ async function buyUsdtAndReposition(actualPnl = 0) {
     // Limpar currentTrade imediatamente para não re-entrar no monitor
     currentTrade = null;
     document.getElementById('active-trade-card').classList.add('hidden');
-    const headerPnl = document.getElementById('header-realtime-pnl');
-    if (headerPnl) {
-        headerPnl.textContent = 'Aguardando...';
-        headerPnl.style.color = 'var(--text-muted)';
-    }
+    syncBinanceBalance(); // Força atualização do Saldo Real ao invés de exibir 'Aguardando...'
 
     addLog(`[LIQUIDAÇÃO A MERCADO] Enviando Ordem de Venda Integral para ${prevCoin.symbol}.`, 'sell');
 
@@ -614,11 +614,8 @@ async function emergencyStop() {
     cycleOnPause = false;
     cycleResumeTime = null;
     document.getElementById('active-trade-card').classList.add('hidden');
-    const headerPnl = document.getElementById('header-realtime-pnl');
-    if (headerPnl) {
-        headerPnl.textContent = 'Aguardando...';
-        headerPnl.style.color = 'var(--text-muted)';
-    }
+    syncBinanceBalance();
+    
     updateCycleUI();
     addLog(`✅ SISTEMA PARADO. Ciclo resetado. Reinicie o monitoramento quando quiser.`, 'system');
 }
@@ -659,6 +656,12 @@ function connectSlot(id) {
     const btn = document.querySelector(`#slot-${id} .btn-connect`);
     btn.textContent = 'DESCONECTAR'; btn.onclick = () => disconnectSlot(id);
     addLog(`Slot #${id}: Link estabelecido. Clique em TESTAR API para validar.`, 'system');
+    
+    // Inicia e acopla a rotina de Espelhamento do Saldo Estimado (Intervalo de Segurança 30 min solicitado)
+    syncBinanceBalance();
+    if (!window.balanceSyncInterval) {
+        window.balanceSyncInterval = setInterval(syncBinanceBalance, 30 * 60 * 1000); 
+    }
 }
 
 async function testApiConnection(id) {
@@ -722,6 +725,15 @@ function disconnectSlot(id) {
     actBtn.classList.add('disabled'); actBtn.classList.remove('on');
     const connBtn = document.querySelector(`#slot-${id} .btn-connect`);
     connBtn.textContent = 'CONECTAR SLOT'; connBtn.onclick = () => connectSlot(id);
+    
+    // Reseta o header visual
+    const headerPnl = document.getElementById('header-realtime-pnl');
+    const headerLabel = headerPnl ? headerPnl.previousElementSibling : null;
+    if (headerPnl) {
+        if (headerLabel) headerLabel.textContent = 'PNL ATUAL';
+        headerPnl.textContent = 'Aguardando...';
+        headerPnl.style.color = 'var(--text-muted)';
+    }
 }
 
 function updateUI(ranking) {
@@ -787,4 +799,60 @@ function setupPDF() {
             html2pdf().from(el).save(`Extrato_${name}.pdf`);
         };
     });
+}
+
+// Rotina Autônoma: Espelhamento Fiel do "Saldo Estimado" (USDT) da Corretora
+async function syncBinanceBalance() {
+    const slot = activeSlots[1];
+    if (!slot.connected || !slot.key || !slot.secret || currentTrade) return;
+
+    try {
+        const timestamp = Date.now();
+        const params = `timestamp=${timestamp}&recvWindow=60000`;
+        const signature = signRequest(params, slot.secret);
+        const res = await fetch(`${CONFIG.BINANCE_API}/account?${params}&signature=${signature}`, {
+            headers: { 'X-MBX-APIKEY': slot.key }
+        });
+        const data = await res.json();
+        
+        if (data.balances) {
+            let totalEstimatedUsdt = 0;
+            const nonZeroBalances = data.balances.filter(b => parseFloat(b.free) + parseFloat(b.locked) > 0);
+            
+            // Requisita os precos de todos os tickers de uma vez para cruzar dados
+            let tickerMap = {};
+            if (nonZeroBalances.length > 1) { // Tem outras moedas além do USDT
+                try {
+                    const tRes = await fetch(`${CONFIG.BINANCE_API}/ticker/price`);
+                    const tData = await tRes.json();
+                    tData.forEach(t => tickerMap[t.symbol] = parseFloat(t.price));
+                } catch(e) {}
+            }
+
+            for (const b of nonZeroBalances) {
+                const amount = parseFloat(b.free) + parseFloat(b.locked);
+                if (b.asset === 'USDT') {
+                    totalEstimatedUsdt += amount;
+                } else {
+                    const priceInUsdt = tickerMap[b.asset + 'USDT'];
+                    if (priceInUsdt) {
+                        totalEstimatedUsdt += amount * priceInUsdt;
+                    }
+                }
+            }
+
+            // Atualiza Componente na Interface se a operação estiver Livre
+            if (!currentTrade) {
+                const headerPnl = document.getElementById('header-realtime-pnl');
+                const headerLabel = headerPnl ? headerPnl.previousElementSibling : null;
+                if (headerPnl) {
+                    if (headerLabel) headerLabel.textContent = 'SALDO ESTIMADO BINANCE';
+                    headerPnl.innerHTML = `<strong style="color: #fff;">$${totalEstimatedUsdt.toFixed(2)}</strong> <span style="font-size: 0.6em; color: var(--text-muted)">USDT</span>`;
+                    headerPnl.style.color = '#fff';
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Erro ao sincronizar Saldo Estimado:", e);
+    }
 }

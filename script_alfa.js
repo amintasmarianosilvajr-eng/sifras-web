@@ -509,6 +509,9 @@ async function buyUsdtAndReposition(actualPnl = 0) {
                 time: new Date().toLocaleString()
             });
             if (actualPnl >= 0) {
+                const overlay = document.getElementById('profit-overlay');
+                if(overlay) { overlay.classList.add('show'); setTimeout(() => overlay.classList.remove('show'), 8000); }
+
                 addLog(`[MARGEM CONSOLIDADA] Operação S${id} fechada com lucro! PNL Global Acumulado C/ Juros: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
             } else {
                 addLog(`[STOP LOSS EXECUTADO] Operação e Prejuízos Encerrados. PNL do Trade: ${actualPnl.toFixed(2)}%. Global: ${totalProfitAcc[id].toFixed(2)}%`, 'error');

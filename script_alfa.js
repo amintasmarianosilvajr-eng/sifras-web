@@ -82,6 +82,9 @@ function loadSavedData() {
             
             // Recuperação Inteligente de Trade Aberto ou Standby
             if (data.key && data.secret) {
+                document.getElementById(`activate-${id}`).classList.remove('disabled');
+                const testBtn = document.getElementById(`test-${id}`);
+                if (testBtn) testBtn.classList.remove('disabled');
                 setTimeout(() => {
                     const savedTrade = localStorage.getItem('sifras_active_trade');
                     if (savedTrade) {
@@ -765,7 +768,7 @@ function disconnectSlot(id) {
     document.getElementById(`slot-${id}-status`).textContent = 'DESCONECTADO';
     document.getElementById(`slot-${id}-status`).classList.remove('connected');
     const actBtn = document.getElementById(`activate-${id}`);
-    actBtn.classList.add('disabled'); actBtn.classList.remove('on');
+    actBtn.classList.remove('on');
     const connBtn = document.querySelector(`#slot-${id} .btn-connect`);
     connBtn.textContent = '1. CONECTAR'; connBtn.onclick = () => connectSlot(id);
     
@@ -913,13 +916,14 @@ function masterToggle() {
         // Se estiver desligado -> Ligar
         addLog('[COMANDO_MESTRE] Energizando núcleo principal...', 'system');
         
-        // 1. Validar Conexão Previa
-        if (!slot1.connected) {
-            addLog('⚠️ Impossível iniciar: Por favor, clique no botão "1. CONECTAR" na aba inferior para autenticar suas chaves primeiro.', 'error');
+        // 1. Validar Conexão Previa pelas chaves
+        if (!slot1.key || !slot1.secret) {
+            addLog('⚠️ Impossível iniciar: Por favor, insira e salve suas chaves ("1. CONECTAR") na aba inferior para autenticar.', 'error');
             return;
         }
         
-        // 2. Se a conexão passou, habilita monitoramento
+        // 2. Se as chaves existem, garante que slot está connected internamente e habilita monitoramento
+        slot1.connected = true;
         if (!slot1.monitoring) {
             toggleMonitoring(1);
         }

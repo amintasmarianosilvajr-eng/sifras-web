@@ -756,6 +756,7 @@ function updateUI(ranking) {
     }
 
 
+}
 function updateStatus(on) {
     document.getElementById('system-status-dot').className = `status-dot ${on ? 'online' : ''}`;
     document.getElementById('system-status-text').textContent = on ? 'FLUXO ALFA ON' : 'OFFLINE';

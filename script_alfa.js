@@ -33,6 +33,7 @@ let activeSlots = {
 };
 let currentTrade = null;
 let executionMode = 'REAL';
+let globalSystemPower = false;
 
 // --- Controle de Ciclos (10 operações por ciclo) ---
 const MAX_CYCLE_OPS = 10;
@@ -66,7 +67,13 @@ function loadSavedData() {
             totalProfitAcc = state.totalProfitAcc || { 1: 0.0, 2: 0.0 };
             operationHistory = state.operationHistory || { 1: [], 2: [] };
             updateCycleUI(); // Atualiza a visualização do painel no topo com o ciclo preservado
-            addLog(`[MÓDULO DE RECUPERAÇÃO] Sessão operacional anterior (Operações: ${cycleCount}/10 | PNL Acumulado: ${totalProfitAcc[1].toFixed(2)}%) reconstruída com sucesso.`, 'system');
+            globalSystemPower = true;
+            document.getElementById('master-toggle-btn').innerHTML = 'DESCONECTAR';
+            document.getElementById('master-toggle-btn').style.background = 'rgba(255, 102, 0, 0.15)';
+            document.getElementById('master-toggle-btn').style.color = '#ff6600';
+            document.getElementById('master-toggle-btn').style.borderColor = '#ff6600';
+            syncBinanceBalance();
+            addLog(`[MÓDULO DE RECUPERAÇÃO]` Sessão operacional anterior (Operações: ${cycleCount}/10 | PNL Acumulado: ${totalProfitAcc[1].toFixed(2)}%) reconstruída com sucesso.`, 'system');
         } catch(e) {}
     }
     [1].forEach(id => {
@@ -681,6 +688,10 @@ function updateCycleUI() {
 
 // --- UI Helpers ---
 function connectSlot(id) {
+    if (!globalSystemPower && id === 1) {
+        addLog('⚠️ ACESSO NEGADO: Ligue a "Conexão Global" no botão do TOPO primeiro.', 'error');
+        return;
+    }
     const name = document.getElementById(`slot-${id}-name`).value;
     const key = document.getElementById(`slot-${id}-key`).value;
     const secret = document.getElementById(`slot-${id}-secret`).value;
@@ -851,7 +862,7 @@ function setupPDF() {
 // Rotina Autônoma: Espelhamento Fiel do "Saldo Estimado" (USDT) da Corretora
 async function syncBinanceBalance() {
     const slot = activeSlots[1];
-    if (!slot.connected || !slot.key || !slot.secret || currentTrade) return;
+    if (!globalSystemPower || !slot.key || !slot.secret || currentTrade) return;
 
     try {
         const timestamp = Date.now();
@@ -907,29 +918,38 @@ async function syncBinanceBalance() {
 
 function masterToggle() {
     const slot1 = activeSlots[1];
+    const btn = document.getElementById('master-toggle-btn');
     
-    // Se o motor já está rodando (Monitoramento ativo ou Trade ativo)
-    if (slot1.monitoring || currentTrade) {
-        addLog('[COMANDO_MESTRE] Iniciando protocolo de interrupção...', 'system');
-        emergencyStop(); // Já desliga tudo e zera variáveis
+    if (!globalSystemPower) {
+        globalSystemPower = true;
+        btn.innerHTML = 'DESCONECTAR';
+        btn.style.background = 'rgba(255, 102, 0, 0.15)';
+        btn.style.borderColor = '#ff6600';
+        btn.style.color = '#ff6600';
+        btn.style.animation = 'blink 1.5s infinite';
+        addLog('[COMANDO_MESTRE] Conexão Global com a Binance ESTABELECIDA. Plataforma Energizada.', 'system');
+        
+        if (slot1.key && slot1.secret) syncBinanceBalance();
     } else {
-        // Se estiver desligado -> Ligar
-        addLog('[COMANDO_MESTRE] Energizando núcleo principal...', 'system');
+        addLog('[COMANDO_MESTRE] Encerrando Conexão Global...', 'system');
+        if (slot1.monitoring || currentTrade) emergencyStop();
+        if (slot1.connected) disconnectSlot(1);
         
-        // 1. Validar Conexão Previa pelas chaves
-        if (!slot1.key || !slot1.secret) {
-            addLog('⚠️ Impossível iniciar: Por favor, insira e salve suas chaves ("1. CONECTAR") na aba inferior para autenticar.', 'error');
-            return;
-        }
+        globalSystemPower = false;
+        btn.innerHTML = 'CONECTAR';
+        btn.style.background = 'rgba(0,255,136,0.15)';
+        btn.style.borderColor = 'var(--accent-green)';
+        btn.style.color = 'var(--accent-green)';
+        btn.style.animation = 'none';
         
-        // 2. Se as chaves existem, garante que slot está connected internamente e habilita monitoramento
-        slot1.connected = true;
-        if (!slot1.monitoring) {
-            toggleMonitoring(1);
+        const headerPnl = document.getElementById('header-realtime-pnl');
+        if (headerPnl) {
+            headerPnl.innerHTML = 'Aguardando...';
+            headerPnl.style.color = 'var(--text-muted)';
+            if (headerPnl.previousElementSibling) headerPnl.previousElementSibling.textContent = 'PNL ATUAL';
         }
     }
 }
-
 function updateMasterToggleUI(isMonitoring) {
     const btn = document.getElementById('master-toggle-btn');
     if (!btn) return;

@@ -929,6 +929,7 @@ function masterToggle() {
         btn.style.animation = 'blink 1.5s infinite';
         addLog('[COMANDO_MESTRE] Conexão Global com a Binance ESTABELECIDA. Plataforma Energizada.', 'system');
         
+        // Cobre o caso em que ja havia chave (via cache). Se nao tiver, ele apenas ignora.
         if (slot1.key && slot1.secret) syncBinanceBalance();
     } else {
         addLog('[COMANDO_MESTRE] Encerrando Conexão Global...', 'system');

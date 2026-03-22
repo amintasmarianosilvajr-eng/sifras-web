@@ -67,10 +67,32 @@ function loadSavedData() {
             activeSlots[id].secret = data.secret;
             activeSlots[id].clientName = data.name;
             
-            // Auto Memorização Apenas Visual (Auto-Conexão Removida a pedido do usuário)
+            // Recuperação Inteligente de Trade Aberto ou Standby
             if (data.key && data.secret) {
                 setTimeout(() => {
-                    addLog('[SISTEMA] Credenciais Operacionais preenchidas. Aguardando conexão manual do usuário.', 'system');
+                    const savedTrade = localStorage.getItem('sifras_active_trade');
+                    if (savedTrade) {
+                        try {
+                            currentTrade = JSON.parse(savedTrade);
+                            
+                            // 1. Restaura visual no painel
+                            document.getElementById('active-trade-card').classList.remove('hidden');
+                            document.getElementById('monitoring-symbol').textContent = currentTrade.symbol;
+                            document.getElementById('monitoring-buy-price').textContent = `${currentTrade.buyPrice.toFixed(4)}`;
+                            document.getElementById('monitoring-target-price').textContent = `${currentTrade.targetPrice.toFixed(4)}`;
+                            
+                            // 2. Realiza Auto-Conexao e Liga o Monitoramento Forçadamente
+                            connectSlot(id);
+                            if (!activeSlots[id].monitoring) toggleMonitoring(id);
+                            
+                            addLog(`[RECUPERAÇÃO DE EMERGÊNCIA] Operação em aberto de ${currentTrade.symbol} resgatada da memória. Motor Religado Automaticamente!`, 'error');
+                        } catch(e) {
+                            addLog('[SISTEMA] Credenciais Operacionais preenchidas. Aguardando conexão manual.', 'system');
+                        }
+                    } else {
+                        // Sem trade na memoria -> Apenas preenche, e respeita a escolha do usuario de não autoconectar
+                        addLog('[SISTEMA] Credenciais Operacionais preenchidas. Aguardando conexão manual do usuário.', 'system');
+                    }
                 }, 800);
             }
         }
@@ -326,14 +348,17 @@ async function executeTrade(coin, isReposition = false) {
         // Armazenar quantidade exata comprada (float) para poder vender depois
         if (executedQty && executedQty > 0) {
             currentTrade.qty = executedQty;
-            addLog(`[SISTEMA] Fração registrada em log de memória interna: ${executedQty} ${symbolShort}`, 'system');
+            localStorage.setItem('sifras_active_trade', JSON.stringify(currentTrade));
+            addLog(`[SISTEMA] Fração registrada em log de memória interna persistente (Anti-F5): ${executedQty} ${symbolShort}`, 'system');
         } else {
             addLog(`[AVISO] Divergência na API da Binance. O motor forçará leitura do saldo real no fechamento.`, 'system');
         }
         addLog(`[POSIÇÃO ABERTA] Ativo: ${symbolShort} | Operação de Ciclo Atual: ${cycleCount}/${MAX_CYCLE_OPS}.`, 'buy');
     } else {
         addLog(`[ERRO] Ordem Recusada. Verifique permissões Mestre "Spot Trading" na Binance.`, 'error');
-        setTimeout(() => { currentTrade = null; document.getElementById('active-trade-card').classList.add('hidden');
+        setTimeout(() => { currentTrade = null;
+    localStorage.removeItem('sifras_active_trade');
+    document.getElementById('active-trade-card').classList.add('hidden');
     const headerPnl = document.getElementById('header-realtime-pnl');
     if (headerPnl) {
         headerPnl.textContent = 'Aguardando...';
@@ -457,6 +482,7 @@ async function buyUsdtAndReposition(actualPnl = 0) {
 
     // Limpar currentTrade imediatamente para não re-entrar no monitor
     currentTrade = null;
+    localStorage.removeItem('sifras_active_trade');
     document.getElementById('active-trade-card').classList.add('hidden');
     syncBinanceBalance(); // Força atualização do Saldo Real ao invés de exibir 'Aguardando...'
 
@@ -609,6 +635,7 @@ async function emergencyStop() {
 
     // 3. Limpar estado do painel e ciclo
     currentTrade = null;
+    localStorage.removeItem('sifras_active_trade');
     cycleCount = 0;
     cycleOnPause = false;
     cycleResumeTime = null;

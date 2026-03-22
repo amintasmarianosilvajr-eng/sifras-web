@@ -434,16 +434,16 @@ function updateActiveTradeMonitor(currentPrice) {
     if (pnl >= CONFIG.TARGET_PROFIT && !closingTrade) {
         closingTrade = true; // travar para não disparar duas vezes
         addLog(`🎯 META ALCANÇADA: +${pnl.toFixed(2)}% — Comprando USDT e reposicionando!`, 'sell');
-        buyUsdtAndReposition();
+        buyUsdtAndReposition(pnl);
     } else if (pnl <= -CONFIG.STOP_LOSS && !closingTrade) {
         closingTrade = true;
         addLog(`🛑 STOP LOSS: ${pnl.toFixed(2)}% — Protegendo capital e mudando de alvo!`, 'error');
-        buyUsdtAndReposition();
+        buyUsdtAndReposition(pnl);
     }
 }
 
 // Chamada quando a meta é atingida: VENDE moeda, compra USDT e REPOSICIONA
-async function buyUsdtAndReposition() {
+async function buyUsdtAndReposition(actualPnl = 0) {
     if (!currentTrade) { closingTrade = false; return; }
     const monitoringSlots = [1].filter(id => activeSlots[id].monitoring);
     const prevCoin = { ...currentTrade }; // snapshot antes de limpar
@@ -489,15 +489,19 @@ async function buyUsdtAndReposition() {
         const result = await sendBinanceOrder(id, 'SELL', prevCoin.fullSymbol, coinQty);
         if (result.ok) {
             usdtOk = true;
-            totalProfitAcc[id] += CONFIG.TARGET_PROFIT;
+            totalProfitAcc[id] += actualPnl;
             operationHistory[id].push({
                 symbol: prevCoin.symbol,
                 buyPrice: prevCoin.buyPrice,
-                sellPrice: prevCoin.targetPrice,
-                profit: CONFIG.TARGET_PROFIT,
+                sellPrice: (actualPnl >= 0) ? prevCoin.targetPrice : (prevCoin.buyPrice * (1 + (actualPnl/100))),
+                profit: parseFloat(actualPnl.toFixed(2)),
                 time: new Date().toLocaleString()
             });
-            addLog(`💰 Venda registrada! Lucro acumulado Slot #${id}: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
+            if (actualPnl >= 0) {
+                addLog(`💰 Venda registrada! Lucro acumulado Slot #${id}: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
+            } else {
+                addLog(`🛡️ STOP LOSS FINALIZADO! Capital protegido. Impacto na banca: ${actualPnl.toFixed(2)}%. Saldo parcial: ${totalProfitAcc[id].toFixed(2)}%`, 'error');
+            }
         }
     }
 

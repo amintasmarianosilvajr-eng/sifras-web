@@ -10,10 +10,10 @@ const CONFIG = {
     VOLATILITY_THRESHOLD: 0.1,
     VOLATILITY_WINDOW: 10000,
     GROWTH_THRESHOLD: 0.15,      // Novo gatilho: 0.15%
-    GROWTH_WINDOW: 20000,        // Janela de 20 segundos
+    GROWTH_WINDOW: 15000,        // Janela de 20 segundos
     COOLDOWN_OPERATIONS: 5,
-    TARGET_PROFIT: 0.1,         // Acelerado para teste
-    STOP_LOSS: 1.0,             // Rede de segurança
+    TARGET_PROFIT: 0.4,         // Acelerado para teste
+    STOP_LOSS: 2.0,             // Rede de segurança
     BLACKLIST: [
         'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG',
         'JASMY', 'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF'
@@ -183,13 +183,13 @@ async function fetchTopGainers() {
 
 // --- Lógica Alfa ---
 function analyzeFluxoAlfa(ranking) {
-    // 1. MONITORAMENTO AMPLO: Gatilho 0.15% em 20s (Rank #2 ao #15)
-    for (let i = 1; i < 15; i++) {
+    // 1. MONITORAMENTO AMPLO: Gatilho 0.15% em 15s (Rank #2 ao #15)
+    for (let i = 1; i < 10; i++) {
         const coin = ranking[i];
         if (!coin) continue;
 
         if (checkRapidGrowth(coin)) {
-            addLog(`⚡ GATILHO RÁPIDO: ${coin.symbol.replace('USDT', '')} +${CONFIG.GROWTH_THRESHOLD}% em 20s (Rank #${i + 1})`, 'proximity');
+            addLog(`⚡ GATILHO RÁPIDO: ${coin.symbol.replace('USDT', '')} +${CONFIG.GROWTH_THRESHOLD}% em 15s (Rank #${i + 1})`, 'proximity');
             executeTrade(coin);
             return; // Interrompe para focar na execução da compra detectada
         }

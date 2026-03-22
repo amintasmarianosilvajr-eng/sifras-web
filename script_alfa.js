@@ -216,7 +216,7 @@ function analyzeFluxoAlfa(ranking) {
         
         if (checkVolatility(target)) executeTrade(target);
     } else {
-        box.classList.remove('active');
+        
         
     }
 }
@@ -746,13 +746,7 @@ function updateUI(ranking) {
         `;
         grid.appendChild(card);
     }
-}</span> ${c.symbol.replace('USDT', '')} ${badge}</span>
-            <span class="change ${c.vol >= 0 ? 'up' : 'down'}">${c.vol.toFixed(2)}%</span>
-        `;
-        list.appendChild(li);
-    });
-    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-}
+
 
 function updateStatus(on) {
     document.getElementById('system-status-dot').className = `status-dot ${on ? 'online' : ''}`;

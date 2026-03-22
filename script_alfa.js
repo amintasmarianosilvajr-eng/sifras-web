@@ -73,7 +73,7 @@ function loadSavedData() {
             document.getElementById('master-toggle-btn').style.color = '#ff6600';
             document.getElementById('master-toggle-btn').style.borderColor = '#ff6600';
             syncBinanceBalance();
-            addLog(`[MÓDULO DE RECUPERAÇÃO]` Sessão operacional anterior (Operações: ${cycleCount}/10 | PNL Acumulado: ${totalProfitAcc[1].toFixed(2)}%) reconstruída com sucesso.`, 'system');
+            addLog(`[MÓDULO DE RECUPERAÇÃO] Sessão operacional anterior (Operações: ${cycleCount}/10 | PNL Acumulado: ${totalProfitAcc[1].toFixed(2)}%) reconstruída com sucesso.`, 'system');
         } catch(e) {}
     }
     [1].forEach(id => {

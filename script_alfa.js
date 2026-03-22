@@ -284,15 +284,13 @@ async function executeTrade(coin, isReposition = false) {
 
     const symbolShort = coin.symbol.replace('USDT', '');
 
-    // Cooldown por moeda só se NÃO for reposição automática
-    if (!isReposition) {
-        const inCooldown = monitoringSlots.some(id =>
-            operationHistory[id].slice(-CONFIG.COOLDOWN_OPERATIONS).some(op => op.symbol === symbolShort)
-        );
-        if (inCooldown) {
-            addLog(`[SISTEMA ALFA] Ativo ${symbolShort} atingiu limite de reentradas por janela operacional (Ignorando).`, 'system');
-            return;
-        }
+    // Blindagem Absoluta: Cooldown Mandatório de 3 Operações
+    const inCooldown = monitoringSlots.some(id =>
+        operationHistory[id].slice(-CONFIG.COOLDOWN_OPERATIONS).some(op => op.symbol === symbolShort)
+    );
+    if (inCooldown) {
+        addLog(`[SISTEMA ALFA] Ativo ${symbolShort} retido preventivamente pela regra de Cooldown (3 Operações).`, 'system');
+        return;
     }
 
     const tp = coin.price * (1 + (CONFIG.TARGET_PROFIT / 100));
@@ -541,33 +539,9 @@ async function buyUsdtAndReposition(actualPnl = 0) {
         return;
     }
 
-    // 5. REPOSICIONAR IMEDIATAMENTE no parâmetro natural do Fluxo Alfa
-    // Aguardar 1 segundo para a venda ser confirmada na Binance
-    await new Promise(r => setTimeout(r, 1000));
-
-    const repoTarget = lastAlfaTarget || { symbol: prevCoin.fullSymbol, price: prevCoin.targetPrice };
-    const repoLabel = repoTarget.symbol.replace('USDT', '');
-    addLog(`[NOVO ALVO] Reposicionando mira de mercado imediatamente em ${repoLabel}...`, 'proximity');
-
-    try {
-        // Buscar preço atual da moeda antes de recomprar
-        const res = await fetch(`${CONFIG.BINANCE_API}/ticker/price?symbol=${repoTarget.symbol}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (!data.price) throw new Error('Sem preço retornado');
-
-        const updatedCoin = {
-            symbol: repoTarget.symbol,
-            price: parseFloat(data.price),
-            vol: repoTarget.vol || 0
-        };
-        addLog(`📈 Preço atual ${repoLabel}: $${updatedCoin.price.toFixed(4)}. Disparando recompra...`, 'system');
-        closingTrade = false;
-        await executeTrade(updatedCoin, true);
-    } catch (e) {
-        addLog(`⚠️ Falha ao buscar preço para reposição: ${e.message}. Aguardando próximo scan...`, 'error');
-        closingTrade = false;
-    }
+    // 5. MOTOR LIVRE (Cooldown Aplicado)
+    addLog('[SISTEMA ALFA] Motor Livre. Aguardando nova janela orgânica respeitando limite de Cooldown (3x).', 'system');
+    closingTrade = false;
 }
 
 // Busca o saldo real de uma moeda na conta Binance (fallback para qty)

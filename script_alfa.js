@@ -891,9 +891,9 @@ function updateMasterToggleUI(isMonitoring) {
     if (!btn) return;
     if (isMonitoring) {
         btn.innerHTML = 'DESCONECTAR';
-        btn.style.background = 'rgba(255,77,77,0.15)';
-        btn.style.borderColor = 'var(--danger)';
-        btn.style.color = 'var(--danger)';
+        btn.style.background = 'rgba(255, 102, 0, 0.15)';
+        btn.style.borderColor = '#ff6600';
+        btn.style.color = '#ff6600';
         btn.style.animation = 'blink 1.5s infinite';
     } else {
         btn.innerHTML = 'CONECTAR';

@@ -56,6 +56,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadSavedData() {
+    const gState = localStorage.getItem('sifras_global_state');
+    if (gState) {
+        try {
+            const state = JSON.parse(gState);
+            cycleCount = state.cycleCount || 0;
+            cycleOnPause = state.cycleOnPause || false;
+            cycleResumeTime = state.cycleResumeTime || null;
+            totalProfitAcc = state.totalProfitAcc || { 1: 0.0, 2: 0.0 };
+            operationHistory = state.operationHistory || { 1: [], 2: [] };
+            updateCycleUI(); // Atualiza a visualização do painel no topo com o ciclo preservado
+            addLog(`[MÓDULO DE RECUPERAÇÃO] Sessão operacional anterior (Operações: ${cycleCount}/10 | PNL Acumulado: ${totalProfitAcc[1].toFixed(2)}%) reconstruída com sucesso.`, 'system');
+        } catch(e) {}
+    }
     [1].forEach(id => {
         const saved = localStorage.getItem(`sifras_slot_${id}`);
         if (saved) {
@@ -557,6 +570,7 @@ async function buyUsdtAndReposition(actualPnl = 0) {
     if (cycleCount >= MAX_CYCLE_OPS) {
         cycleOnPause = true;
         cycleResumeTime = Date.now() + 30 * 60 * 1000;
+        saveGlobalState();
         addLog(`[CICLO ENCERRADO] Limite de segurança de ${MAX_CYCLE_OPS} Trades atingido. Protocolo de Resfriamento de 30min Inativo ativado.`, 'error');
         addLog(`[AGUARDO] Retomada inteligente de mercado agendada estritamente para às ${new Date(cycleResumeTime).toLocaleTimeString()}`, 'system');
         updateCycleUI();
@@ -639,6 +653,7 @@ async function emergencyStop() {
     cycleCount = 0;
     cycleOnPause = false;
     cycleResumeTime = null;
+    saveGlobalState();
     document.getElementById('active-trade-card').classList.add('hidden');
     syncBinanceBalance();
     
@@ -927,4 +942,16 @@ function updateMasterToggleUI(isMonitoring) {
         btn.style.color = 'var(--accent-green)';
         btn.style.animation = 'none';
     }
+}
+
+
+function saveGlobalState() {
+    const state = {
+        cycleCount: cycleCount,
+        cycleOnPause: cycleOnPause,
+        cycleResumeTime: cycleResumeTime,
+        totalProfitAcc: totalProfitAcc,
+        operationHistory: operationHistory
+    };
+    localStorage.setItem('sifras_global_state', JSON.stringify(state));
 }

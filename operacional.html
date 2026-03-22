@@ -40,11 +40,16 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-header" id="main-header">
-                <div class="header-title">
-                    <h1>Sifras Web <span class="highlight">Operação Ciclos ALFA</span></h1>
-                    <p style="color: var(--accent-green); font-weight: bold;">️ CONEXÃO BINANCE MAINNET (LIVE)
-                        — Reposição Automática Ativa
-                    </p>
+                <div class="header-title" style="display: flex; align-items: center; gap: 25px;">
+                    <div class="logo-container" style="margin: 0; padding: 0; border: none; display: flex; align-items: center; gap: 15px;">
+                        <div class="logo-icon" style="background: var(--primary); color: var(--bg-dark); width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-weight: 800; font-size: 1.5rem; font-family: 'Outfit';">F</div>
+                        <div class="logo-text" style="font-size: 1.5rem; line-height: 1;">FLUXO<span style="display: inline; color: var(--primary); margin-left: 5px;">ALFA</span></div>
+                    </div>
+                    <div style="height: 40px; width: 2px; background: var(--card-border);"></div>
+                    <div>
+                        <h1 style="font-size: 1.1rem; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Operações Não Binárias</h1>
+                        <p style="color: var(--accent-green); font-weight: 700; font-size: 0.85rem; margin-top: 5px; text-transform: uppercase;">De alto fluxo em Pixels</p>
+                    </div>
                 </div>
                 <div class="header-stats">
                     <div class="stat-badge" style="min-width: 150px; background: rgba(0,0,0,0.4); border-color: var(--card-border);">
@@ -94,12 +99,11 @@
                                 <input type="text" placeholder="NOME DO CLIENTE" class="slot-input" id="slot-1-name">
                                 <input type="password" placeholder="API KEY" class="slot-input" id="slot-1-key">
                                 <input type="password" placeholder="SECRET KEY" class="slot-input" id="slot-1-secret">
-                                <button class="btn-connect" onclick="connectSlot(1)">CONECTAR SLOT</button>
-                                <button class="btn-test-api disabled" id="test-1" onclick="testApiConnection(1)"
-                                    style="width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer; background: rgba(121, 40, 202, 0.2); border: 1px solid var(--accent-purple); color: var(--accent-purple);">TESTAR
-                                    API (SALDO)</button>
-                                <button class="btn-activate disabled" id="activate-1"
-                                    onclick="toggleMonitoring(1)">INICIAR MONITORAMENTO</button>
+                                <div style="display: flex; gap: 15px; margin-top: 15px; width: 100%;">
+                                    <button class="btn-connect" onclick="connectSlot(1)" style="flex: 1; padding: 16px; font-size: 0.85rem; border-radius: 15px;">1. CONECTAR</button>
+                                    <button class="btn-activate disabled" id="test-1" onclick="testApiConnection(1)" style="flex: 1; margin:0; padding: 16px; font-size: 0.85rem; border-radius: 15px; background: transparent; border: 2px solid var(--card-border); color: #fff;">2. VERIFICAR</button>
+                                    <button class="btn-activate disabled" id="activate-1" onclick="toggleMonitoring(1)" style="flex: 1; margin:0; padding: 16px; font-size: 0.85rem; border-radius: 15px;">3. MONITORAR</button>
+                                </div>
                             </div>
                         </div>
 

@@ -352,8 +352,8 @@ h1, h2, h3, .logo-text, .badge, .btn-stop, .btn-secondary, .btn-activate, .btn-c
 
 .log-entry { margin-bottom: 12px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.03); }
 .log-entry.system { color: var(--text-sidebar); }
-.log-entry.buy { color: var(--primary); border-left: 4px solid var(--primary); }
-.log-entry.sell { color: #fff; border-left: 4px solid #fff; }
+.log-entry.buy { color: var(--bg-dark); background: var(--primary); font-weight: 800; border: none; padding: 12px; border-radius: 8px; margin-top: 5px; }
+.log-entry.sell { color: #fff; background: rgba(255, 255, 255, 0.1); border-left: 4px solid var(--primary); font-weight: 700; padding: 12px; margin-top: 5px; text-transform: uppercase; }
 
 .btn-clear {
     background: transparent; border: 2px solid var(--card-border); color: var(--text-card);

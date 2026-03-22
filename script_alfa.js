@@ -47,8 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const header = document.getElementById('main-header');
     if (header) header.classList.add('mode-real');
 
-    addLog("🔥 SISTEMA FERRARI SNIPER: MODO REAL ATIVO", 'error');
-    addLog("Bypassing security filters... Connected.", 'system');
+    addLog("[SISTEMA ALFA] Motor de Operações Base Inicializado", 'error');
+    addLog("[CONEXÃO] Link Seguro Estabelecido (Mainnet).", 'system');
 
     loadSavedData();
     startMonitoring();
@@ -71,7 +71,7 @@ function loadSavedData() {
             if (data.key && data.secret) {
                 setTimeout(() => {
                     connectSlot(id);
-                    addLog('Chaves Mestre auto-recuperadas da memória local.', 'system');
+                    addLog('[SISTEMA] Credenciais Operacionais recuperadas da base.', 'system');
                 }, 800);
             }
         }
@@ -113,7 +113,7 @@ async function startMonitoring() {
                     cycleOnPause = false;
                     cycleCount = 0;
                     cycleResumeTime = null;
-                    addLog(`🔄 CICLO REINICIADO! Sistema retomando operações...`, 'system');
+                    addLog(`[OPERAÇÃO] Retomando fluxo de varredura ativa.`, 'system');
                     updateCycleUI();
                 } else {
                     const mins = Math.ceil(remaining / 60);
@@ -191,7 +191,7 @@ function analyzeFluxoAlfa(ranking) {
         if (!coin) continue;
 
         if (checkRapidGrowth(coin)) {
-            addLog(`⚡ GATILHO RÁPIDO: ${coin.symbol.replace('USDT', '')} +${CONFIG.GROWTH_THRESHOLD}% em 15s (Rank #${i + 1})`, 'proximity');
+            addLog(`[ALERTA DE FLUXO] Crescimento Anômalo em ${coin.symbol.replace('USDT', '')} (+${CONFIG.GROWTH_THRESHOLD}%/15s) | Rank #${i + 1}.`, 'proximity');
             executeTrade(coin);
             return; // Interrompe para focar na execução da compra detectada
         }
@@ -290,7 +290,7 @@ async function executeTrade(coin, isReposition = false) {
             operationHistory[id].slice(-CONFIG.COOLDOWN_OPERATIONS).some(op => op.symbol === symbolShort)
         );
         if (inCooldown) {
-            addLog(`🚫 COOLDOWN: ${symbolShort} ocultada.`, 'system');
+            addLog(`[SISTEMA ALFA] Ativo ${symbolShort} atingiu limite de reentradas por janela operacional (Ignorando).`, 'system');
             return;
         }
     }
@@ -307,7 +307,7 @@ async function executeTrade(coin, isReposition = false) {
     currentTrade = { symbol: symbolShort, buyPrice: coin.price, fullSymbol: coin.symbol, targetPrice: tp };
     cycleCount++; // Incrementa no inicio da operação visualmente
 
-    const label = isReposition ? `♻️ REPOSIÇÃO #${cycleCount}: ${symbolShort}. Disparando...` : `🔭 ALVO DETECTADO: ${symbolShort}. Disparando chaves...`;
+    const label = isReposition ? `[REPOSIÇÃO] Ciclo #${cycleCount} em ${symbolShort}. Processando Ordem...` : `[ALVO CONFIRMADO] Padrão detectado em ${symbolShort}. Processando Ordem...`;
     addLog(label, 'proximity');
     updateCycleUI();
 
@@ -320,7 +320,7 @@ async function executeTrade(coin, isReposition = false) {
             // Garantir que qty é sempre um número float
             if (result.executedQty != null) {
                 executedQty = parseFloat(result.executedQty);
-                addLog(`📦 Qty adquirida (Slot #${id}): ${executedQty}`, 'system');
+                addLog(`[AUDITORIA] Fração executada (S${id}): ${executedQty}`, 'system');
             }
         }
     }
@@ -329,13 +329,13 @@ async function executeTrade(coin, isReposition = false) {
         // Armazenar quantidade exata comprada (float) para poder vender depois
         if (executedQty && executedQty > 0) {
             currentTrade.qty = executedQty;
-            addLog(`✅ Qty armazenada: ${executedQty} ${symbolShort}`, 'system');
+            addLog(`[SISTEMA] Fração registrada em log de memória interna: ${executedQty} ${symbolShort}`, 'system');
         } else {
-            addLog(`⚠️ Qty não retornada pela API. Usará saldo real na venda.`, 'system');
+            addLog(`[AVISO] Divergência na API da Binance. O motor forçará leitura do saldo real no fechamento.`, 'system');
         }
-        addLog(`🎯 POSICIONADO em ${symbolShort} | Op ${cycleCount}/${MAX_CYCLE_OPS}. Monitorando alvo...`, 'buy');
+        addLog(`[POSIÇÃO ABERTA] Ativo: ${symbolShort} | Operação de Ciclo Atual: ${cycleCount}/${MAX_CYCLE_OPS}.`, 'buy');
     } else {
-        addLog(`❌ PAINEL: Ordem Rejeitada. Confira 'Spot Trading' na Binance.`, 'error');
+        addLog(`[ERRO] Ordem Recusada. Verifique permissões Mestre "Spot Trading" na Binance.`, 'error');
         setTimeout(() => { currentTrade = null; document.getElementById('active-trade-card').classList.add('hidden');
     const headerPnl = document.getElementById('header-realtime-pnl');
     if (headerPnl) {
@@ -399,8 +399,8 @@ async function sendBinanceOrder(id, side, symbol, qty = null) {
             const rawQty = result.executedQty || result.origQty || null;
             const executedQty = rawQty ? parseFloat(rawQty) : null;
             const label = side === 'BUY'
-                ? `✅ COMPRA CONFIRMADA! ${symbol.replace('USDT', '')} adquirido. Qtd: ${executedQty ?? '?'}`
-                : `✅ USDT ADQUIRIDO! ${symbol.replace('USDT', '')} convertido com sucesso.`;
+                ? `[COMPRA EXECUTADA] Ativo: ${symbol.replace('USDT', '')} | Qtd: ${executedQty ?? '?'}`
+                : `[VENDA EXECUTADA] Capital em ${symbol.replace('USDT', '')} inteiramente convertido para USDT.`;
             addLog(label, 'buy');
             return { ok: true, executedQty };
         } else {
@@ -439,11 +439,11 @@ function updateActiveTradeMonitor(currentPrice) {
 
     if (pnl >= CONFIG.TARGET_PROFIT && !closingTrade) {
         closingTrade = true; // travar para não disparar duas vezes
-        addLog(`🎯 META ALCANÇADA: +${pnl.toFixed(2)}% — Comprando USDT e reposicionando!`, 'sell');
+        addLog(`[TAKE PROFIT ALCANÇADO] Variação Positiva Identificada (+${pnl.toFixed(2)}%). Iniciando Ordem de Liquidação.`, 'sell');
         buyUsdtAndReposition(pnl);
     } else if (pnl <= -CONFIG.STOP_LOSS && !closingTrade) {
         closingTrade = true;
-        addLog(`🛑 STOP LOSS: ${pnl.toFixed(2)}% — Protegendo capital e mudando de alvo!`, 'error');
+        addLog(`[RISCO MÁXIMO ATINGIDO] Gatilho de Segurança ativado (${pnl.toFixed(2)}%). Iniciando Ordem de Liquidação (Proteção).`, 'error');
         buyUsdtAndReposition(pnl);
     }
 }
@@ -463,7 +463,7 @@ async function buyUsdtAndReposition(actualPnl = 0) {
         headerPnl.style.color = 'var(--text-muted)';
     }
 
-    addLog(`💹 SAÍDA OPERACIONAL! Vendendo ${prevCoin.symbol} para obter USDT...`, 'sell');
+    addLog(`[LIQUIDAÇÃO A MERCADO] Enviando Ordem de Venda Integral para ${prevCoin.symbol}.`, 'sell');
 
     // 1. Determinar quantidade a vender (Fiel ao LOT_SIZE)
     const FEE_SAFETY = 0.998;
@@ -476,17 +476,17 @@ async function buyUsdtAndReposition(actualPnl = 0) {
         // Arredondar para baixo de acordo com o stepSize
         const finalQty = (Math.floor(adjustedQty / rules.stepSize) * rules.stepSize);
         coinQty = finalQty.toFixed(rules.precision);
-        addLog(`📐 Qty corrigida: ${rawQty.toFixed(8)} → com margem e precisão (${rules.precision} casas): ${coinQty}`, 'system');
+        addLog(`[AJUSTE DE FRAÇÃO] Lote bruto: ${rawQty.toFixed(8)} → Corrigido com Step Size (${rules.precision} decimais): ${coinQty}`, 'system');
     } else {
-        addLog(`🔍 Qty não encontrada. Buscando saldo real na Binance...`, 'system');
+        addLog(`[CONSULTA] Buscando saldo real exato pendente de liquidação na carteira Binance...`, 'system');
         const rawBal = await fetchCoinBalance(monitoringSlots[0], prevCoin.symbol);
         if (rawBal && parseFloat(rawBal) > 0) {
             const adjustedBal = parseFloat(rawBal) * FEE_SAFETY;
             const finalQty = (Math.floor(adjustedBal / rules.stepSize) * rules.stepSize);
             coinQty = finalQty.toFixed(rules.precision);
-            addLog(`🔍 Saldo real: ${rawBal} → formatado: ${coinQty}`, 'system');
+            addLog(`[CONSULTA REALIZADA] Saldo exato recuperado: ${rawBal} → Ajustado: ${coinQty}`, 'system');
         } else {
-            addLog(`❌ Saldo insuficiente para venda de ${prevCoin.symbol}.`, 'error');
+            addLog(`[FALHA DE LIQUIDAÇÃO] Margem de ativo (${prevCoin) é insuficiente para envio da ordem de venda.symbol}.`, 'error');
             closingTrade = false;
             return;
         }
@@ -509,9 +509,9 @@ async function buyUsdtAndReposition(actualPnl = 0) {
                 time: new Date().toLocaleString()
             });
             if (actualPnl >= 0) {
-                addLog(`💰 Venda registrada! Lucro acumulado Slot #${id}: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
+                addLog(`[MARGEM CONSOLIDADA] Operação S${id} fechada com lucro! PNL Global Acumulado C/ Juros: ${totalProfitAcc[id].toFixed(2)}%`, 'sell');
             } else {
-                addLog(`🛡️ STOP LOSS FINALIZADO! Capital protegido. Impacto na banca: ${actualPnl.toFixed(2)}%. Saldo parcial: ${totalProfitAcc[id].toFixed(2)}%`, 'error');
+                addLog(`[STOP LOSS EXECUTADO] Operação e Prejuízos Encerrados. PNL do Trade: ${actualPnl.toFixed(2)}%. Global: ${totalProfitAcc[id].toFixed(2)}%`, 'error');
             }
         }
     }
@@ -531,8 +531,8 @@ async function buyUsdtAndReposition(actualPnl = 0) {
     if (cycleCount >= MAX_CYCLE_OPS) {
         cycleOnPause = true;
         cycleResumeTime = Date.now() + 30 * 60 * 1000;
-        addLog(`🏁 CICLO COMPLETO! ${MAX_CYCLE_OPS} operações. PAUSA DE 30 MINUTOS iniciada.`, 'error');
-        addLog(`⏰ Sistema retomará às ${new Date(cycleResumeTime).toLocaleTimeString()}`, 'system');
+        addLog(`[CICLO ENCERRADO] Limite de segurança de ${MAX_CYCLE_OPS} Trades atingido. Protocolo de Resfriamento de 30min Inativo ativado.`, 'error');
+        addLog(`[AGUARDO] Retomada inteligente de mercado agendada estritamente para às ${new Date(cycleResumeTime).toLocaleTimeString()}`, 'system');
         updateCycleUI();
         closingTrade = false;
         return;
@@ -544,7 +544,7 @@ async function buyUsdtAndReposition(actualPnl = 0) {
 
     const repoTarget = lastAlfaTarget || { symbol: prevCoin.fullSymbol, price: prevCoin.targetPrice };
     const repoLabel = repoTarget.symbol.replace('USDT', '');
-    addLog(`♻️ RECOMPRA IMEDIATA: reposicionando em ${repoLabel}...`, 'proximity');
+    addLog(`[NOVO ALVO] Reposicionando mira de mercado imediatamente em ${repoLabel}...`, 'proximity');
 
     try {
         // Buscar preço atual da moeda antes de recomprar
@@ -730,10 +730,10 @@ function toggleMonitoring(id) {
     const btn = document.getElementById(`activate-${id}`);
     if (activeSlots[id].monitoring) {
         btn.textContent = 'MONITORAMENTO ATIVO'; btn.classList.add('on');
-        addLog(`🕵️ Guardião ${id} em patrulha.`, 'system');
+        addLog(`[SISTEMA] Monitoramento do Terminal ${id} Ativado. Aguardando Janelas de Oportunidade.`, 'system');
     } else {
         btn.textContent = 'INICIAR MONITORAMENTO'; btn.classList.remove('on');
-        addLog(`💤 Guardião ${id} em repouso.`, 'system');
+        addLog(`[SISTEMA] Monitoramento do Terminal ${id} Suspenso.`, 'system');
     }
 }
 

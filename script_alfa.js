@@ -561,15 +561,7 @@ async function buyUsdtAndReposition(actualPnl = 0) {
             currentTrade = null;
             localStorage.removeItem('sifras_active_trade');
             document.getElementById('active-trade-card').classList.add('hidden');
-            closingTrade = false;
-            syncBinanceBalance();
-            
-            const headerPnl = document.getElementById('header-realtime-pnl');
-            if (headerPnl) {
-                headerPnl.innerHTML = 'Aguardando...';
-                headerPnl.style.color = 'var(--text-muted)';
-                if (headerPnl.previousElementSibling) headerPnl.previousElementSibling.textContent = 'PNL ATUAL';
-            }
+            saveGlobalState();
             return;
         }
     }
@@ -607,8 +599,9 @@ async function buyUsdtAndReposition(actualPnl = 0) {
         return;
     }
 
-    // 3. Incrementar contador do ciclo
+    // 3. Incrementar contador do ciclo e SALVAR
     cycleCount++;
+    saveGlobalState();
     addLog(`🔄 USDT obtido! Operação ${cycleCount}/${MAX_CYCLE_OPS} concluída.`, 'system');
     updateCycleUI();
 
@@ -1031,6 +1024,7 @@ async function syncBinanceBalance() {
                     </div>
                 `;
             }
+            saveGlobalState();
         }
     } catch (e) {
         addLog(`❌ FALHA DE ESPELHAMENTO: ${e.message}. Verifique sua internet ou permissão de API IP.`, 'error');

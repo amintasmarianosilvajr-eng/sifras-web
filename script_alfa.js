@@ -43,6 +43,7 @@ let cycleResumeTime = null;
 let closingTrade = false;    // flag: impede disparo duplo do buyUsdtAndReposition
 let lastAlfaTarget = null;  // último alvo detectado pelo Fluxo Alfa (parâmetro natural)
 let tradeSocket = null;     // Conector de subida em tempo real (milissegundos)
+let startOfDayBalance = null; // Capital inicial do dia (para o PNL de Hoje)
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -67,6 +68,7 @@ function loadSavedData() {
             cycleResumeTime = state.cycleResumeTime || null;
             totalProfitAcc = state.totalProfitAcc || { 1: 0.0, 2: 0.0 };
             operationHistory = state.operationHistory || { 1: [], 2: [] };
+            startOfDayBalance = state.startOfDayBalance || null;
             updateCycleUI(); // Atualiza a visualização do painel no topo com o ciclo preservado
             globalSystemPower = true;
             document.getElementById('master-toggle-btn').innerHTML = 'DESCONECTAR';
@@ -1017,23 +1019,33 @@ async function syncBinanceBalance() {
                 }
             }
 
-            // --- PAREAMENTO VISUAL NO CABEÇALHO ---
+            // --- PAREAMENTO VISUAL NO CABEÇALHO (PNL DE HOJE - DIÁRIO) ---
             const headerPnl = document.getElementById('header-realtime-pnl');
             const headerLabel = headerPnl ? headerPnl.previousElementSibling : null;
 
-            if (!currentTrade) {
-                // Modo: ESPELHAMENTO DE CAPITAL (Fora de operação)
-                if (headerPnl) {
-                    if (headerLabel) headerLabel.textContent = 'SALDO ESTIMADO BINANCE';
-                    headerPnl.innerHTML = `<strong style="color: #fff;">$${totalEstimatedUsdt.toFixed(2)}</strong> <span style="font-size: 0.6em; color: var(--text-muted)">USDT</span>`;
-                    headerPnl.style.color = '#fff';
-                }
-            } else {
-                // Modo: PNL DA OPERAÇÃO (Dentro de operação)
-                // O monitoramento em tempo real do PNL já é atualizado pela updateActiveTradeMonitor
-                if (headerLabel && headerLabel.textContent !== 'PNL DA OPERAÇÃO') {
-                    headerLabel.textContent = 'PNL DA OPERAÇÃO';
-                }
+            // Inicializa saldo do dia se for a primeira vez na sessão
+            if (!startOfDayBalance || startOfDayBalance <= 0) {
+                startOfDayBalance = totalEstimatedUsdt;
+                saveGlobalState();
+            }
+
+            // Cálculo do PNL de Hoje (Real Binance)
+            const pnlHojeFinanceiro = totalEstimatedUsdt - startOfDayBalance;
+            const pnlHojePercentual = startOfDayBalance > 0 ? (pnlHojeFinanceiro / startOfDayBalance) * 100 : 0;
+            const pnlColor = pnlHojeFinanceiro >= 0 ? 'var(--accent-green)' : 'var(--danger)';
+
+            if (headerPnl) {
+                if (headerLabel) headerLabel.textContent = 'PNL DE HOJE (BINANCE)';
+                headerPnl.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; line-height: 1.2;">
+                        <span style="color:${pnlColor}; font-weight:800; font-size:1.15rem; letter-spacing: -0.5px;">
+                            ${pnlHojeFinanceiro >= 0 ? '+' : ''}${pnlHojeFinanceiro.toFixed(2)} <small style="font-size:0.6em">USDT</small>
+                        </span>
+                        <span style="font-size:0.85rem; font-weight: 500; color:${pnlColor};">
+                            ${pnlHojePercentual >= 0 ? '+' : ''}${pnlHojePercentual.toFixed(2)}%
+                        </span>
+                    </div>
+                `;
             }
         }
     } catch (e) {
@@ -1103,7 +1115,8 @@ function saveGlobalState() {
         cycleOnPause: cycleOnPause,
         cycleResumeTime: cycleResumeTime,
         totalProfitAcc: totalProfitAcc,
-        operationHistory: operationHistory
+        operationHistory: operationHistory,
+        startOfDayBalance: startOfDayBalance
     };
     localStorage.setItem('sifras_global_state', JSON.stringify(state));
 }

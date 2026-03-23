@@ -778,10 +778,10 @@ function connectSlot(id) {
     btn.textContent = 'DESCONECTAR'; btn.onclick = () => disconnectSlot(id);
     addLog(`Slot #${id}: Link estabelecido. Clique em TESTAR API para validar.`, 'system');
     
-    // Inicia e acopla a rotina de Espelhamento do Saldo Estimado (Intervalo de Segurança 30 min solicitado)
+    // Inicia e acopla a rotina de Espelhamento do Saldo Estimado (Intervalo de Segurança Tempo Real: 10s)
     syncBinanceBalance();
     if (!window.balanceSyncInterval) {
-        window.balanceSyncInterval = setInterval(syncBinanceBalance, 30 * 60 * 1000); 
+        window.balanceSyncInterval = setInterval(syncBinanceBalance, 10 * 1000); 
     }
 }
 

@@ -105,7 +105,7 @@ app.post('/pnl-real', async (req, res) => {
 
 // 3. Proxy de Ordens (Blindagem da API Key no Frontend)
 app.post('/executar-ordem', async (req, res) => {
-    const { key, secret, symbol, side, qty, type, useMaxBalance } = req.body;
+    const { key, secret, symbol, side, qty, type } = req.body;
     if (!key || !secret) return res.status(400).json({ error: 'Faltam credenciais' });
 
     try {
@@ -113,21 +113,28 @@ app.post('/executar-ordem', async (req, res) => {
         const params = { symbol, side, type, timestamp, recvWindow: 10000 };
 
         if (side === 'BUY') {
-            // COMPRA: Usar valor em USDT (quoteOrderQty)
-            const queryAcc = `timestamp=${timestamp}&recvWindow=10000`;
-            const sigAcc = signRequest(queryAcc, secret);
-            const accRes = await axios.get(`https://api.binance.com/api/v3/account?${queryAcc}&signature=${sigAcc}`, {
+            // BUSCAR SALDO USDT REAL
+            const qAcc = `timestamp=${timestamp}&recvWindow=10000`;
+            const sAcc = signRequest(qAcc, secret);
+            const aRes = await axios.get(`https://api.binance.com/api/v3/account?${qAcc}&signature=${sAcc}`, {
                 headers: { 'X-MBX-APIKEY': key }
             });
-            const usdtBal = accRes.data.balances.find(b => b.asset === 'USDT');
-            const totalFree = parseFloat(usdtBal ? usdtBal.free : 0);
+            const usdt = aRes.data.balances.find(b => b.asset === 'USDT');
+            const free = parseFloat(usdt ? usdt.free : 0);
             
-            if (totalFree < 10) throw new Error(`Saldo insuficiente ($${totalFree.toFixed(2)})`);
+            if (free < 10) throw new Error(`Saldo USDT Insuficiente ($${free.toFixed(2)})`);
+
+            // BUSCAR PREÇO ATUAL DA MOEDA (PARA CALCULAR QTY)
+            const pRes = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+            const price = parseFloat(pRes.data.price);
             
-            // Travar em quoteOrderQty com 99% do saldo
-            params.quoteOrderQty = (totalFree * 0.99).toFixed(2);
+            // Calcular: (Saldo * 0.98 para taxas/seguranca) / Preco
+            const calculatedQty = (free * 0.98) / price;
+            
+            // Arredondamento agressivo (4 decimais) para passar no filtro da Binance
+            params.quantity = calculatedQty.toFixed(4);
         } else {
-            // VENDA: Usar quantidade exata da moeda
+            // VENDA: Usa a quantidade passada pelo front (qty)
             params.quantity = qty;
         }
 
@@ -140,9 +147,9 @@ app.post('/executar-ordem', async (req, res) => {
         });
         res.json(response.data);
     } catch (error) {
-        const errorMsg = error.response?.data?.msg || error.message;
-        console.error("Binance Order Error:", errorMsg);
-        res.status(500).json({ error: errorMsg });
+        const msg = error.response?.data?.msg || error.message;
+        console.error("Order Fail:", msg);
+        res.status(500).json({ error: msg });
     }
 });
 

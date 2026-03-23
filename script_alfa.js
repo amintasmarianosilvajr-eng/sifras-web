@@ -749,7 +749,9 @@ function connectSlot(id) {
     addLog(`Slot #${id}: Link estabelecido. Clique em TESTAR API para validar.`, 'system');
     
     // Inicia e acopla a rotina de Espelhamento do Saldo Estimado (Intervalo de Segurança Tempo Real: 10s)
-    syncBinanceBalance();
+    if (activeSlots[id].key && activeSlots[id].secret) {
+        syncBinanceBalance();
+    }
     if (!window.balanceSyncInterval) {
         window.balanceSyncInterval = setInterval(syncBinanceBalance, 10 * 1000); 
     }

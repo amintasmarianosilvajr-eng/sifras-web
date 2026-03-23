@@ -484,23 +484,7 @@ function updateActiveTradeMonitor(currentPrice) {
     const elCurrent = document.getElementById('monitoring-current-price');
     const elFill = document.getElementById('trade-progress-fill');
     
-    // Atualiza o Top Header PNL (Pareamento Financeiro Direto)
-    const headerPnl = document.getElementById('header-realtime-pnl');
-    const headerLabel = headerPnl ? headerPnl.previousElementSibling : null;
-    if (headerPnl) {
-        if (headerLabel) headerLabel.textContent = 'PNL DA OPERAÇÃO';
-        
-        // PNL Percentual + Financeiro Projetado ($)
-        let capitalDollStr = "---";
-        if (currentTrade && currentTrade.qty && currentPrice) {
-             const diff = (currentPrice - currentTrade.buyPrice) * currentTrade.qty;
-             capitalDollStr = `${diff >= 0 ? '+' : ''}$${diff.toFixed(2)}`;
-        }
-        
-        const pnlColor = pnl >= 0 ? 'var(--accent-green)' : 'var(--danger)';
-        headerPnl.innerHTML = `<strong style="color: ${pnlColor}; font-size: 1.05rem;">${(pnl >= 0 ? '+' : '')}${pnl.toFixed(2)}%</strong> <br/> <span style="font-size: 0.65em; font-weight: normal; color: rgba(255,255,255,0.7)">(${capitalDollStr})</span>`;
-    }
-    
+    // PNL do Monitor Central (Trade Individual)
     if (elPl) elPl.innerHTML = `${(pnl >= 0 ? '+' : '')}${pnl.toFixed(2)}% <br/> <span style="font-size: 0.5em; opacity: 0.7;">($${((currentPrice - currentTrade.buyPrice) * currentTrade.qty).toFixed(2)})</span>`;
     if (elCurrent) elCurrent.textContent = `$${currentPrice.toFixed(4)}`;
     if (elFill) elFill.style.width = `${progress}%`;

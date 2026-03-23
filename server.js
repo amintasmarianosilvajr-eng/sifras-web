@@ -788,6 +788,9 @@ app.all('/proxy-binance/*', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3014;
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 ALFA MASTER PRO na Porta ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 ALFA MASTER PRO na Porta ${PORT}`);
+    startBinanceWS(); // Inicia o motor de busca de moedas
+});
 
 

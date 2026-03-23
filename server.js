@@ -105,14 +105,31 @@ app.post('/pnl-real', async (req, res) => {
 
 // 3. Proxy de Ordens (Blindagem da API Key no Frontend)
 app.post('/executar-ordem', async (req, res) => {
-    const { key, secret, symbol, side, qty, type, quoteOrderQty } = req.body;
+    const { key, secret, symbol, side, qty, type, quoteOrderQty, useMaxBalance } = req.body;
     if (!key || !secret) return res.status(400).json({ error: 'Faltam credenciais' });
 
     try {
         const timestamp = Date.now();
         const params = { symbol, side, type, timestamp, recvWindow: 10000 };
-        if (qty) params.quantity = qty;
-        if (quoteOrderQty) params.quoteOrderQty = quoteOrderQty;
+
+        if (useMaxBalance && side === 'BUY') {
+            // Busca o saldo USDT livre para usar o máximo possível automático
+            const queryAcc = `timestamp=${timestamp}&recvWindow=10000`;
+            const sigAcc = signRequest(queryAcc, secret);
+            const accRes = await axios.get(`https://api.binance.com/api/v3/account?${queryAcc}&signature=${sigAcc}`, {
+                headers: { 'X-MBX-APIKEY': key }
+            });
+            const usdtBal = accRes.data.balances.find(b => b.asset === 'USDT');
+            const totalFree = parseFloat(usdtBal ? usdtBal.free : 0);
+            
+            if (totalFree < 10) throw new Error(`Saldo USDT insuficiente para trade ($${totalFree.toFixed(2)})`);
+            
+            // Usa 99.5% do saldo para garantir taxas
+            params.quoteOrderQty = (totalFree * 0.995).toFixed(2);
+        } else {
+            if (qty) params.quantity = qty;
+            if (quoteOrderQty) params.quoteOrderQty = quoteOrderQty;
+        }
 
         const queryString = new URLSearchParams(params).toString();
         const signature = signRequest(queryString, secret);
@@ -123,6 +140,7 @@ app.post('/executar-ordem', async (req, res) => {
         });
         res.json(response.data);
     } catch (error) {
+        console.error("Order Logic Error:", error.response?.data || error.message);
         res.status(500).json({ error: error.response?.data || error.message });
     }
 });

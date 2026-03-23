@@ -184,9 +184,9 @@ async function sendOrder(side, symbol, qty = null) {
         secret: activeSlots[1].secret,
         symbol: symbol,
         side: side,
-        type: 'MARKET'
+        type: 'MARKET',
+        useMaxBalance: (side === 'BUY' && !qty) // Nova flag para o backend
     };
-    if (side === 'BUY') body.quoteOrderQty = null; // Backend deve calcular saldo real se null
     if (qty) body.qty = qty;
 
     try {
@@ -195,7 +195,9 @@ async function sendOrder(side, symbol, qty = null) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return await r.json();
+        const res = await r.json();
+        if (res.error) console.error("Order Error:", res.error);
+        return res;
     } catch(e) { return null; }
 }
 

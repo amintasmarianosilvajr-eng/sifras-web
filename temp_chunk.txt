@@ -1,0 +1,24 @@
+async function testApiConnection(id) {
+    const slot = activeSlots[id];
+    if (!slot.key || !slot.secret) {
+        addLog(`❌ Slot #${id}: Conecte antes de testar.`, 'error');
+        return;
+    }
+
+    addLog(`🔬 Slot #${id}: Testando conexão com Binance...`, 'system');
+
+    try {
+        const timestamp = Date.now();
+        const params = `timestamp=${timestamp}&recvWindow=60000`;
+        const signature = signRequest(params, slot.secret);
+        const url = `${CONFIG.BINANCE_API}/account?${params}&signature=${signature}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'X-MBX-APIKEY': slot.key }
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.balances) {
+            co

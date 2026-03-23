@@ -1,0 +1,60 @@
+async function syncBinanceBalance() {
+    const slot = activeSlots[1];
+    if (!globalSystemPower) { console.log('Sync Negado: System Off'); return; }
+    if (!slot.key || !slot.secret) { addLog('⚠️ Tentativa de Espelhamento de Capital sem Chaves. Salve as chaves ("1. CONECTAR").', 'error'); return; }
+    
+    try {
+        addLog('[SISTEMA] Solicitando Espelhamento Direto da Binance (Spot)...', 'system');
+        const timestamp = Date.now();
+        const params = `timestamp=${timestamp}&recvWindow=60000`;
+        const signature = signRequest(params, slot.secret);
+        const res = await fetch(`${CONFIG.BINANCE_API}/account?${params}&signature=${signature}`, {
+            headers: { 'X-MBX-APIKEY': slot.key }
+        });
+        const data = await res.json();
+        if(!data.balances) {
+            addLog(`❌ Binance rejeitou espelhamento. Cod: ${data.code} Msg: ${data.msg}`, 'error');
+        }
+        
+        if (data.balances) {
+            let totalEstimatedUsdt = 0;
+            const nonZeroBalances = data.balances.filter(b => parseFloat(b.free) + parseFloat(b.locked) > 0);
+            
+            // Requisita os precos de todos os tickers de uma vez para cruzar dados
+            let tickerMap = {};
+            if (nonZeroBalances.length > 1) { // Tem outras moedas além do USDT
+                try {
+                    const tRes = await fetch(`${CONFIG.BINANCE_API}/ticker/price`);
+                    const tData = await tRes.json();
+                    tData.forEach(t => tickerMap[t.symbol] = parseFloat(t.price));
+                } catch(e) {}
+            }
+
+            for (const b of nonZeroBalances) {
+                const amount = parseFloat(b.free) + parseFloat(b.locked);
+                if (b.asset === 'USDT') {
+                    totalEstimatedUsdt += amount;
+                } else {
+                    const priceInUsdt = tickerMap[b.asset + 'USDT'];
+                    if (priceInUsdt) {
+                        totalEstimatedUsdt += amount * priceInUsdt;
+                    }
+                }
+            }
+
+            // Atualiza Componente na Interface se a operação estiver Livre
+            if (!currentTrade) {
+                const headerPnl = document.getElementById('header-realtime-pnl');
+                const headerLabel = headerPnl ? headerPnl.previousElementSibling : null;
+                if (headerPnl) {
+                    if (headerLabel) headerLabel.textContent = 'SALDO ESTIMADO BINANCE';
+                    headerPnl.innerHTML = `<strong style="color: #fff;">$${totalEstimatedUsdt.toFixed(2)}</strong> <span style="font-size: 0.6em; color: var(--text-muted)">USDT</span>`;
+                    headerPnl.style.color = '#fff';
+                }
+            }
+        }
+    } catch (e) {
+        addLog(`❌ FALHA DE ESPELHAMENTO: ${e.message}. Verifique sua internet ou permissão de API IP.`, 'error');
+        console.error("Erro ao sincronizar Saldo Estimado:", e);
+    }
+}

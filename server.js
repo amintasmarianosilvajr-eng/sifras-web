@@ -105,15 +105,15 @@ app.post('/pnl-real', async (req, res) => {
 
 // 3. Proxy de Ordens (Blindagem da API Key no Frontend)
 app.post('/executar-ordem', async (req, res) => {
-    const { key, secret, symbol, side, qty, type, quoteOrderQty, useMaxBalance } = req.body;
+    const { key, secret, symbol, side, qty, type, useMaxBalance } = req.body;
     if (!key || !secret) return res.status(400).json({ error: 'Faltam credenciais' });
 
     try {
         const timestamp = Date.now();
         const params = { symbol, side, type, timestamp, recvWindow: 10000 };
 
-        if (useMaxBalance && side === 'BUY') {
-            // Busca o saldo USDT livre para usar o máximo possível automático
+        if (side === 'BUY') {
+            // COMPRA: Usar valor em USDT (quoteOrderQty)
             const queryAcc = `timestamp=${timestamp}&recvWindow=10000`;
             const sigAcc = signRequest(queryAcc, secret);
             const accRes = await axios.get(`https://api.binance.com/api/v3/account?${queryAcc}&signature=${sigAcc}`, {
@@ -122,13 +122,13 @@ app.post('/executar-ordem', async (req, res) => {
             const usdtBal = accRes.data.balances.find(b => b.asset === 'USDT');
             const totalFree = parseFloat(usdtBal ? usdtBal.free : 0);
             
-            if (totalFree < 10) throw new Error(`Saldo USDT insuficiente para trade ($${totalFree.toFixed(2)})`);
+            if (totalFree < 10) throw new Error(`Saldo insuficiente ($${totalFree.toFixed(2)})`);
             
-            // Usa 99.5% do saldo para garantir taxas
-            params.quoteOrderQty = (totalFree * 0.995).toFixed(2);
+            // Travar em quoteOrderQty com 99% do saldo
+            params.quoteOrderQty = (totalFree * 0.99).toFixed(2);
         } else {
-            if (qty) params.quantity = qty;
-            if (quoteOrderQty) params.quoteOrderQty = quoteOrderQty;
+            // VENDA: Usar quantidade exata da moeda
+            params.quantity = qty;
         }
 
         const queryString = new URLSearchParams(params).toString();
@@ -140,8 +140,9 @@ app.post('/executar-ordem', async (req, res) => {
         });
         res.json(response.data);
     } catch (error) {
-        console.error("Order Logic Error:", error.response?.data || error.message);
-        res.status(500).json({ error: error.response?.data || error.message });
+        const errorMsg = error.response?.data?.msg || error.message;
+        console.error("Binance Order Error:", errorMsg);
+        res.status(500).json({ error: errorMsg });
     }
 });
 

@@ -42,6 +42,7 @@ let cycleOnPause = false;
 let cycleResumeTime = null;
 let closingTrade = false;    // flag: impede disparo duplo do buyUsdtAndReposition
 let lastAlfaTarget = null;  // último alvo detectado pelo Fluxo Alfa (parâmetro natural)
+let tradeSocket = null;     // Conector de subida em tempo real (milissegundos)
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -174,8 +175,14 @@ async function startMonitoring() {
                     analyzeFluxoAlfa(topGainers);
                 }
                 if (currentTrade) {
-                    const heldCoin = topGainers.find(c => c.symbol.replace('USDT', '') === currentTrade.symbol);
-                    if (heldCoin) updateActiveTradeMonitor(heldCoin.price);
+                    // Tenta atualizar via WebSocket primeiro (se já estiver ativo)
+                    if (!tradeSocket) {
+                        initTradeSocket(currentTrade.fullSymbol);
+                    }
+                    const heldCoin = topGainers.find(c => c.symbol === currentTrade.fullSymbol);
+                    if (heldCoin && !tradeSocket) updateActiveTradeMonitor(heldCoin.price);
+                } else {
+                    stopTradeSocket();
                 }
                 updateStatus(true);
             }
@@ -504,6 +511,28 @@ function updateActiveTradeMonitor(currentPrice) {
         closingTrade = true;
         addLog(`[RISCO MÁXIMO ATINGIDO] Gatilho de Segurança ativado (${pnl.toFixed(2)}%). Iniciando Ordem de Liquidação (Proteção).`, 'error');
         buyUsdtAndReposition(pnl);
+    }
+}
+
+// --- WebSocket Motor (Pareamento Binance Vivo) ---
+function initTradeSocket(symbol) {
+    if (tradeSocket) stopTradeSocket();
+    const streamUrl = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`;
+    tradeSocket = new WebSocket(streamUrl);
+    tradeSocket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data && data.c) {
+            updateActiveTradeMonitor(parseFloat(data.c));
+        }
+    };
+    tradeSocket.onerror = (e) => console.error("Socket Error:", e);
+    tradeSocket.onclose = () => tradeSocket = null;
+}
+
+function stopTradeSocket() {
+    if (tradeSocket) {
+        tradeSocket.close();
+        tradeSocket = null;
     }
 }
 

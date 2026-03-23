@@ -10,6 +10,19 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Servir arquivos estáticos (HTML, CSS, JS, Imagens)
+app.use(express.static(path.join(__dirname, './')));
+
+// Rota para o Robô Operacional (Acesso Direto)
+app.get('/operacional', (req, res) => {
+    res.sendFile(path.join(__dirname, 'operacional.html'));
+});
+
+// Rota raiz também aponta para o Operacional por segurança
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'operacional.html'));
+});
+
 // --- DATABASE & STATE ---
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });

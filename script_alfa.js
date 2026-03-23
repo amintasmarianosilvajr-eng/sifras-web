@@ -198,40 +198,17 @@ async function startMonitoring() {
 
 async function fetchTopGainers() {
     try {
-        const res = await fetch(`${CONFIG.BINANCE_API}/ticker/24hr`);
-        const all = await res.json();
-
-        let activeSyms = [];
-        try {
-            const infoRes = await fetch(`${CONFIG.BINANCE_API}/exchangeInfo`);
-            const info = await infoRes.json();
-            info.symbols.forEach(s => {
-                if (s.quoteAsset === 'USDT' && s.status === 'TRADING') {
-                    activeSyms.push(s.symbol);
-                    const lot = s.filters.find(f => f.filterType === 'LOT_SIZE');
-                    if (lot) {
-                        const step = parseFloat(lot.stepSize);
-                        symbolRules[s.symbol] = {
-                            stepSize: step,
-                            precision: Math.max(0, Math.round(Math.log10(1 / step)))
-                        };
-                    }
-                }
-            });
-        } catch (e) { }
-
-        return all
-            .filter(i => i.symbol.endsWith('USDT'))
-            .filter(i => activeSyms.length === 0 || activeSyms.includes(i.symbol))
-            .filter(i => !CONFIG.BLACKLIST.includes(i.symbol.replace('USDT', '')))
-            .map(i => ({
-                symbol: i.symbol,
-                price: parseFloat(i.lastPrice),
-                vol: parseFloat(i.priceChangePercent)
-            }))
-            .sort((a, b) => b.vol - a.vol)
-            .slice(0, 30);
+        // [MODO MASTER] Buscamos o ranking consolidado direto do servidor
+        // Isso garante que o site mostre exatamente o que o robô está monitorando
+        const res = await fetch('/moedas-ranking');
+        const data = await res.json();
+        
+        if (Array.isArray(data) && data.length > 0) {
+            return data;
+        }
+        return null;
     } catch (err) {
+        console.error("Erro ao buscar Ranking do Servidor:", err);
         return null;
     }
 }

@@ -733,6 +733,12 @@ app.post('/pnl-real', async (req, res) => {
     }
 });
 
+// --- RANKING DE MOEDAS (TRILHOS DE DADOS) ---
+app.get('/moedas-ranking', (req, res) => {
+    // Retorna o Top 10 atualizado pelo WebSocket do servidor
+    res.json(globalMarket.top10 || []);
+});
+
 // --- PROXY BINANCE (FIX CORS, 403 & ORDER PARAMS) ---
 app.all('/proxy-binance/*', async (req, res) => {
     try {

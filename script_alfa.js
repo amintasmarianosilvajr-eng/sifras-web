@@ -602,6 +602,9 @@ async function buyUsdtAndReposition(actualPnl = 0) {
     // 5. MOTOR LIVRE (Cooldown Aplicado)
     addLog('[SISTEMA ALFA] Motor Livre. Aguardando nova janela orgânica respeitando limite de Cooldown (3x).', 'system');
     closingTrade = false;
+    
+    // [NOVO] Sincronizar saldo imediatamente após a venda
+    setTimeout(() => syncBinanceBalance(), 3000);
 }
 
 // Busca o saldo real de uma moeda na conta Binance (fallback para qty)
@@ -975,14 +978,22 @@ async function syncBinanceBalance() {
                 }
             }
 
-            // Atualiza Componente na Interface se a operação estiver Livre
+            // --- PAREAMENTO VISUAL NO CABEÇALHO ---
+            const headerPnl = document.getElementById('header-realtime-pnl');
+            const headerLabel = headerPnl ? headerPnl.previousElementSibling : null;
+
             if (!currentTrade) {
-                const headerPnl = document.getElementById('header-realtime-pnl');
-                const headerLabel = headerPnl ? headerPnl.previousElementSibling : null;
+                // Modo: ESPELHAMENTO DE CAPITAL (Fora de operação)
                 if (headerPnl) {
                     if (headerLabel) headerLabel.textContent = 'SALDO ESTIMADO BINANCE';
                     headerPnl.innerHTML = `<strong style="color: #fff;">$${totalEstimatedUsdt.toFixed(2)}</strong> <span style="font-size: 0.6em; color: var(--text-muted)">USDT</span>`;
                     headerPnl.style.color = '#fff';
+                }
+            } else {
+                // Modo: PNL DA OPERAÇÃO (Dentro de operação)
+                // O monitoramento em tempo real do PNL já é atualizado pela updateActiveTradeMonitor
+                if (headerLabel && headerLabel.textContent !== 'PNL DA OPERAÇÃO') {
+                    headerLabel.textContent = 'PNL DA OPERAÇÃO';
                 }
             }
         }

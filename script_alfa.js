@@ -951,54 +951,23 @@ function setupPDF() {
     });
 }
 
-// Rotina Autônoma: Espelhamento Fiel do "Saldo Estimado" (USDT) da Corretora
+// Rotina Autônoma: Espelhamento Fiel do "Saldo Estimado" (USDT) da Corretora (Via Backend Master)
 async function syncBinanceBalance() {
-    const slot = activeSlots[1];
-    if (!globalSystemPower) { console.log('Sync Negado: System Off'); return; }
-    if (!slot.key || !slot.secret) { addLog('⚠️ Tentativa de Espelhamento de Capital sem Chaves. Salve as chaves ("1. CONECTAR").', 'error'); return; }
-    
+    const id = 1;
+    const slot = activeSlots[id];
+    if (!globalSystemPower || !slot.key || !slot.secret) return;
+
     try {
-        addLog('[SISTEMA] Solicitando Espelhamento Direto da Binance (Spot)...', 'system');
-        const timestamp = Date.now();
-        const params = `timestamp=${timestamp}&recvWindow=60000`;
-        const signature = signRequest(params, slot.secret);
-        const res = await fetch(`${CONFIG.BINANCE_API}/account?${params}&signature=${signature}`, {
-            headers: { 'X-MBX-APIKEY': slot.key }
+        // [MODO MASTER] Buscamos o PNL assinado pelo backend para precisão total
+        const res = await fetch('/pnl-real', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: slot.key, secret: slot.secret })
         });
         const data = await res.json();
-        if(!data.balances) {
-            addLog(`❌ Binance rejeitou espelhamento. Cod: ${data.code} Msg: ${data.msg}`, 'error');
-        }
         
-        if (data.balances) {
-            let totalEstimatedUsdt = 0;
-            const nonZeroBalances = data.balances.filter(b => parseFloat(b.free) + parseFloat(b.locked) > 0);
-            
-            // Requisita os precos de todos os tickers de uma vez para cruzar dados
-            let tickerMap = {};
-            if (nonZeroBalances.length > 1) { // Tem outras moedas além do USDT
-                try {
-                    const tRes = await fetch(`${CONFIG.BINANCE_API}/ticker/price`);
-                    const tData = await tRes.json();
-                    tData.forEach(t => tickerMap[t.symbol] = parseFloat(t.price));
-                } catch(e) {}
-            }
-
-            for (const b of nonZeroBalances) {
-                const amount = parseFloat(b.free) + parseFloat(b.locked);
-                if (b.asset === 'USDT') {
-                    totalEstimatedUsdt += amount;
-                } else {
-                    const priceInUsdt = tickerMap[b.asset + 'USDT'];
-                    if (priceInUsdt) {
-                        totalEstimatedUsdt += amount * priceInUsdt;
-                    }
-                }
-            }
-
-            // --- PAREAMENTO VISUAL NO CABEÇALHO (PNL DE HOJE - DIÁRIO) ---
-            const headerPnl = document.getElementById('header-realtime-pnl');
-            const headerLabel = headerPnl ? headerPnl.previousElementSibling : null;
+        if (data.totalUsdt) {
+            const totalEstimatedUsdt = data.totalUsdt;
 
             // Inicializa saldo do dia se for a primeira vez na sessão
             if (!startOfDayBalance || startOfDayBalance <= 0) {
@@ -1006,10 +975,12 @@ async function syncBinanceBalance() {
                 saveGlobalState();
             }
 
-            // Cálculo do PNL de Hoje (Real Binance)
             const pnlHojeFinanceiro = totalEstimatedUsdt - startOfDayBalance;
             const pnlHojePercentual = startOfDayBalance > 0 ? (pnlHojeFinanceiro / startOfDayBalance) * 100 : 0;
             const pnlColor = pnlHojeFinanceiro >= 0 ? 'var(--accent-green)' : 'var(--danger)';
+
+            const headerPnl = document.getElementById('header-realtime-pnl');
+            const headerLabel = headerPnl ? headerPnl.previousElementSibling : null;
 
             if (headerPnl) {
                 if (headerLabel) headerLabel.textContent = 'PNL DE HOJE (BINANCE)';
@@ -1027,8 +998,7 @@ async function syncBinanceBalance() {
             saveGlobalState();
         }
     } catch (e) {
-        addLog(`❌ FALHA DE ESPELHAMENTO: ${e.message}. Verifique sua internet ou permissão de API IP.`, 'error');
-        console.error("Erro ao sincronizar Saldo Estimado:", e);
+        console.error("Erro no Pareamento de PNL Binance:", e);
     }
 }
 

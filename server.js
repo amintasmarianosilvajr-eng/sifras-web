@@ -697,6 +697,42 @@ app.post('/check-api', async (req, res) => {
     }
 });
 
+// --- PNL REAL BINANCE (ASSINATURA BACKEND) ---
+app.post('/pnl-real', async (req, res) => {
+    const { key, secret } = req.body;
+    if (!key || !secret) return res.status(400).json({ error: 'Chaves ausentes' });
+
+    try {
+        const timestamp = Date.now();
+        const query = `timestamp=${timestamp}&recvWindow=10000`;
+        const signature = crypto.createHmac('sha256', secret).update(query).digest('hex');
+        
+        const response = await axios.get(`https://api.binance.com/api/v3/account?${query}&signature=${signature}`, {
+            headers: { 'X-MBX-APIKEY': key }
+        });
+
+        // 1. Calcular Saldo Estimado em USDT
+        const balances = response.data.balances.filter(b => parseFloat(b.free) + parseFloat(b.locked) > 0);
+        let totalUsdt = 0;
+        
+        // Tese: Usamos os preços globais do cache do WS para converter
+        for (const b of balances) {
+            const amount = parseFloat(b.free) + parseFloat(b.locked);
+            if (b.asset === 'USDT') {
+                totalUsdt += amount;
+            } else {
+                const pair = b.asset + 'USDT';
+                const price = globalMarket.allTickersMap ? globalMarket.allTickersMap.get(pair) : null;
+                if (price) totalUsdt += amount * price;
+            }
+        }
+
+        res.json({ totalUsdt, timestamp });
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+});
+
 // --- PROXY BINANCE (FIX CORS, 403 & ORDER PARAMS) ---
 app.all('/proxy-binance/*', async (req, res) => {
     try {

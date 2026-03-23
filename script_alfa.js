@@ -9,16 +9,18 @@ const CONFIG = {
     PROXIMITY_THRESHOLD: 30.0,
     VOLATILITY_THRESHOLD: 0.1,
     VOLATILITY_WINDOW: 10000,
-    GROWTH_THRESHOLD: 0.15,      // Novo gatilho: 0.15%
-    GROWTH_WINDOW: 15000,        // Janela de 20 segundos
+    GROWTH_THRESHOLD: 0.15,
+    GROWTH_WINDOW: 15000,
     COOLDOWN_OPERATIONS: 3,
-    TARGET_PROFIT: 0.4,         // Acelerado para teste
-    STOP_LOSS: 2.0,             // Rede de segurança
+    TARGET_PROFIT: 0.5,         // Meta fixa de 0.5%
+    STOP_LOSS: 999.0,           // Desativado (excluído)
     BLACKLIST: [
-        /* Fan Tokens (Times de Futebol, Seleções e Escuderias) */
+        /* Fan Tokens */
         'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV',
-        /* Deslistadas, Risco e Monitoradas (Monitoring e Seed Tag Binance) */
-        'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF', 'MDX', 'LOOM', 'KP3R', 'DOCK', 'OAX', 'PROS', 'VITE', 'FOR', 'IRIS', 'NULS', 'FIDA', 'CVX', 'HARD', 'WNXM', 'GLM', 'AKRO'
+        /* Deslistadas, Risco e Monitoradas */
+        'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF', 'MDX', 'LOOM', 'KP3R', 'DOCK', 'OAX', 'PROS', 'VITE', 'FOR', 'IRIS', 'NULS', 'FIDA', 'CVX', 'HARD', 'WNXM', 'GLM', 'AKRO',
+        /* Adicionais conforme novas seed/monitoring tags */
+        'AVA', 'KP3R', 'REEF', 'VITE', 'UNFI', 'OAX', 'DOCK', 'NULS', 'IRIS', 'TWT'
     ]
 };
 
@@ -42,8 +44,10 @@ let cycleOnPause = false;
 let cycleResumeTime = null;
 let closingTrade = false;    // flag: impede disparo duplo do buyUsdtAndReposition
 let lastAlfaTarget = null;  // último alvo detectado pelo Fluxo Alfa (parâmetro natural)
-let tradeSocket = null;     // Conector de subida em tempo real (milissegundos)
-let startOfDayBalance = null; // Capital inicial do dia (para o PNL de Hoje)
+let tradeSocket = null;     
+let startOfDayBalance = null; 
+let lastExecutedSymbol = null; // Evita repetir a mesma moeda seguidamente
+let symbolCooldownTracker = {}; // Para gerenciar a proibição de 2 operações
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -236,52 +240,33 @@ async function fetchTopGainers() {
     }
 }
 
-// --- Lógica Alfa ---
+// --- Lógica de Operação: Compra da 10ª Colocada ---
 function analyzeFluxoAlfa(ranking) {
-    // 1. MONITORAMENTO AMPLO: Gatilho 0.15% em 15s (Rank #2 ao #15)
-    for (let i = 1; i < 10; i++) {
-        const coin = ranking[i];
-        if (!coin) continue;
+    if (currentTrade || cycleOnPause) return;
 
-        if (checkRapidGrowth(coin)) {
-            addLog(`[ALERTA DE FLUXO] Crescimento Anômalo em ${coin.symbol.replace('USDT', '')} (+${CONFIG.GROWTH_THRESHOLD}%/15s) | Rank #${i + 1}.`, 'proximity');
-            executeTrade(coin);
-            return; // Interrompe para focar na execução da compra detectada
-        }
+    // Foco Exclusivo: Rank #10 (Décima colocada)
+    // No array slice(0, 30), a 10ª colocada está no índice 9.
+    const coin = ranking[9]; 
+    if (!coin) return;
+
+    const symbolShort = coin.symbol.replace('USDT', '');
+
+    // 1. Filtro de Não-Repetição (Proibição por 2 operações)
+    if (symbolShort === lastExecutedSymbol) {
+        // addLog(`[FILTRO] Moeda ${symbolShort} seguidora em rali. Pulando para evitar repetição.`, 'system');
+        return;
     }
 
-    // 2. LÓGICA DE PROXIMIDADE (BASE BINARY/ALFA)
-    const c2 = ranking[1], c4 = ranking[3], c6 = ranking[5];
-    if (!c2 || !c4 || !c6) return;
-
-    
-    
-    
-
-    const d2 = Math.abs(c2.vol - c4.vol);
-    const d6 = Math.abs(c6.vol - c4.vol);
-
-    
-    
-
-    let target = null;
-    if (d2 < CONFIG.PROXIMITY_THRESHOLD || d6 < CONFIG.PROXIMITY_THRESHOLD) {
-        if (d2 < CONFIG.PROXIMITY_THRESHOLD && d6 < CONFIG.PROXIMITY_THRESHOLD) {
-            target = (d2 <= d6) ? c2 : c6;
-        } else {
-            target = (d2 < CONFIG.PROXIMITY_THRESHOLD) ? c2 : c6;
-        }
+    // 2. Filtro de Segurança Reforçado (Extra check além do fetchTopGainers)
+    const isRisky = CONFIG.BLACKLIST.includes(symbolShort);
+    if (isRisky) {
+        addLog(`[FILTRO] Ativo ${symbolShort} na Blacklist. Ignorando.`, 'system');
+        return;
     }
 
-    if (target) {
-        lastAlfaTarget = target; 
-        
-        
-        if (checkVolatility(target)) executeTrade(target);
-    } else {
-        
-        
-    }
+    // Se chegou aqui, executa a compra sniper da 10ª colocada
+    addLog(`[ALVO DETECTADO] 10ª Colocada Identificada: ${symbolShort} (+${coin.vol.toFixed(2)}%). Iniciando Operação Sniper...`, 'proximity');
+    executeTrade(coin);
 }
 
 function checkRapidGrowth(coin) {
@@ -346,7 +331,7 @@ async function executeTrade(coin, isReposition = false) {
         return;
     }
 
-    const tp = coin.price * (1 + (CONFIG.TARGET_PROFIT / 100));
+    const tp = coin.price * (1 + (0.5 / 100)); // TARGET_PROFIT = 0.5
 
     // Ativação Visual
     document.getElementById('active-trade-card').classList.remove('hidden');
@@ -477,7 +462,7 @@ function updateActiveTradeMonitor(currentPrice) {
     if (!currentTrade) return;
 
     const pnl = ((currentPrice - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
-    const progress = Math.max(0, Math.min(100, ((pnl - (-1.0)) / (CONFIG.TARGET_PROFIT + 1.0)) * 100));
+    const progress = Math.max(0, Math.min(100, ((pnl - (-1.0)) / (0.5 + 1.0)) * 100)); // TARGET_PROFIT = 0.5
 
     // Atualização forçada dos elementos da interface
     const elPl = document.getElementById('monitoring-pl');
@@ -489,15 +474,12 @@ function updateActiveTradeMonitor(currentPrice) {
     if (elCurrent) elCurrent.textContent = `$${currentPrice.toFixed(4)}`;
     if (elFill) elFill.style.width = `${progress}%`;
 
-    if (pnl >= CONFIG.TARGET_PROFIT && !closingTrade) {
+    if (pnl >= 0.5 && !closingTrade) { // TARGET_PROFIT = 0.5
         closingTrade = true; // travar para não disparar duas vezes
         addLog(`[TAKE PROFIT ALCANÇADO] Variação Positiva Identificada (+${pnl.toFixed(2)}%). Iniciando Ordem de Liquidação.`, 'sell');
         buyUsdtAndReposition(pnl);
-    } else if (pnl <= -CONFIG.STOP_LOSS && !closingTrade) {
-        closingTrade = true;
-        addLog(`[RISCO MÁXIMO ATINGIDO] Gatilho de Segurança ativado (${pnl.toFixed(2)}%). Iniciando Ordem de Liquidação (Proteção).`, 'error');
-        buyUsdtAndReposition(pnl);
     }
+    // STOP_LOSS removido conforme instrução
 }
 
 // --- WebSocket Motor (Pareamento Binance Vivo) ---
@@ -598,6 +580,9 @@ async function buyUsdtAndReposition(actualPnl = 0) {
         closingTrade = false;
         return;
     }
+
+    // Registra a moeda para não repetir na próxima operação
+    lastExecutedSymbol = prevCoin.symbol;
 
     // 3. Incrementar contador do ciclo e SALVAR
     cycleCount++;

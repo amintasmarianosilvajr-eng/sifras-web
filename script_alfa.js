@@ -79,9 +79,13 @@ async function executeTrade(coin) {
         addLog(`✅ ORDEM EXECUTADA! ${currentTrade.symbol} sniperado com sucesso. $${res.cummulativeQuoteQty} USDT investidos.`, 'system');
         initPriceSocket(currentTrade.fullSymbol);
     } else {
-        // Log detalhado agora é feito dentro do sendOrder
+        addLog(`❌ FALHA NA ENTRADA: O motor não recebeu confirmação da ordem.`, 'error');
         resetTrade();
     }
+}
+
+function saveActiveTrade() {
+    localStorage.setItem('alfa_active_trade_v35', JSON.stringify(currentTrade));
 }
 
 function initPriceSocket(symbol) {
@@ -96,9 +100,10 @@ function initPriceSocket(symbol) {
 function updateLivePNL(curr) {
     if (!currentTrade || isClosingTrade) return;
     const pnl = ((curr - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
+    const pnlUsdt = (pnl / 100) * (currentTrade.buyPrice * currentTrade.qty);
     document.getElementById('monitoring-pl').textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
     document.getElementById('monitoring-pl').style.color = pnl >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
-    document.getElementById('monitoring-pnl-usdt').textContent = `($${(pnl * 0.1).toFixed(2)})`;
+    document.getElementById('monitoring-pnl-usdt').textContent = `($${pnlUsdt >= 0 ? '+' : ''}${pnlUsdt.toFixed(2)})`;
     document.getElementById('monitoring-current-price').textContent = `$${curr.toFixed(4)}`;
     const prog = Math.max(0, Math.min(100, (pnl / CONFIG.TARGET_PROFIT) * 100));
     document.getElementById('trade-progress-fill').style.width = `${prog}%`;
@@ -210,7 +215,13 @@ function masterToggle() {
     updateTradeUI(false);
 }
 
-function resetTrade() { currentTrade = null; isClosingTrade = false; if (tradeSocket) tradeSocket.close(); updateTradeUI(false); }
+function resetTrade() { 
+    currentTrade = null; 
+    isClosingTrade = false; 
+    if (tradeSocket) tradeSocket.close(); 
+    localStorage.removeItem('alfa_active_trade_v35');
+    updateTradeUI(false); 
+}
 
 function saveSlot(id) {
     const s = { name: document.getElementById('slot-1-name').value, key: document.getElementById('slot-1-key').value, secret: document.getElementById('slot-1-secret').value };
@@ -262,6 +273,16 @@ function loadSavedState() {
     lastExecutedSymbol = s.lastExecutedSymbol || null;
     startOfDayBalance = s.startOfDayBalance || null;
     document.getElementById('cycle-counter').textContent = `${cycleCount} / 24`;
+    
+    // Recuperar trade ativo
+    const activeTrade = JSON.parse(localStorage.getItem('alfa_active_trade_v35') || 'null');
+    if (activeTrade) {
+        currentTrade = activeTrade;
+        updateTradeUI(true);
+        initPriceSocket(currentTrade.fullSymbol);
+        addLog(`[SISTEMA] Trade recuperado da memória: ${currentTrade.symbol}`, 'system');
+    }
+
     const slot = JSON.parse(localStorage.getItem('alfa_slot_1') || '{}');
     if (slot.key) {
         document.getElementById('slot-1-name').value = slot.name || '';

@@ -79,7 +79,7 @@ async function executeTrade(coin) {
         addLog(`✅ ORDEM EXECUTADA! ${currentTrade.symbol} sniperado com sucesso. $${res.cummulativeQuoteQty} USDT investidos.`, 'system');
         initPriceSocket(currentTrade.fullSymbol);
     } else {
-        addLog(`⚠️ ORDEM RECUSADA. Verifique saldo ou chaves API.`, 'error');
+        // Log detalhado agora é feito dentro do sendOrder
         resetTrade();
     }
 }
@@ -111,14 +111,17 @@ async function liquidateTrade(final) {
     let q = currentTrade.qty;
     if (info) {
         const step = parseFloat(info.symbols[0].filters.find(f => f.filterType === 'LOT_SIZE').stepSize);
-        q = (Math.floor((q * 0.999) / step) * step).toFixed(8);
+        q = (Math.floor((q * 0.999) / step) * step).toFixed(8).replace(/\.?0+$/, "");
     }
     const res = await sendOrder('SELL', currentTrade.fullSymbol, q);
     if (res && res.orderId) {
         addLog(`💰 LUCRO NO BOLSO! ${currentTrade.symbol} liquidado com sucesso.`, 'sell_neon');
         showProfitOverlay();
         lastExecutedSymbol = currentTrade.symbol; cycleCount++; saveGlobalState(); resetTrade(); syncBalance();
-    } else { addLog(`❌ ERRO NA LIQUIDAÇÃO. Finalize manualmente na Binance!`, 'error'); isClosingTrade = false; }
+    } else { 
+        addLog(`❌ ERRO NA LIQUIDAÇÃO. Finalize manualmente na Binance!`, 'error'); 
+        isClosingTrade = false; 
+    }
 }
 
 async function fetchRanking() {
@@ -137,7 +140,7 @@ async function fetchRanking() {
 }
 
 async function sendOrder(side, symbol, qty = null) {
-    const body = { key: activeSlots[1].key, secret: activeSlots[1].secret, symbol, side, type: 'MARKET' };
+    const body = { key: activeSlots[1].key, secret: activeSlots[1].secret, symbol, side };
     if (qty) body.qty = qty;
     try {
         const r = await fetch('/executar-ordem', {
@@ -145,8 +148,13 @@ async function sendOrder(side, symbol, qty = null) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return await r.json();
-    } catch(e) { return null; }
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        return d;
+    } catch(e) { 
+        addLog(`⚠️ ORDEM RECUSADA: ${e.message}`, 'error');
+        return null; 
+    }
 }
 
 function renderRanking(ranking) {
@@ -226,7 +234,6 @@ async function syncBalance() {
             const pnlVal = d.totalUsdt - startOfDayBalance;
             const pnlPct = (pnlVal / startOfDayBalance) * 100;
             
-            // Gabinete (Visão PRO)
             const elCabBal = document.getElementById('cabinet-total-balance');
             if (elCabBal) elCabBal.innerHTML = `$ ${d.totalUsdt.toFixed(2)} <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span>`;
             

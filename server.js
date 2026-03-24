@@ -10,15 +10,13 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Servir arquivos estáticos (HTML, CSS, JS, Imagens)
+// Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, './')));
 
-// Rota para o Robô Operacional (Acesso Direto)
 app.get('/operacional', (req, res) => {
     res.sendFile(path.join(__dirname, 'operacional.html'));
 });
 
-// Rota raiz também aponta para o Operacional por segurança
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'operacional.html'));
 });
@@ -30,12 +28,10 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 let globalMarket = { top30: [], allTickersMap: new Map() };
 let binanceWS = null;
 
-// --- BINANCE ORDER SIGNING (HMAC-SHA256) ---
 function signRequest(params, secret) {
     return crypto.createHmac('sha256', secret).update(params).digest('hex');
 }
 
-// --- BINANCE MARKET MOTOR (RANKING & PRICES) ---
 function startBinanceWS() {
     if (binanceWS) binanceWS.terminate();
     binanceWS = new WebSocket('wss://stream.binance.com:9443/ws/!ticker@arr');
@@ -50,27 +46,21 @@ function startBinanceWS() {
                 vol: parseFloat(t.P),
                 quoteVol: parseFloat(t.q)
             }))
-            .filter(t => t.quoteVol > 1000000) // Mínimo de 1M volume em 24h
+            .filter(t => t.quoteVol > 1000000)
             .filter(t => !['USDC','FDUSD','TUSD','EUR','TRY','BRL','DAI','PAXG'].some(s => t.symbol.includes(s)))
             .sort((a,b) => b.vol - a.vol);
 
         globalMarket.top30 = usdtTickers.slice(0, 30);
-        
-        // Cache global de preços para o conversor de saldo
         usdtTickers.forEach(t => globalMarket.allTickersMap.set(t.symbol, t.price));
     });
 
     binanceWS.on('error', () => setTimeout(startBinanceWS, 5000));
 }
 
-// --- ENDPOINTS OPERACIONAIS ---
-
-// 1. Ranking para o Frontend
 app.get('/moedas-ranking', (req, res) => {
     res.json(globalMarket.top30);
 });
 
-// 2. Cálculo de PNL Real Assinado (Binance -> Backend -> Frontend)
 app.post('/pnl-real', async (req, res) => {
     const { key, secret } = req.body;
     if (!key || !secret) return res.status(400).json({ error: 'Faltam credenciais' });
@@ -103,17 +93,16 @@ app.post('/pnl-real', async (req, res) => {
     }
 });
 
-// 3. Proxy de Ordens (Blindagem da API Key no Frontend)
+// CORE SNIPER ENGINE: Blindagem de Lote e Parametros (v3.5)
 app.post('/executar-ordem', async (req, res) => {
-    const { key, secret, symbol, side, qty, type } = req.body;
+    const { key, secret, symbol, side, qty } = req.body;
     if (!key || !secret) return res.status(400).json({ error: 'Faltam credenciais' });
 
     try {
         const timestamp = Date.now();
-        const params = { symbol, side, type, timestamp, recvWindow: 10000 };
+        const params = { symbol, side, type: 'MARKET', timestamp, recvWindow: 10000 };
 
         if (side === 'BUY') {
-            // BUSCAR SALDO USDT REAL
             const qAcc = `timestamp=${timestamp}&recvWindow=10000`;
             const sAcc = signRequest(qAcc, secret);
             const aRes = await axios.get(`https://api.binance.com/api/v3/account?${qAcc}&signature=${sAcc}`, {
@@ -124,17 +113,17 @@ app.post('/executar-ordem', async (req, res) => {
             
             if (free < 10) throw new Error(`Saldo USDT Insuficiente ($${free.toFixed(2)})`);
 
-            // BUSCAR PREÇO ATUAL DA MOEDA (PARA CALCULAR QTY)
+            // BUSCAR INFO DE PRECISÃO (FILTROS)
+            const iRes = await axios.get(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`);
+            const filters = iRes.data.symbols[0].filters;
+            const lSize = filters.find(f => f.filterType === 'LOT_SIZE');
             const pRes = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const price = parseFloat(pRes.data.price);
-            
-            // Calcular: (Saldo * 0.98 para taxas/seguranca) / Preco
-            const calculatedQty = (free * 0.98) / price;
-            
-            // Arredondamento agressivo (4 decimais) para passar no filtro da Binance
-            params.quantity = calculatedQty.toFixed(4);
+
+            const step = parseFloat(lSize.stepSize);
+            const calculatedQty = (free * 0.99) / price;
+            params.quantity = (Math.floor(calculatedQty / step) * step).toFixed(8).replace(/\.?0+$/, "");
         } else {
-            // VENDA: Usa a quantidade passada pelo front (qty)
             params.quantity = qty;
         }
 
@@ -142,7 +131,8 @@ app.post('/executar-ordem', async (req, res) => {
         const signature = signRequest(queryString, secret);
         const finalUrl = `https://api.binance.com/api/v3/order?${queryString}&signature=${signature}`;
 
-        const response = await axios.post(finalUrl, {}, {
+        // Executa a ordem enviando 'null' como body (correção do bug dos 8 parâmetros)
+        const response = await axios.post(finalUrl, null, {
             headers: { 'X-MBX-APIKEY': key }
         });
         res.json(response.data);
@@ -153,7 +143,6 @@ app.post('/executar-ordem', async (req, res) => {
     }
 });
 
-// 4. Proxy de Informações de Lote (ExchangeInfo)
 app.get('/info-par', async (req, res) => {
     const symbol = req.query.symbol;
     try {

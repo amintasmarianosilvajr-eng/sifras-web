@@ -1,12 +1,12 @@
 /**
- * SIFRAS ALFA SNIPER ELITE V1.0
- * Reconstrução Total: Sniper Rank 10 | Alvo 0.5% | Sem Stop Loss
+ * SIFRAS ALFA SNIPER ELITE v3.5 FERRARI
+ * Protocolo de Monitoramento #3 | Alvo 0.8% | Sem Stop Loss
  */
 
-// --- CONFIGURAÇÃO MASTER ---
 const CONFIG = {
     UPDATE_INTERVAL: 2000,
-    TARGET_PROFIT: 0.5,         // Meta fixa de 0.5%
+    LOG_INTERVAL: 5000,
+    TARGET_PROFIT: 0.8,
     BLACKLIST: [
         'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV',
         'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF', 'MDX', 'LOOM', 'KP3R', 'DOCK', 'OAX', 'PROS', 'VITE', 'FOR', 'IRIS', 'NULS', 'FIDA', 'CVX', 'HARD', 'WNXM', 'GLM', 'AKRO',
@@ -14,32 +14,27 @@ const CONFIG = {
     ]
 };
 
-// --- ESTADO GLOBAL ---
 let activeSlots = { 1: { key: '', secret: '', name: '', monitoring: false } };
 let currentTrade = null;
 let cycleCount = 0;
-let cycleOnPause = false;
-let cycleResumeTime = null;
-let startOfDayBalance = null;
-let lastExecutedSymbol = null; // Anti-repetição
+let lastExecutedSymbol = null;
 let tradeSocket = null;
 let globalSystemPower = false;
 let isClosingTrade = false;
-let symbolRules = {}; // Cache de precisão
+let startOfDayBalance = null;
 
-// --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
     loadSavedState();
     startOperationalLoop();
+    startDynamicLogExposition();
 });
 
-// --- OPERACIONAL LOOP ---
 async function startOperationalLoop() {
     while (true) {
-        if (globalSystemPower && !cycleOnPause) {
+        if (globalSystemPower) {
             try {
                 const ranking = await fetchRanking();
-                if (ranking && ranking.length >= 10) {
+                if (ranking && ranking.length >= 5) {
                     renderRanking(ranking);
                     if (!currentTrade && activeSlots[1].monitoring) {
                         analyzeSniper(ranking);
@@ -53,152 +48,168 @@ async function startOperationalLoop() {
     }
 }
 
-// --- LOGICA SNIPER (RANK 10) ---
-function analyzeSniper(ranking) {
-    if (currentTrade || isClosingTrade) return;
-
-    // Foco Exclusivo no Rank #10 (índice 9)
-    const coin = ranking[9];
-    if (!coin) return;
-
-    const symbolShort = coin.symbol.replace('USDT', '');
-
-    // Filtros de Segurança
-    if (symbolShort === lastExecutedSymbol) return; // Anti-repetição
-    if (CONFIG.BLACKLIST.includes(symbolShort)) return; // Exclui shitcoins
-
-    // Gatilho Sniper Confirmado
-    addLog(`[TARGET DETECTADO] Sniper Rank #10: ${symbolShort} (+${coin.vol.toFixed(2)}%). Disparando Ordem...`, 'buy');
-    executeTrade(coin);
+function startDynamicLogExposition() {
+    setInterval(() => {
+        if (!globalSystemPower || currentTrade || isClosingTrade) return;
+        addLog(`[SCANNER FERRARI] Monitorando Pixels. Pivô Rank #3 ativo.`, 'scan');
+    }, CONFIG.LOG_INTERVAL);
 }
 
-// --- EXECUÇÃO DE TRADE ---
+function analyzeSniper(ranking) {
+    if (currentTrade || isClosingTrade) return;
+    const coin3 = ranking[2], coin2 = ranking[1], coin4 = ranking[3];
+    if (!coin3 || !coin2 || !coin4) return;
+    const d3_2 = Math.abs(coin2.vol - coin3.vol), d3_4 = Math.abs(coin4.vol - coin3.vol);
+    let target = d3_2 < d3_4 ? coin2 : coin4, rankTarget = d3_2 < d3_4 ? '#2' : '#4';
+    const sym = target.symbol.replace('USDT', '');
+    if (sym === lastExecutedSymbol || CONFIG.BLACKLIST.includes(sym)) return;
+    addLog(`[MONITOR #3] Apontando para ${rankTarget}: ${sym} (Delta: ${Math.min(d3_2, d3_4).toFixed(3)}%)`, 'system');
+    addLog(`🔥 sniper detectada! Iniciando entrada no ${sym}...`, 'buy_neon');
+    executeTrade(target);
+}
+
 async function executeTrade(coin) {
     const tp = coin.price * (1 + (CONFIG.TARGET_PROFIT / 100));
-    currentTrade = {
-        symbol: coin.symbol.replace('USDT', ''),
-        fullSymbol: coin.symbol,
-        buyPrice: coin.price,
-        targetPrice: tp,
-        qty: 0,
-        startTime: Date.now()
-    };
-
-    // Update UI
+    currentTrade = { symbol: coin.symbol.replace('USDT', ''), fullSymbol: coin.symbol, buyPrice: coin.price, targetPrice: tp, qty: 0, startTime: Date.now() };
     updateTradeUI(true);
-    
-    // Disparar Ordem Real via Backend
     const res = await sendOrder('BUY', currentTrade.fullSymbol);
     if (res && res.orderId) {
         currentTrade.qty = parseFloat(res.executedQty || 0);
         saveActiveTrade();
-        addLog(`[ORDEM EXECUTADA] Compra de ${currentTrade.symbol} $${res.cummulativeQuoteQty} USDT.`, 'buy');
+        addLog(`✅ ORDEM EXECUTADA! ${currentTrade.symbol} sniperado com sucesso. $${res.cummulativeQuoteQty} USDT investidos.`, 'system');
         initPriceSocket(currentTrade.fullSymbol);
     } else {
-        addLog(`[ERRO] Ordem Recusada. Verifique Saldo e API.`, 'error');
+        addLog(`⚠️ ORDEM RECUSADA. Verifique saldo ou chaves API.`, 'error');
         resetTrade();
     }
 }
 
-// --- MONITORAMENTO AO VIVO (WEBSOCKET) ---
 function initPriceSocket(symbol) {
     if (tradeSocket) tradeSocket.close();
     tradeSocket = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
-    tradeSocket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data && data.c) {
-            updateLivePNL(parseFloat(data.c));
-        }
+    tradeSocket.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d && d.c) updateLivePNL(parseFloat(d.c));
     };
 }
 
-function updateLivePNL(currentPrice) {
+function updateLivePNL(curr) {
     if (!currentTrade || isClosingTrade) return;
-
-    const pnlPct = ((currentPrice - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
-    const pnlUsdt = currentTrade.qty > 0 ? (currentPrice * currentTrade.qty) - (currentTrade.buyPrice * currentTrade.qty) : 0;
-
-    // Update UI
-    const elPct = document.getElementById('monitoring-pl');
-    const elUsdt = document.getElementById('monitoring-pnl-usdt');
-    const elCurrent = document.getElementById('monitoring-current-price');
-    const elFill = document.getElementById('trade-progress-fill');
-
-    if (elPct) {
-        elPct.textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`;
-        elPct.style.color = pnlPct >= 0 ? 'var(--accent-green-bright)' : 'var(--danger)';
-    }
-    if (elUsdt) elUsdt.textContent = `$${pnlUsdt.toFixed(2)}`;
-    if (elCurrent) elCurrent.textContent = `$${currentPrice.toFixed(4)}`;
-    
-    const progress = Math.max(0, Math.min(100, (pnlPct / CONFIG.TARGET_PROFIT) * 100));
-    if (elFill) elFill.style.width = `${progress}%`;
-
-    // Gatilho de Take Profit (0.5%)
-    if (pnlPct >= CONFIG.TARGET_PROFIT && !isClosingTrade) {
-        isClosingTrade = true;
-        liquidateTrade(pnlPct);
-    }
+    const pnl = ((curr - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
+    document.getElementById('monitoring-pl').textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+    document.getElementById('monitoring-pl').style.color = pnl >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
+    document.getElementById('monitoring-pnl-usdt').textContent = `($${(pnl * 0.1).toFixed(2)})`;
+    document.getElementById('monitoring-current-price').textContent = `$${curr.toFixed(4)}`;
+    const prog = Math.max(0, Math.min(100, (pnl / CONFIG.TARGET_PROFIT) * 100));
+    document.getElementById('trade-progress-fill').style.width = `${prog}%`;
+    if (pnl >= CONFIG.TARGET_PROFIT && !isClosingTrade) { isClosingTrade = true; liquidateTrade(pnl); }
 }
 
-// --- LIQUIDAÇÃO DE OPERAÇÃO ---
-async function liquidateTrade(finalPnl) {
-    addLog(`[ALVO ALCANÇADO] Meta de ${CONFIG.TARGET_PROFIT}% batida. Vendendo...`, 'sell');
-    
-    // Busca informações de precisão do par
+async function liquidateTrade(final) {
+    addLog(`🎯 ALVO ALCANÇADO! Meta de ${CONFIG.TARGET_PROFIT}% batida. Fechando...`, 'sell_neon');
     const info = await fetchOrderInfo(currentTrade.fullSymbol);
-    let qtyToSell = currentTrade.qty;
-
+    let q = currentTrade.qty;
     if (info) {
-        const lotFilter = info.symbols[0].filters.find(f => f.filterType === 'LOT_SIZE');
-        const stepSize = parseFloat(lotFilter.stepSize);
-        qtyToSell = (Math.floor((qtyToSell * 0.999) / stepSize) * stepSize).toFixed(8); // -0.1% margem taxa
+        const step = parseFloat(info.symbols[0].filters.find(f => f.filterType === 'LOT_SIZE').stepSize);
+        q = (Math.floor((q * 0.999) / step) * step).toFixed(8);
     }
-
-    const res = await sendOrder('SELL', currentTrade.fullSymbol, qtyToSell);
+    const res = await sendOrder('SELL', currentTrade.fullSymbol, q);
     if (res && res.orderId) {
-        addLog(`[META CONCLUÍDA] Venda de ${currentTrade.symbol} finalizada com lucro!`, 'sell');
+        addLog(`💰 LUCRO NO BOLSO! ${currentTrade.symbol} liquidado com sucesso.`, 'sell_neon');
         showProfitOverlay();
-        lastExecutedSymbol = currentTrade.symbol;
-        cycleCount++;
-        saveGlobalState();
-        resetTrade();
-        syncBalance(); 
-    } else {
-        addLog(`[ERRO] Falha na liquidação. Verifique saldo manual.`, 'error');
-        isClosingTrade = false;
-    }
+        lastExecutedSymbol = currentTrade.symbol; cycleCount++; saveGlobalState(); resetTrade(); syncBalance();
+    } else { addLog(`❌ ERRO NA LIQUIDAÇÃO. Finalize manualmente na Binance!`, 'error'); isClosingTrade = false; }
 }
 
-// --- AUXILIARES ---
 async function fetchRanking() {
-    try {
-        const r = await fetch('/moedas-ranking');
-        return await r.json();
+    const start = performance.now();
+    try { 
+        const r = await fetch('/moedas-ranking'); 
+        const end = performance.now();
+        const lat = Math.round(end - start);
+        const elLat = document.getElementById('header-latency');
+        if (elLat) {
+            elLat.textContent = `${lat} ms`;
+            elLat.style.color = lat < 250 ? 'var(--primary-neon)' : (lat < 600 ? '#f1c40f' : 'var(--danger-neon)');
+        }
+        return await r.json(); 
     } catch(e) { return null; }
 }
 
 async function sendOrder(side, symbol, qty = null) {
-    const body = {
-        key: activeSlots[1].key,
-        secret: activeSlots[1].secret,
-        symbol: symbol,
-        side: side,
-        type: 'MARKET',
-        useMaxBalance: (side === 'BUY' && !qty) // Nova flag para o backend
-    };
+    const body = { key: activeSlots[1].key, secret: activeSlots[1].secret, symbol, side, type: 'MARKET' };
     if (qty) body.qty = qty;
-
     try {
         const r = await fetch('/executar-ordem', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const res = await r.json();
-        if (res.error) console.error("Order Error:", res.error);
-        return res;
+        return await r.json();
     } catch(e) { return null; }
+}
+
+function renderRanking(ranking) {
+    const grid = document.getElementById('dynamic-targets-grid');
+    if (!grid) return;
+    grid.innerHTML = ranking.slice(0, 10).map((c, i) => `
+        <div class="ranking-item ${i === 2 ? 'log-neon-scan' : ''}">
+            <span class="rank-num">#${i + 1}</span>
+            <span class="coin-name">${c.symbol.replace('USDT', '')}</span>
+            <span class="coin-vol">${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%</span>
+        </div>
+    `).join('');
+}
+
+function addLog(msg, type = 'system') {
+    const monitor = document.getElementById('log-monitor');
+    if (!monitor) return;
+    const time = new Date().toLocaleTimeString();
+    let html = "";
+    if (type.includes('neon')) {
+        const cls = type.includes('buy') ? 'log-neon-buy' : 'log-neon-sell';
+        html = `<div class="log-card ${cls}"><span class="log-timestamp">${time}</span><span class="log-entry-text" style="font-weight:900;">${msg.toUpperCase()}</span></div>`;
+    } else {
+        const cls = type === 'scan' ? 'log-neon-scan' : `log-entry ${type}`;
+        html = `<div class="${cls}"><span class="log-timestamp">${time}</span><span class="log-entry-text">${msg}</span></div>`;
+    }
+    monitor.innerHTML = html + monitor.innerHTML;
+}
+
+function updateTradeUI(active) {
+    document.getElementById('active-trade-container').classList.toggle('hidden', !active);
+    document.getElementById('no-trade-msg').classList.toggle('hidden', active);
+    const pill = document.getElementById('system-status-pill');
+    pill.textContent = active ? 'MONITORANDO TRADE' : (globalSystemPower ? 'BUSCANDO ALVO' : 'OFFLINE');
+    pill.style.borderColor = active ? 'var(--accent-green)' : 'var(--card-border)';
+    if (active) {
+        document.getElementById('monitoring-symbol').textContent = currentTrade.symbol;
+        document.getElementById('monitoring-buy-price').textContent = `$${currentTrade.buyPrice.toFixed(4)}`;
+        document.getElementById('monitoring-target-price').textContent = `$${currentTrade.targetPrice.toFixed(4)}`;
+    }
+}
+
+function masterToggle() {
+    globalSystemPower = !globalSystemPower;
+    const btn = document.getElementById('master-toggle-btn');
+    btn.textContent = globalSystemPower ? 'DESCONECTAR' : 'CONECTAR MASTER';
+    btn.style.borderColor = globalSystemPower ? 'var(--danger-neon)' : 'var(--primary-neon)';
+    activeSlots[1].monitoring = globalSystemPower;
+    if (globalSystemPower) {
+        syncBalance();
+        setInterval(syncBalance, 10000);
+    }
+    updateTradeUI(false);
+}
+
+function resetTrade() { currentTrade = null; isClosingTrade = false; if (tradeSocket) tradeSocket.close(); updateTradeUI(false); }
+
+function saveSlot(id) {
+    const s = { name: document.getElementById('slot-1-name').value, key: document.getElementById('slot-1-key').value, secret: document.getElementById('slot-1-secret').value };
+    activeSlots[1] = { ...activeSlots[1], ...s };
+    localStorage.setItem('alfa_slot_1', JSON.stringify(s));
+    addLog(`Configurações de API salvas.`, 'system');
+    syncBalance();
 }
 
 async function syncBalance() {
@@ -212,131 +223,48 @@ async function syncBalance() {
         const d = await r.json();
         if (d.totalUsdt) {
             if (!startOfDayBalance) startOfDayBalance = d.totalUsdt;
-            const pnl = d.totalUsdt - startOfDayBalance;
-            const pnlPct = (pnl / startOfDayBalance) * 100;
-            const el = document.getElementById('header-realtime-pnl');
-            if (el) {
-                el.textContent = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct.toFixed(2)}%)`;
-                el.style.color = pnl >= 0 ? 'var(--accent-green-bright)' : 'var(--danger)';
-                el.classList.remove('waiting');
+            const pnlVal = d.totalUsdt - startOfDayBalance;
+            const pnlPct = (pnlVal / startOfDayBalance) * 100;
+            
+            // Gabinete (Visão PRO)
+            const elCabBal = document.getElementById('cabinet-total-balance');
+            if (elCabBal) elCabBal.innerHTML = `$ ${d.totalUsdt.toFixed(2)} <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span>`;
+            
+            const elPnl = document.getElementById('header-realtime-pnl');
+            const elCabPnl = document.getElementById('cabinet-realtime-pnl');
+            if (elPnl) {
+                const txt = `${pnlVal >= 0 ? '+' : ''}$${pnlVal.toFixed(2)} (${pnlPct.toFixed(2)}%)`;
+                elPnl.textContent = txt;
+                elPnl.style.color = pnlVal >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
+                elPnl.classList.remove('waiting');
+                
+                if (elCabPnl) {
+                    elCabPnl.innerHTML = `PNL HOJE: <span style="color:${pnlVal >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)'}">${txt}</span>`;
+                }
             }
             saveGlobalState();
         }
     } catch(e) {}
 }
 
-function renderRanking(ranking) {
-    const grid = document.getElementById('dynamic-targets-grid');
-    if (!grid) return;
-    grid.innerHTML = ranking.slice(0, 15).map((c, i) => `
-        <div class="ranking-item ${i === 9 ? 'sniper-target' : ''}">
-            <span class="rank-num">#${i + 1}</span>
-            <span class="coin-name">${c.symbol.replace('USDT', '')}</span>
-            <span class="coin-vol">${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%</span>
-        </div>
-    `).join('');
-}
-
-function updateTradeUI(isActive) {
-    const container = document.getElementById('active-trade-container');
-    const msg = document.getElementById('no-trade-msg');
-    const pill = document.getElementById('system-status-pill');
-
-    if (isActive) {
-        container.classList.remove('hidden');
-        msg.classList.add('hidden');
-        pill.textContent = 'MONITORANDO';
-        pill.style.background = 'var(--accent-green)';
-        document.getElementById('monitoring-symbol').textContent = currentTrade.symbol;
-        document.getElementById('monitoring-buy-price').textContent = `$${currentTrade.buyPrice.toFixed(4)}`;
-        document.getElementById('monitoring-target-price').textContent = `$${currentTrade.targetPrice.toFixed(4)}`;
-    } else {
-        container.classList.add('hidden');
-        msg.classList.remove('hidden');
-        pill.textContent = globalSystemPower ? 'BUSCANDO...' : 'OFFLINE';
-        pill.style.background = globalSystemPower ? 'var(--primary)' : 'var(--card-border)';
-    }
-}
-
-function masterToggle() {
-    globalSystemPower = !globalSystemPower;
-    const btn = document.getElementById('master-toggle-btn');
-    if (globalSystemPower) {
-        btn.textContent = 'DESCONECTAR';
-        btn.style.borderColor = 'var(--danger)';
-        btn.style.color = 'var(--danger)';
-        activeSlots[1].monitoring = true;
-        syncBalance();
-        setInterval(syncBalance, 15000);
-    } else {
-        btn.textContent = 'CONECTAR MASTER';
-        btn.style.borderColor = 'var(--accent-green)';
-        btn.style.color = 'var(--accent-green-bright)';
-        activeSlots[1].monitoring = false;
-        resetTrade();
-    }
-    updateTradeUI(false);
-}
-
-function addLog(msg, type) {
-    const monitor = document.getElementById('log-monitor');
-    if (!monitor) return;
-    const time = new Date().toLocaleTimeString();
-    monitor.innerHTML = `<div class="log-entry ${type}">[${time}] ${msg}</div>` + monitor.innerHTML;
-}
-
-function resetTrade() {
-    currentTrade = null;
-    isClosingTrade = false;
-    if (tradeSocket) tradeSocket.close();
-    localStorage.removeItem('active_trade_alfa');
-    updateTradeUI(false);
-}
-
-function saveActiveTrade() {
-    localStorage.setItem('active_trade_alfa', JSON.stringify(currentTrade));
-}
-
-function saveGlobalState() {
-    const state = { cycleCount, startOfDayBalance, lastExecutedSymbol };
-    localStorage.setItem('alfa_global_state', JSON.stringify(state));
-    document.getElementById('cycle-counter').textContent = `${cycleCount} / 10`;
-}
+function saveGlobalState() { localStorage.setItem('alfa_state_v35', JSON.stringify({ cycleCount, lastExecutedSymbol, startOfDayBalance })); }
 
 function loadSavedState() {
-    const g = localStorage.getItem('alfa_global_state');
-    if (g) {
-        const s = JSON.parse(g);
-        cycleCount = s.cycleCount || 0;
-        startOfDayBalance = s.startOfDayBalance || null;
-        lastExecutedSymbol = s.lastExecutedSymbol || null;
-        document.getElementById('cycle-counter').textContent = `${cycleCount} / 10`;
-    }
-    const slot = localStorage.getItem('alfa_slot_1');
-    if (slot) {
-        const d = JSON.parse(slot);
-        document.getElementById('slot-1-name').value = d.name;
-        document.getElementById('slot-1-key').value = d.key;
-        document.getElementById('slot-1-secret').value = d.secret;
-        activeSlots[1] = { ...activeSlots[1], ...d };
+    const s = JSON.parse(localStorage.getItem('alfa_state_v35') || '{}');
+    cycleCount = s.cycleCount || 0;
+    lastExecutedSymbol = s.lastExecutedSymbol || null;
+    startOfDayBalance = s.startOfDayBalance || null;
+    document.getElementById('cycle-counter').textContent = `${cycleCount} / 24`;
+    const slot = JSON.parse(localStorage.getItem('alfa_slot_1') || '{}');
+    if (slot.key) {
+        document.getElementById('slot-1-name').value = slot.name || '';
+        document.getElementById('slot-1-key').value = slot.key || '';
+        document.getElementById('slot-1-secret').value = slot.secret || '';
+        activeSlots[1] = { ...activeSlots[1], ...slot };
     }
 }
 
-function saveSlot(id) {
-    const name = document.getElementById(`slot-${id}-name`).value;
-    const key = document.getElementById(`slot-${id}-key`).value;
-    const secret = document.getElementById(`slot-${id}-secret`).value;
-    activeSlots[id] = { ...activeSlots[id], name, key, secret };
-    localStorage.setItem(`alfa_slot_${id}`, JSON.stringify({ name, key, secret }));
-    addLog(`Configuração do Slot #${id} salva com sucesso.`, 'system');
-}
-
-async function fetchOrderInfo(symbol) {
-    try {
-        const r = await fetch(`/info-par?symbol=${symbol}`);
-        return await r.json();
-    } catch(e) { return null; }
-}
+async function fetchOrderInfo(symbol) { try { const r = await fetch(`/info-par?symbol=${symbol}`); return await r.json(); } catch(e) { return null; } }
 
 function showProfitOverlay() {
     const o = document.getElementById('profit-overlay');

@@ -3,52 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIFRAS MASTER | ALFA SNIPER ELITE</title>
+    <title>FLUXO ALFA v3.5 | FERRARI SNIPER</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style_alfa.css">
 </head>
 <body>
-    <!-- Overlay de Lucro -->
     <div id="profit-overlay" class="profit-overlay">
         <div class="profit-card">
             <img src="logo.png" alt="Fluxo Alfa" class="overlay-logo">
-            <h2>META DE 0.5% ALCANÇADA!</h2>
-            <p>Liquidação Sniper Concluída com Sucesso.</p>
+            <h2 style="font-family:'Outfit'; font-size:3rem; color:#fff; margin-bottom:10px;">META ALCANÇADA!</h2>
+            <p style="color:var(--accent-green); font-weight:800; font-size:1.2rem; text-transform:uppercase; letter-spacing:2px;">Sniper Finalizado com Sucesso.</p>
         </div>
     </div>
 
     <div class="app-container">
-        <!-- Dashboard Header -->
+        <!-- Header Ferrari -->
         <header class="top-header">
             <div class="brand">
                 <img src="logo.png" alt="Sifras" class="logo">
                 <div class="brand-text">
-                    <h1>ALFA SNIPER</h1>
-                    <span class="badge-real">BINANCE REALT-TIME</span>
+                    <h1>FLUXO ALFA</h1>
+                    <span class="badge-real">BINANCE HUB REALT-TIME</span>
                 </div>
             </div>
 
             <div class="header-performance">
-                <div class="perf-item">
-                    <span class="label">PNL DE HOJE (BINANCE)</span>
+                <div class="perf-item" style="border-right: 1px solid var(--card-border); padding-right: 20px;">
+                    <span class="label">PNL HOJE (SESSÃO)</span>
                     <div id="header-realtime-pnl" class="value waiting">SINCRONIZANDO...</div>
                 </div>
-                <div class="perf-divider"></div>
                 <div class="perf-item">
-                    <span class="label">CONTADOR DE CICLO</span>
-                    <div id="cycle-counter" class="value cycle">0 / 10</div>
+                    <span class="label">CICLOS</span>
+                    <div id="cycle-counter" class="value cycle">0 / 24</div>
                 </div>
-                <button id="master-toggle-btn" onclick="masterToggle()" class="btn-connect">CONECTAR MASTER</button>
+                <div class="perf-item">
+                    <span class="label">LATÊNCIA GLOBAL</span>
+                    <div id="header-latency" class="value waiting" style="font-size: 0.9rem; color: var(--primary-neon);">-- ms</div>
+                </div>
+                <div style="display:flex; gap:15px; margin-left: 15px;">
+                    <button id="master-toggle-btn" onclick="masterToggle()" class="btn-connect">CONECTAR MASTER</button>
+                    <button onclick="panicStop()" class="btn-connect" style="border-color:var(--danger-neon); color:var(--danger-neon); background:rgba(248, 81, 73, 0.05);">PANIC STOP</button>
+                </div>
             </div>
         </header>
 
         <main class="dashboard-grid">
-            <!-- Coluna 1: Monitor de Operação Ativa -->
-            <section class="card monitor-card">
+            <!-- Hub de Monitoramento Global -->
+            <section class="card monitor-card" style="grid-column: span 1;">
                 <div class="card-header">
-                    <h3>Monitor de Operação Ativa</h3>
+                    <h3 style="font-size:0.8rem; text-transform:uppercase; font-weight:800; color:var(--text-muted);">Monitor Operacional Ativo</h3>
                     <div id="system-status-pill" class="status-pill waiting">OFFLINE</div>
                 </div>
                 
@@ -63,79 +68,108 @@
 
                     <div class="trade-metrics">
                         <div class="m-item">
-                            <span class="m-label">COMPRA</span>
-                            <span id="monitoring-buy-price" class="m-value">$0.0000</span>
+                            <span class="m-label">ENTRADA</span>
+                            <span id="monitoring-buy-price" class="m-value highlighted">$0.0000</span>
                         </div>
                         <div class="m-item">
-                            <span class="m-label">ATUAL</span>
-                            <span id="monitoring-current-price" class="m-value highlighted">$0.0000</span>
+                            <span class="m-label">VALOR ATUAL</span>
+                            <span id="monitoring-current-price" class="m-value">$0.0000</span>
                         </div>
                         <div class="m-item">
-                            <span class="m-label">ALVO (0.5%)</span>
+                            <span class="m-label">ALVO SNIPER</span>
                             <span id="monitoring-target-price" class="m-value target">$0.0000</span>
                         </div>
                     </div>
 
-                    <div class="progress-section">
+                    <div class="progress-section" style="margin-top:auto;">
                         <div class="progress-bar-wrap">
                             <div id="trade-progress-fill" class="progress-fill"></div>
                         </div>
-                        <div class="progress-labels">
-                            <span>ENTRADA (0.00%)</span>
-                            <span>META (+0.50%)</span>
+                        <div style="display:flex; justify-content:space-between; font-size:0.6rem; font-weight:800; color:var(--text-muted); margin-top:12px;">
+                            <span>INÍCIO (0.00%)</span>
+                            <span>META ALFA (+0.80%)</span>
                         </div>
                     </div>
                 </div>
 
                 <div id="no-trade-msg" class="empty-msg">
-                    <p>Aguardando alvo sniper na 10ª posição...</p>
+                    <p style="font-family:'Outfit'; font-size:1.2rem; letter-spacing:1px; text-transform:uppercase;">Aguardando Sinal do Monitor #3...</p>
                 </div>
             </section>
 
-            <!-- Coluna 2: Ranking e Logs -->
-            <div class="secondary-column">
-                <section class="card ranking-card">
+            <!-- Ranking e Log Dinâmico -->
+            <div class="secondary-column" style="display:flex; flex-direction:column; gap:2rem;">
+                <!-- NOVO: GABINETE BINANCE (PROMINENTE) -->
+                <section class="card binance-cabinet-card" style="border-right: 4px solid var(--accent-green); background: linear-gradient(135deg, rgba(13,17,23,0.95) 0%, rgba(1,4,9,1) 100%);">
                     <div class="card-header">
-                        <h3>Espectro de Pixels (Rank #10 Sniper)</h3>
+                        <h3 style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Gabinete Binance (Fundo Real)</h3>
                     </div>
-                    <div id="dynamic-targets-grid" class="ranking-list">
-                        <!-- Moedas renderizadas via JS -->
+                    <div style="padding: 10px 0;">
+                        <span style="font-size:0.7rem; color:var(--text-muted); font-weight:800; text-transform: uppercase;">Saldo Estimado</span>
+                        <h2 id="cabinet-total-balance" style="font-family:'Outfit'; font-size:3.5rem; line-height:1; margin:8px 0; color:#fff; letter-spacing:-2px;">$ 0.00 <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span></h2>
+                        <div id="cabinet-realtime-pnl" style="font-family:'Inter'; font-weight:800; font-size:1.1rem; color:var(--text-muted); margin-top: 5px;">
+                            PNL HOJE: <span class="val-pnl" style="color:var(--text-muted);">---</span>
+                        </div>
                     </div>
                 </section>
 
-                <section class="card logs-card">
+                <section class="card ranking-card">
                     <div class="card-header">
-                        <h3>Monitor Operational</h3>
+                        <h3 style="font-size:0.8rem; text-transform:uppercase; font-weight:800;">Radar de Volatilidade (Scanner)</h3>
                     </div>
-                    <div id="log-monitor" class="log-container">
-                        <div class="log-entry system">[SISTEMA] Aguardando acionamento master...</div>
-                    </div>
+                    <div id="dynamic-targets-grid" class="ranking-list"></div>
                 </section>
             </div>
 
-            <!-- Footer / Slot Config -->
-            <section class="card config-card">
-                <div class="config-grid">
+            <!-- LOG DINÂMICO E CONFIGURAÇÕES -->
+            <section class="card logs-card" style="grid-column: span 1; display:flex; flex-direction:column; min-height: 400px;">
+                <div class="card-header">
+                    <h3 style="font-size:0.8rem; text-transform:uppercase; font-weight:800;">Log Dinâmico (Feedback 5s)</h3>
+                </div>
+                <div id="log-monitor" class="log-container" style="flex:1;">
+                    <div class="log-entry system">[SISTEMA] Aguardando acionamento master...</div>
+                </div>
+            </section>
+
+            <section class="card config-card" style="grid-column: span 1;">
+                <div class="config-grid" style="grid-template-columns: 1fr; gap: 15px;">
                     <div class="input-group">
-                        <label>NOME CLIENTE</label>
-                        <input type="text" id="slot-1-name" placeholder="Ex: Master Fund">
+                        <label>Identificação do Operador</label>
+                        <input type="text" id="slot-1-name" placeholder="Nome do Cliente">
                     </div>
                     <div class="input-group">
-                        <label>API KEY</label>
-                        <input type="password" id="slot-1-key" placeholder="Binance API Key">
+                        <label>Binance API Key</label>
+                        <input type="password" id="slot-1-key" placeholder="Chave de Acesso">
                     </div>
                     <div class="input-group">
-                        <label>SECRET KEY</label>
-                        <input type="password" id="slot-1-secret" placeholder="Binance Secret Key">
+                        <label>Binance Secret Key</label>
+                        <input type="password" id="slot-1-secret" placeholder="Chave de Segurança">
                     </div>
-                    <div class="config-actions">
-                        <button onclick="saveSlot(1)" class="btn-save">SALVAR CHAVES</button>
-                    </div>
+                    <button onclick="saveSlot(1)" class="btn-save">AUTORIZAR CHAVES</button>
                 </div>
             </section>
         </main>
     </div>
 
     <script src="script_alfa.js"></script>
+    <script>
+        function panicStop() {
+            if(confirm("STOP GERAL: Deseja interromper todas as operações e vender a mercado?")) {
+                fetch('/panic', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        key: document.getElementById('slot-1-key').value, 
+                        secret: document.getElementById('slot-1-secret').value 
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.msg || "Comando de Panic Stop enviado!");
+                    location.reload();
+                });
+            }
+        }
+    </script>
 </body>
 </html>

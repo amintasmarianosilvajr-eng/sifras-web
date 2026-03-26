@@ -110,7 +110,7 @@ async function startHeartbeat() {
     };
 
     runHeartbeat(); // Executa agora
-    setInterval(runHeartbeat, 5000); // E repete a cada 5s
+    setInterval(runHeartbeat, 3000); // Frequência aumentada para 3s (Próximo de imediato)
 }
 
 async function forcePanic() {

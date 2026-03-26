@@ -57,8 +57,6 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/operacional', (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
 app.get('/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads.html')));
-
-// Suporte para letras maiúsculas (Obrigatório para alguns navegadores)
 app.get('/ADMIN', (req, res) => res.redirect('/admin'));
 app.get('/OPERACIONAL', (req, res) => res.redirect('/operacional'));
 
@@ -134,10 +132,14 @@ app.get('/moedas-ranking', async (req, res) => {
 });
 
 app.post('/register', (req, res) => {
-    const { name, email, experience, whatsapp } = req.body;
+    let { name, email, experience, whatsapp } = req.body;
     if (!name || !email) return res.status(400).json({ error: 'Dados incompletos' });
-    userStates[name] = { 
-        username: name, email, experience, whatsapp, 
+    
+    // Normalização Anti-Erro
+    const finalName = name.trim().toUpperCase();
+    
+    userStates[finalName] = { 
+        username: finalName, email, experience, whatsapp, 
         isApproved: false, status: 'OFFLINE', lastSeen: Date.now(), 
         registrationDate: new Date().toISOString() 
     };
@@ -148,11 +150,26 @@ app.post('/register', (req, res) => {
 app.post('/heartbeat', (req, res) => {
     const { username, state } = req.body;
     if (!username) return res.status(400).json({ error: 'Inválido' });
-    const user = userStates[username] || { isApproved: false };
-    userStates[username] = { ...userStates[username], ...state, username, lastSeen: Date.now(), isApproved: user.isApproved };
-    const shouldStop = userStates[username].remoteCommand === 'STOP';
-    if (shouldStop) userStates[username].remoteCommand = null;
-    res.json({ success: true, command: shouldStop ? 'STOP' : null, isApproved: !!userStates[username].isApproved });
+    
+    const finalName = username.trim().toUpperCase();
+    const user = userStates[finalName] || { isApproved: false };
+    
+    userStates[finalName] = { 
+        ...userStates[finalName], 
+        ...state, 
+        username: finalName, 
+        lastSeen: Date.now(), 
+        isApproved: user.isApproved 
+    };
+    
+    const shouldStop = userStates[finalName].remoteCommand === 'STOP';
+    if (shouldStop) userStates[finalName].remoteCommand = null;
+    
+    res.json({ 
+        success: true, 
+        command: shouldStop ? 'STOP' : null, 
+        isApproved: !!userStates[finalName].isApproved 
+    });
 });
 
 // Admin
@@ -168,8 +185,32 @@ app.get('/admin/overview', authAdmin, (req, res) => {
 
 app.post('/admin/approve-user', authAdmin, (req, res) => {
     const { targetUser } = req.body;
-    if (userStates[targetUser]) { userStates[targetUser].isApproved = true; saveUsers(); res.json({ success: true }); }
+    const finalName = targetUser.trim().toUpperCase();
+    if (userStates[finalName]) { 
+        userStates[finalName].isApproved = true; 
+        saveUsers(); 
+        res.json({ success: true }); 
+    }
     else res.status(404).json({ error: 'Not found' });
+});
+
+app.post('/admin/block-user', authAdmin, (req, res) => {
+    const { targetUser } = req.body;
+    const finalName = targetUser.trim().toUpperCase();
+    if (userStates[finalName]) { 
+        userStates[finalName].isApproved = false; 
+        saveUsers(); 
+        res.json({ success: true }); 
+    }
+    else res.status(404).json({ error: 'Not found' });
+});
+
+app.post('/admin/delete-user', authAdmin, (req, res) => {
+    const { targetUser } = req.body;
+    const finalName = targetUser.trim().toUpperCase();
+    delete userStates[finalName];
+    saveUsers();
+    res.json({ success: true });
 });
 
 app.post('/admin/reset-all-users', authAdmin, (req, res) => {
@@ -200,7 +241,7 @@ app.post('/pnl-real', async (req, res) => {
 });
 
 app.post('/executar-ordem', async (req, res) => {
-    const { key, secret, symbol, side, qty, buyPercentage } = req.body;
+    const { key, secret, symbol, side, qty } = req.body;
     try {
         const timestamp = Date.now();
         const query = `symbol=${symbol}&side=${side}&type=MARKET&quantity=${qty}&timestamp=${timestamp}&recvWindow=10000`;

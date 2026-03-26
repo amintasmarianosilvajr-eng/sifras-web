@@ -139,7 +139,7 @@ app.post('/heartbeat', (req, res) => {
     res.json({ 
         success: true, 
         command: shouldStop ? 'STOP' : null,
-        isApproved: userStates[username].isApproved
+        isApproved: !!userStates[username].isApproved // Garante booleano
     });
 });
 

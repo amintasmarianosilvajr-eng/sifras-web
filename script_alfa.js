@@ -139,12 +139,21 @@ function updateApprovalUI(approved) {
     const overlay = document.getElementById('approval-overlay');
     if (!overlay) return;
 
-    if (approved === false) {
-        overlay.classList.add('show');
-        // Se não está aprovado, garante que o sistema está desligado
-        if (globalSystemPower) masterToggle();
-    } else {
+    // BLOQUEIO TOTAL: Só libera se receber explicitamente TRUE do servidor
+    if (approved === true) {
         overlay.classList.remove('show');
+    } else {
+        overlay.classList.add('show');
+        // Se foi bloqueado, desliga o robô imediatamente
+        if (globalSystemPower) {
+            globalSystemPower = false;
+            const btn = document.getElementById('master-toggle-btn');
+            if(btn) {
+                btn.textContent = 'CONECTAR MASTER';
+                btn.style.borderColor = 'var(--primary-neon)';
+            }
+            updateTradeUI(false);
+        }
     }
 }
 

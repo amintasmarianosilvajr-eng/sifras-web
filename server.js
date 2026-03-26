@@ -342,12 +342,48 @@ function startBinanceWS() {
         }
     });
 
-    binanceWS.on('error', () => setTimeout(startBinanceWS, 5000));
+    binanceWS.on('error', (e) => {
+        console.error("WS CONNECTION ERROR:", e.message);
+        setTimeout(startBinanceWS, 5000);
+    });
+    
+    binanceWS.on('close', () => {
+        console.warn("WS CONNECTION CLOSED. Reconnecting...");
+        setTimeout(startBinanceWS, 5000);
+    });
 }
 
-app.get('/moedas-ranking', (req, res) => {
-    if (globalMarket.top30.length === 0) {
-        console.warn("⚠️ API moedas-ranking chamada, mas top30 está VAZIO.");
+// NOVO: Fallback via REST API caso o WebSocket falhe
+async function fetchBinanceFallback() {
+    try {
+        const response = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
+        const tickers = response.data;
+        
+        const usdtTickers = tickers
+            .filter(t => t.symbol.endsWith('USDT'))
+            .map(t => ({
+                symbol: t.symbol,
+                price: parseFloat(t.lastPrice),
+                vol: parseFloat(t.priceChangePercent),
+                quoteVol: parseFloat(t.quoteVolume)
+            }))
+            .filter(t => !['USDC','FDUSD','TUSD','EUR','TRY','BRL','DAI','PAXG'].some(s => t.symbol.includes(s)))
+            .sort((a,b) => b.vol - a.vol);
+
+        if (usdtTickers.length > 0) {
+            globalMarket.top30 = usdtTickers.slice(0, 30);
+            console.log(`✅ Fallback REST: Capturado ${globalMarket.top30.length} moedas.`);
+        }
+    } catch (e) {
+        console.error("REST Fallback Error:", e.message);
+    }
+}
+
+app.get('/moedas-ranking', async (req, res) => {
+    // Se estiver vazio por mais de 5 segundos, tenta o fallback
+    if (globalMarket.top30.length === 0 || (Date.now() - lastWsMessage > 10000)) {
+        console.warn("⚠️ Scanner Vazio ou Lento. Ativando Fallback Manual...");
+        await fetchBinanceFallback();
     }
     res.json(globalMarket.top30);
 });

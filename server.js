@@ -320,19 +320,13 @@ function startBinanceWS() {
                     vol: parseFloat(t.P),
                     quoteVol: parseFloat(t.q)
                 }))
-                .filter(t => t.quoteVol > 1000000)
+                // REMOVIDO: Filtro de 1M para garantir que sempre existam moedas no Top 10 para a Escalada
                 .filter(t => !['USDC','FDUSD','TUSD','EUR','TRY','BRL','DAI','PAXG'].some(s => t.symbol.includes(s)))
                 .sort((a,b) => b.vol - a.vol);
 
             if (usdtTickers.length > 0) {
                 globalMarket.top30 = usdtTickers.slice(0, 30);
                 usdtTickers.forEach(t => globalMarket.allTickersMap.set(t.symbol, t.price));
-            } else if (tickers.length > 0 && globalMarket.top30.length === 0) {
-                 // Diagnóstico: Se temos tickers mas nenhum passou nos filtros USDT/Vol
-                 // Pegar os primeiros 10 só para não ficar vazio em mercados parados
-                 globalMarket.top30 = tickers.slice(0, 10).map(t => ({
-                    symbol: t.s, price: parseFloat(t.c), vol: parseFloat(t.P), quoteVol: parseFloat(t.q)
-                 }));
             }
         } catch (e) {
             console.error("WS Message Error:", e.message);

@@ -45,7 +45,7 @@ async function startOperationalLoop() {
                 if (r) renderRanking(r);
             } else {
                 const ranking = await fetchRanking();
-                if (ranking && ranking.length >= 4) {
+                if (ranking && ranking.length >= 1) { // Reduzido para mostrar qualquer moeda capturada
                     renderRanking(ranking);
                     if (globalSystemPower && !currentTrade && activeSlots[1].monitoring) {
                         analyzeSniper(ranking);
@@ -151,7 +151,7 @@ function updateApprovalUI(approved) {
 function startDynamicLogExposition() {
     setInterval(() => {
         if (!globalSystemPower || currentTrade || isClosingTrade) return;
-        addLog(`[SCANNER FERRARI] Monitorando Pixels. Pivô Rank #3 ativo.`, 'scan');
+        addLog(`[PROTOCOLO ESCALADA] Monitoramento Ativo. Escaneando Rank #1-10...`, 'scan');
     }, CONFIG.LOG_INTERVAL);
 }
 

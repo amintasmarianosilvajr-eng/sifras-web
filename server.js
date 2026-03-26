@@ -41,8 +41,12 @@ function saveUsers() {
 
 // Redirecionamento HTTPS/WWW
 app.use((req, res, next) => {
+    // SÓ REDIRECIONA NAVEGAÇÃO (GET). Não pode redirecionar POST (Heartbeat) ou vai perder os dados e falhar a aprovação.
+    if (req.method !== 'GET') return next();
+
     const host = req.headers.host;
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+
     if (host === 'fluxoalfafinance.online') {
         return res.redirect(301, `https://www.fluxoalfafinance.online${req.url}`);
     }

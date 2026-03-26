@@ -176,6 +176,29 @@ app.post('/admin/reset-all-users', authAdmin, (req, res) => {
     userStates = {}; saveUsers(); res.json({ success: true });
 });
 
+app.post('/pnl-real', async (req, res) => {
+    const { key, secret } = req.body;
+    if (!key || !secret) return res.status(400).json({ error: 'Faltam credenciais' });
+    try {
+        const timestamp = Date.now();
+        const query = `timestamp=${timestamp}&recvWindow=10000`;
+        const signature = crypto.createHmac('sha256', secret).update(query).digest('hex');
+        const r = await axios.get(`https://api.binance.com/api/v3/account?${query}&signature=${signature}`, { headers: { 'X-MBX-APIKEY': key } });
+        const balances = r.data.balances.filter(b => parseFloat(b.free) + parseFloat(b.locked) > 0);
+        let totalUsdt = 0;
+        for (const b of balances) {
+            const amount = parseFloat(b.free) + parseFloat(b.locked);
+            if (b.asset === 'USDT') { totalUsdt += amount; }
+            else {
+                const pair = b.asset + 'USDT';
+                const price = globalMarket.allTickersMap.get(pair);
+                if (price) totalUsdt += amount * price;
+            }
+        }
+        res.json({ totalUsdt });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/executar-ordem', async (req, res) => {
     const { key, secret, symbol, side, qty, buyPercentage } = req.body;
     try {

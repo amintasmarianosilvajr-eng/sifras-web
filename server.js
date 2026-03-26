@@ -275,6 +275,12 @@ app.post('/admin/delete-user', authAdmin, (req, res) => {
     }
 });
 
+app.post('/admin/reset-all-users', authAdmin, (req, res) => {
+    userStates = {};
+    saveUsers();
+    res.json({ success: true, message: 'Todos os usuários foram removidos.' });
+});
+
 app.post('/admin/approve-user', authAdmin, (req, res) => {
     const { targetUser } = req.body;
     if (userStates[targetUser]) {

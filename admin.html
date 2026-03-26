@@ -167,6 +167,9 @@
             <button onclick="stopAll()" id="btnStopAll" class="btn-stop-all">
                 <i data-lucide="octagon" class="w-4 h-4"></i> Stop All Network
             </button>
+            <button onclick="resetAllUsers()" class="bg-accent-ruby/20 hover:bg-accent-ruby/40 text-accent-ruby px-3 py-2 rounded-lg font-black text-[0.6rem] flex items-center gap-2">
+                <i data-lucide="trash-2" class="w-3 h-3"></i> RESET GERAL
+            </button>
             <button class="btn-refresh" onclick="updateOverview(true)">
                 <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i> Resync
             </button>
@@ -240,6 +243,23 @@
 <script>
     lucide.createIcons();
     const ACCESS_KEY = localStorage.getItem('sifras_token');
+
+    async function resetAllUsers() {
+        if (!confirm('⚠️ ALERTA MÁXIMO: Remover TODOS os usuários e mentorados do sistema? Esta ação é irreversível.')) return;
+        const confirmStr = prompt('Digite RESET para confirmar a limpeza total:');
+        if (confirmStr !== 'RESET') return;
+
+        try {
+            const res = await fetch('/admin/reset-all-users', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
+            });
+            if (res.ok) {
+                alert('Sistema resetado com sucesso.');
+                updateOverview();
+            }
+        } catch (e) { alert('Falha no reset.'); }
+    }
 
     async function stopAll() {
         if (!confirm('️ EMERGÊNCIA: Parar TODOS os robôs da rede?')) return;

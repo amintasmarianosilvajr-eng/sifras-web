@@ -149,19 +149,21 @@
         </div>
 
         <nav class="hidden lg:flex items-center gap-4 bg-[#90C23A]/10 p-1 rounded-xl border border-[#90C23A]/30">
-            <a href="/dashboard"
-                class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase text-[#90C23A] hover:text-[#FFFFFF] hover:bg-[#90C23A]/10 transition-all">
-                Monitoramento</a>
-            <a href="/operacional"
-                class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase text-[#90C23A] hover:text-[#FFFFFF] hover:bg-[#90C23A]/10 transition-all">️
-                Operacional Alfa</a>
             <a href="/admin"
                 class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20">️
-                Admin</a>
+                Admin Network</a>
         </nav>
 
         <div class="flex items-center gap-4">
             <span id="lastUpdateTime" class="text-[0.6rem] text-[#D9DFE3] font-bold uppercase mono mr-4">Sinc: --:--:--</span>
+            
+            <button onclick="exportLeads()" class="bg-[#90C23A]/20 hover:bg-[#90C23A]/40 text-[#90C23A] px-3 py-2 rounded-lg font-black text-[0.6rem] flex items-center gap-2">
+                <i data-lucide="file-spreadsheet" class="w-3 h-3"></i> EXPORT EXCEL
+            </button>
+            <button onclick="exportLeadsWord()" class="bg-accent-cyan/20 hover:bg-accent-cyan/40 text-accent-cyan px-3 py-2 rounded-lg font-black text-[0.6rem] flex items-center gap-2">
+                <i data-lucide="file-text" class="w-3 h-3"></i> EXPORT WORD
+            </button>
+
             <button onclick="stopAll()" id="btnStopAll" class="btn-stop-all">
                 <i data-lucide="octagon" class="w-4 h-4"></i> Stop All Network
             </button>
@@ -358,15 +360,22 @@
             let roi = 0, progress = 0, color = 'var(--accent-ruby)';
             if (u.status === 'IN_TRADE' && u.buyPrice > 0) {
                 roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
-                progress = Math.max(0, Math.min(100, ((roi - (-6.0)) / (0.6 - (-6.0))) * 100));
-                if (roi >= 0.4) color = 'var(--accent-emerald)';
-                else if (roi >= 0) color = 'var(--accent-cyan)';
-                else color = 'var(--accent-ruby)';
+                // Escala de -1.0% a +1.0% (Total 2.0)
+                progress = Math.max(0, Math.min(100, ((roi - (-1.0)) / (2.0)) * 100));
+                
+                if (roi >= 0.8) color = 'var(--accent-emerald)'; // Alvo Batido
+                else if (roi >= 0) color = 'var(--accent-cyan)'; // No lucro
+                else color = 'var(--accent-ruby)'; // No prejuízo
             }
 
             return `
             <tr>
-                <td class="font-black italic text-[#FFFFFF] uppercase tracking-tighter">${u.username}</td>
+                <td class="px-4 py-3">
+                    <div class="font-black italic text-[#FFFFFF] uppercase tracking-tighter">${u.username}</div>
+                    <div class="text-[0.55rem] text-slate-500 font-bold lowercase">${u.email || ''}</div>
+                    <div class="text-[0.55rem] text-accent-cyan font-black uppercase mt-1">${u.experience || 'PERFIL Ñ INF.'}</div>
+                    <a href="https://wa.me/${(u.whatsapp || '').replace(/\D/g,'')}" target="_blank" class="block text-[0.55rem] text-[#90C23A] hover:underline font-bold mt-1">${u.whatsapp || 'SEM WHATS'}</a>
+                </td>
                 <td>
                     ${!u.isApproved ? 
                         '<span class="status-pill status-red">Pendente</span>' : 
@@ -377,13 +386,14 @@
                     <div class="text-[0.6rem] font-black text-[#D9DFE3] uppercase mb-1">${u.currentStep || 'SCAN'}</div>
                     ${u.status === 'IN_TRADE' ? `
                         <div class="telemetry-mini-bar relative">
-                            <div class="absolute h-full w-px bg-white/20" style="left:76.9%"></div>
+                            <!-- Marcador de Entrada (0%) no centro da escala -1 a +1 -->
+                            <div class="absolute h-full w-px bg-white/40" style="left:50%"></div>
                             <div class="h-full" style="width: ${progress}%; background: ${color}; box-shadow: 0 0 10px ${color}"></div>
                         </div>
                         <div class="flex justify-between text-[0.5rem] mt-1 font-bold">
-                            <span class="text-slate-600">-6.0%</span>
+                            <span class="text-slate-600">-1.0%</span>
                             <span style="color:${color}">${roi.toFixed(2)}%</span>
-                            <span class="text-slate-600">+0.6%</span>
+                            <span class="text-slate-600">+1.0%</span>
                         </div>
                     ` : '<div class="text-slate-700 italic">---</div>'}
                 </td>
@@ -414,9 +424,34 @@
 
     window.onload = () => {
         lucide.createIcons();
+        
+        // Verificação de Acesso
+        if (!localStorage.getItem('sifras_token')) {
+            const pass = prompt("Digite a Chave Mestre para acessar o Monitor Alfa:");
+            if (pass) {
+                localStorage.setItem('sifras_token', pass);
+                location.reload();
+            } else {
+                document.body.innerHTML = "<h1 style='color:white;text-align:center;margin-top:20%'>ACESSO NEGADO</h1>";
+                return;
+            }
+        }
+
         updateOverview();
         setInterval(updateOverview, 5000);
     };
+    function exportLeads() {
+        const token = localStorage.getItem('sifras_token');
+        if (token) {
+            window.open(`/export-leads?password=${token}`, '_blank');
+        }
+    }
+    function exportLeadsWord() {
+        const token = localStorage.getItem('sifras_token');
+        if (token) {
+            window.open(`/export-word?password=${token}`, '_blank');
+        }
+    }
 </script>
 </body>
 </html>

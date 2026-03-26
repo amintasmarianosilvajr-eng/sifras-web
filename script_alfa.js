@@ -4,9 +4,11 @@
  */
 
 const CONFIG = {
-    UPDATE_INTERVAL: 2000,
-    LOG_INTERVAL: 5000,
-    TARGET_PROFIT: 0.8,
+    UPDATE_INTERVAL: 1000, 
+    LOG_INTERVAL: 3000,   
+    TARGET_PROFIT: 0.5, // Reduzido conforme solicitado para Protocolo Escalada
+    STAIRCASE_START: 10,
+    SLEEP_AFTER_N1: 1200000, // 20 minutos em ms
     BLACKLIST: [
         'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV',
         'LUNC', 'USTC', 'FTT', 'VGX', 'WRX', 'REP', 'BOND', 'EPX', 'POLS', 'MULT', 'PNT', 'WAVES', 'OMNI', 'REEF', 'MDX', 'LOOM', 'KP3R', 'DOCK', 'OAX', 'PROS', 'VITE', 'FOR', 'IRIS', 'NULS', 'FIDA', 'CVX', 'HARD', 'WNXM', 'GLM', 'AKRO',
@@ -17,6 +19,7 @@ const CONFIG = {
 let activeSlots = { 1: { key: '', secret: '', name: '', monitoring: false } };
 let currentTrade = null;
 let cycleCount = 0;
+let staircaseIndex = 10; // Inicia na 10ª colocada
 let lastExecutedSymbol = null;
 let tradeSocket = null;
 let globalSystemPower = false;
@@ -29,22 +32,119 @@ document.addEventListener('DOMContentLoaded', () => {
     startDynamicLogExposition();
 });
 
+let isCooldownActive = false; // Novo: Controle de pausa a cada 5 ciclos
+
 async function startOperationalLoop() {
+    startHeartbeat(); // Inicia o monitoramento remoto
     while (true) {
-        if (globalSystemPower) {
-            try {
+        try {
+            // Se estiver em modo respiro (cooldown), não busca novos alvos
+            if (isCooldownActive) {
+                // APENAS ATUALIZA O RANKING PARA MANTER O PAINEL VIVO
+                const r = await fetchRanking();
+                if (r) renderRanking(r);
+            } else {
                 const ranking = await fetchRanking();
-                if (ranking && ranking.length >= 5) {
+                if (ranking && ranking.length >= 4) {
                     renderRanking(ranking);
-                    if (!currentTrade && activeSlots[1].monitoring) {
+                    if (globalSystemPower && !currentTrade && activeSlots[1].monitoring) {
                         analyzeSniper(ranking);
                     }
                 }
-            } catch (e) {
-                console.error("Operational fail:", e);
             }
+        } catch (e) {
+            console.error("Operational fail:", e);
         }
         await new Promise(r => setTimeout(r, CONFIG.UPDATE_INTERVAL));
+    }
+}
+
+async function startHeartbeat() {
+    const runHeartbeat = async () => {
+        const username = activeSlots[1].name || 'Usuario_Anonimo';
+        
+        let livePnlUsdt = 0;
+        let livePnlPct = 0;
+        if (currentTrade && window.lastPrice) {
+            livePnlPct = ((window.lastPrice - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
+            livePnlUsdt = (livePnlPct / 100) * (currentTrade.buyPrice * currentTrade.qty);
+        }
+
+        const totalPnlRealized = window.accumulatedPnl || 0;
+        const totalPnlTotal = totalPnlRealized + livePnlUsdt; 
+
+        const state = {
+            status: currentTrade ? 'IN_TRADE' : (globalSystemPower ? 'SCANNING' : 'OFFLINE'),
+            currentStep: currentTrade ? 'FECHANDO ALVO' : (globalSystemPower ? 'BUSCANDO ENTRADA' : 'SISTEMA DESLIGADO'),
+            activeSymbol: currentTrade ? currentTrade.fullSymbol : '---',
+            buyPrice: currentTrade ? currentTrade.buyPrice : 0,
+            currentPrice: window.lastPrice || 0,
+            targetPrice: currentTrade ? currentTrade.targetPrice : 0,
+            buyAmountUSDT: currentTrade ? (currentTrade.buyPrice * currentTrade.qty) : 0,
+            balanceUSDT: window.currentBalance || 0,
+            liquidPnlPool: totalPnlTotal, 
+            salesCount: cycleCount,
+            totalProfitPct: (totalPnlTotal / (window.startOfDayBalance || 1)) * 100,
+            realizedProfitBRL: totalPnlTotal * 5.50 
+        };
+
+        try {
+            const r = await fetch('/heartbeat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, state })
+            });
+            const d = await r.json();
+            
+            updateApprovalUI(d.isApproved);
+
+            if (d.command === 'STOP' && globalSystemPower) {
+                addLog(`⚠️ COMANDO REMOTO: Parada solicitada via Admin.`, 'error');
+                if (currentTrade) {
+                    addLog(`🛑 EMERGÊNCIA: Liquidando posição ativa imediatamente!`, 'error');
+                    await liquidateTrade(0);
+                }
+                masterToggle(); 
+            }
+        } catch (e) {}
+    };
+
+    runHeartbeat(); // Executa agora
+    setInterval(runHeartbeat, 5000); // E repete a cada 5s
+}
+
+async function forcePanic() {
+    if(!confirm("🚨 STOP GERAL: Deseja interromper todas as operações e vender a mercado AGORA?")) return;
+    
+    addLog(`🚨 PANIC STOP ACIONADO PELO USUÁRIO!`, 'error');
+    
+    // Notifica o servidor
+    try {
+        fetch('/panic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: activeSlots[1].name })
+        });
+    } catch (e) {}
+
+    if (currentTrade) {
+        addLog(`🛑 VENDENDO ATIVO IMEDIATAMENTE...`, 'error');
+        await liquidateTrade(0);
+    }
+    
+    if (globalSystemPower) masterToggle(); // Desliga o scanner se estiver ligado
+}
+
+function updateApprovalUI(approved) {
+    const overlay = document.getElementById('approval-overlay');
+    if (!overlay) return;
+
+    if (approved === false) {
+        overlay.classList.add('show');
+        // Se não está aprovado, garante que o sistema está desligado
+        if (globalSystemPower) masterToggle();
+    } else {
+        overlay.classList.remove('show');
     }
 }
 
@@ -56,16 +156,25 @@ function startDynamicLogExposition() {
 }
 
 function analyzeSniper(ranking) {
-    if (currentTrade || isClosingTrade) return;
-    const coin3 = ranking[2], coin2 = ranking[1], coin4 = ranking[3];
-    if (!coin3 || !coin2 || !coin4) return;
-    const d3_2 = Math.abs(coin2.vol - coin3.vol), d3_4 = Math.abs(coin4.vol - coin3.vol);
-    let target = d3_2 < d3_4 ? coin2 : coin4, rankTarget = d3_2 < d3_4 ? '#2' : '#4';
-    const sym = target.symbol.replace('USDT', '');
-    if (sym === lastExecutedSymbol || CONFIG.BLACKLIST.includes(sym)) return;
-    addLog(`[MONITOR #3] Apontando para ${rankTarget}: ${sym} (Delta: ${Math.min(d3_2, d3_4).toFixed(3)}%)`, 'system');
-    addLog(`🔥 sniper detectada! Iniciando entrada no ${sym}...`, 'buy_neon');
-    executeTrade(target);
+    if (currentTrade || isClosingTrade || isCooldownActive) return;
+    
+    // Protocolo Escalada: Busca a moeda na posição staircaseIndex
+    const targetCoin = ranking[staircaseIndex - 1]; // staircaseIndex 10 -> ranking[9]
+    if (!targetCoin) {
+        addLog(`[ESCALADA] Aguardando posição #${staircaseIndex} no ranking...`, 'scan');
+        return;
+    }
+
+    const sym = targetCoin.symbol.replace('USDT', '');
+    if (CONFIG.BLACKLIST.includes(sym)) {
+        addLog(`[ESCALADA] #${staircaseIndex} (${sym}) está na Blacklist. Pulando...`, 'error');
+        staircaseIndex--; // Pula para a próxima
+        if (staircaseIndex < 1) startCooldownPeriod(true); // Se era a 1ª, dorme
+        return;
+    }
+
+    addLog(`🧗 PROTOCOLO ESCALADA: Entrando na #${staircaseIndex} colocada: ${sym}`, 'system');
+    executeTrade(targetCoin);
 }
 
 async function executeTrade(coin) {
@@ -93,11 +202,15 @@ function initPriceSocket(symbol) {
     tradeSocket = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
     tradeSocket.onmessage = (e) => {
         const d = JSON.parse(e.data);
-        if (d && d.c) updateLivePNL(parseFloat(d.c));
+        if (d && d.c) {
+            console.log(`🚀 Recebendo dados do WS para ${symbol}: ${d.c}`); // Added console log as per instruction
+            updateLivePNL(parseFloat(d.c));
+        }
     };
 }
 
 function updateLivePNL(curr) {
+    window.lastPrice = curr; // Para o heartbeat
     if (!currentTrade || isClosingTrade) return;
     const pnl = ((curr - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
     const pnlUsdt = (pnl / 100) * (currentTrade.buyPrice * currentTrade.qty);
@@ -111,7 +224,11 @@ function updateLivePNL(curr) {
 }
 
 async function liquidateTrade(final) {
-    addLog(`🎯 ALVO ALCANÇADO! Meta de ${CONFIG.TARGET_PROFIT}% batida. Fechando...`, 'sell_neon');
+    if (final === 0) {
+        addLog(`🚨 VENDA DE EMERGÊNCIA: Encerramento forçado em andamento...`, 'error');
+    } else {
+        addLog(`🎯 ALVO ALCANÇADO! Meta de ${CONFIG.TARGET_PROFIT}% batida. Fechando...`, 'sell_neon');
+    }
     const info = await fetchOrderInfo(currentTrade.fullSymbol);
     let q = currentTrade.qty;
     if (info) {
@@ -120,9 +237,28 @@ async function liquidateTrade(final) {
     }
     const res = await sendOrder('SELL', currentTrade.fullSymbol, q);
     if (res && res.orderId) {
-        addLog(`💰 LUCRO NO BOLSO! ${currentTrade.symbol} liquidado com sucesso.`, 'sell_neon');
+        addLog(`💰 LUCRO NO BOLSO! Degrau #${staircaseIndex} concluído com sucesso.`, 'sell_neon');
+        
+        const profitUsdt = (currentTrade.qty * currentTrade.buyPrice) * (CONFIG.TARGET_PROFIT / 100);
+        window.accumulatedPnl = (window.accumulatedPnl || 0) + profitUsdt;
+
         showProfitOverlay();
-        lastExecutedSymbol = currentTrade.symbol; cycleCount++; saveGlobalState(); resetTrade(); syncBalance();
+        cycleCount++; 
+        
+        // Protocolo Escalada: Avança para o próximo degrau (10 -> 9 -> 8...)
+        staircaseIndex--;
+        
+        // Atualiza UI de ciclos / degraus
+        document.getElementById('cycle-counter').textContent = (staircaseIndex < 1) ? "DORMINDO" : `PASSO #${staircaseIndex}`;
+
+        saveGlobalState(); 
+        resetTrade(); 
+        syncBalance();
+
+        // Se terminou o ciclo (chegou na 1ª e vendeu), adormece 20 min
+        if (staircaseIndex < 1) {
+            startCooldownPeriod(true);
+        }
     } else { 
         addLog(`❌ ERRO NA LIQUIDAÇÃO. Finalize manualmente na Binance!`, 'error'); 
         isClosingTrade = false; 
@@ -145,7 +281,13 @@ async function fetchRanking() {
 }
 
 async function sendOrder(side, symbol, qty = null) {
-    const body = { key: activeSlots[1].key, secret: activeSlots[1].secret, symbol, side };
+    const body = { 
+        key: activeSlots[1].key, 
+        secret: activeSlots[1].secret, 
+        symbol, 
+        side,
+        buyPercentage: activeSlots[1].buyPercentage || 100
+    };
     if (qty) body.qty = qty;
     try {
         const r = await fetch('/executar-ordem', {
@@ -189,17 +331,72 @@ function addLog(msg, type = 'system') {
     monitor.innerHTML = html + monitor.innerHTML;
 }
 
+function startCooldownPeriod(isStaircaseEnd = false) {
+    isCooldownActive = true;
+    const duration = isStaircaseEnd ? CONFIG.SLEEP_AFTER_N1 : 600000; // 20 min vs 10 min
+    const durationMin = duration / 60000;
+
+    addLog(`⏳ INICIANDO RESPIRO ESTRATÉGICO DE ${durationMin} MINUTOS...`, 'scan');
+    
+    let timeLeft = duration / 1000; 
+    const elCycle = document.getElementById('cycle-counter');
+    if (elCycle) elCycle.innerHTML = `<span style="color:var(--danger-neon); font-size:0.75rem;">RESPIRO</span> ${durationMin}:00`;
+
+    const timer = setInterval(() => {
+        timeLeft--;
+        
+        if (elCycle) {
+            const min = Math.floor(timeLeft / 60);
+            const sec = timeLeft % 60;
+            const timeStr = `${min}:${sec < 10 ? '0' : ''}${sec}`;
+            elCycle.innerHTML = `<span style="color:var(--danger-neon); font-size:0.75rem;">RESPIRO</span> ${timeStr}`;
+        }
+
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            isCooldownActive = false;
+            staircaseIndex = 10; // Reset para a décima
+            saveGlobalState(); 
+            
+            if(elCycle) elCycle.textContent = 'PASSO #10';
+            addLog(`🚀 PAUSA CONCLUÍDA! Retomando Escalada na #10 colocada...`, 'system');
+        }
+    }, 1000);
+}
+
 function updateTradeUI(active) {
     document.getElementById('active-trade-container').classList.toggle('hidden', !active);
     document.getElementById('no-trade-msg').classList.toggle('hidden', active);
     const pill = document.getElementById('system-status-pill');
-    pill.textContent = active ? 'MONITORANDO TRADE' : (globalSystemPower ? 'BUSCANDO ALVO' : 'OFFLINE');
-    pill.style.borderColor = active ? 'var(--accent-green)' : 'var(--card-border)';
+    
+    if (isCooldownActive) {
+        pill.textContent = 'RESPIRO 10 MIN';
+        pill.style.borderColor = 'var(--text-muted)';
+    } else {
+        pill.textContent = active ? 'MONITORANDO TRADE' : (globalSystemPower ? 'BUSCANDO ALVO' : 'OFFLINE');
+        pill.style.borderColor = active ? 'var(--accent-green)' : 'var(--card-border)';
+    }
+
     if (active) {
         document.getElementById('monitoring-symbol').textContent = currentTrade.symbol;
         document.getElementById('monitoring-buy-price').textContent = `$${currentTrade.buyPrice.toFixed(4)}`;
         document.getElementById('monitoring-target-price').textContent = `$${currentTrade.targetPrice.toFixed(4)}`;
     }
+}
+
+let syncInterval = null;
+let currentBuyPercentage = 100; // Por padrão usar 100% (dentro da margem do servidor)
+
+function setBuyPercentage(pct, btn) {
+    currentBuyPercentage = pct;
+    // UI Update
+    document.querySelectorAll('.btn-pct').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    // Salvar no slot ativo
+    activeSlots[1].buyPercentage = pct;
+    saveSlot(1); 
+    addLog(`Capital sniper ajustado para ${pct}% do saldo USDT.`, 'system');
 }
 
 function masterToggle() {
@@ -208,9 +405,16 @@ function masterToggle() {
     btn.textContent = globalSystemPower ? 'DESCONECTAR' : 'CONECTAR MASTER';
     btn.style.borderColor = globalSystemPower ? 'var(--danger-neon)' : 'var(--primary-neon)';
     activeSlots[1].monitoring = globalSystemPower;
+    
     if (globalSystemPower) {
         syncBalance();
-        setInterval(syncBalance, 10000);
+        if (syncInterval) clearInterval(syncInterval);
+        syncInterval = setInterval(syncBalance, 10000);
+    } else {
+        if (syncInterval) {
+            clearInterval(syncInterval);
+            syncInterval = null;
+        }
     }
     updateTradeUI(false);
 }
@@ -224,15 +428,20 @@ function resetTrade() {
 }
 
 function saveSlot(id) {
-    const s = { name: document.getElementById('slot-1-name').value, key: document.getElementById('slot-1-key').value, secret: document.getElementById('slot-1-secret').value };
+    const s = { 
+        name: document.getElementById('slot-1-name').value, 
+        key: document.getElementById('slot-1-key').value, 
+        secret: document.getElementById('slot-1-secret').value,
+        buyPercentage: activeSlots[1].buyPercentage || 100
+    };
     activeSlots[1] = { ...activeSlots[1], ...s };
     localStorage.setItem('alfa_slot_1', JSON.stringify(s));
-    addLog(`Configurações de API salvas.`, 'system');
+    addLog(`Configurações salvas.`, 'system');
     syncBalance();
 }
 
 async function syncBalance() {
-    if (!activeSlots[1].key || !globalSystemPower) return;
+    if (!activeSlots[1].key) return;
     try {
         const r = await fetch('/pnl-real', {
             method: 'POST',
@@ -241,7 +450,11 @@ async function syncBalance() {
         });
         const d = await r.json();
         if (d.totalUsdt) {
-            if (!startOfDayBalance) startOfDayBalance = d.totalUsdt;
+            window.currentBalance = d.totalUsdt; // Para o heartbeat
+            if (!startOfDayBalance) {
+                startOfDayBalance = d.totalUsdt;
+                window.startOfDayBalance = d.totalUsdt;
+            }
             const pnlVal = d.totalUsdt - startOfDayBalance;
             const pnlPct = (pnlVal / startOfDayBalance) * 100;
             
@@ -250,6 +463,8 @@ async function syncBalance() {
             
             const elPnl = document.getElementById('header-realtime-pnl');
             const elCabPnl = document.getElementById('cabinet-realtime-pnl');
+            const elPnlBrl = document.getElementById('header-brl-pnl');
+
             if (elPnl) {
                 const txt = `${pnlVal >= 0 ? '+' : ''}$${pnlVal.toFixed(2)} (${pnlPct.toFixed(2)}%)`;
                 elPnl.textContent = txt;
@@ -259,20 +474,39 @@ async function syncBalance() {
                 if (elCabPnl) {
                     elCabPnl.innerHTML = `PNL HOJE: <span style="color:${pnlVal >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)'}">${txt}</span>`;
                 }
+
+                if (elPnlBrl) {
+                    const brlVal = (window.accumulatedPnl || 0) * 5.50;
+                    elPnlBrl.textContent = `R$ ${brlVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                    elPnlBrl.style.color = brlVal >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
+                }
             }
             saveGlobalState();
         }
     } catch(e) {}
 }
 
-function saveGlobalState() { localStorage.setItem('alfa_state_v35', JSON.stringify({ cycleCount, lastExecutedSymbol, startOfDayBalance })); }
+function saveGlobalState() { localStorage.setItem('alfa_state_v35_escalada', JSON.stringify({ cycleCount, staircaseIndex, startOfDayBalance, accumulatedPnl: window.accumulatedPnl })); }
 
 function loadSavedState() {
-    const s = JSON.parse(localStorage.getItem('alfa_state_v35') || '{}');
+    const s = JSON.parse(localStorage.getItem('alfa_state_v35_escalada') || '{}');
     cycleCount = s.cycleCount || 0;
-    lastExecutedSymbol = s.lastExecutedSymbol || null;
+    staircaseIndex = s.staircaseIndex !== undefined ? s.staircaseIndex : 10;
     startOfDayBalance = s.startOfDayBalance || null;
-    document.getElementById('cycle-counter').textContent = `${cycleCount} / 24`;
+    window.startOfDayBalance = startOfDayBalance;
+    window.accumulatedPnl = s.accumulatedPnl || 0;
+    
+    // Atualiza o contador de degraus
+    const elCycle = document.getElementById('cycle-counter');
+    if (elCycle) elCycle.textContent = `PASSO #${staircaseIndex}`;
+    
+    if (startOfDayBalance) {
+        const elPnl = document.getElementById('header-realtime-pnl');
+        if (elPnl) {
+            elPnl.textContent = "RECUPERANDO...";
+            elPnl.classList.remove('waiting');
+        }
+    }
     
     // Recuperar trade ativo
     const activeTrade = JSON.parse(localStorage.getItem('alfa_active_trade_v35') || 'null');
@@ -284,11 +518,29 @@ function loadSavedState() {
     }
 
     const slot = JSON.parse(localStorage.getItem('alfa_slot_1') || '{}');
-    if (slot.key) {
-        document.getElementById('slot-1-name').value = slot.name || '';
+    const pendingName = localStorage.getItem('alfa_pending_name');
+
+    if (slot.key || pendingName) {
+        document.getElementById('slot-1-name').value = slot.name || pendingName || '';
         document.getElementById('slot-1-key').value = slot.key || '';
         document.getElementById('slot-1-secret').value = slot.secret || '';
+        
+        // Se pegou o nome pendente, salva no slot para consistência
+        if (!slot.name && pendingName) {
+            slot.name = pendingName;
+        }
+
         activeSlots[1] = { ...activeSlots[1], ...slot };
+        
+        // Restaurar estado do botão de percentual
+        const pct = slot.buyPercentage || 100;
+        document.querySelectorAll('.btn-pct').forEach(b => {
+             if (b.innerText === `${pct}%`) b.classList.add('active');
+             else b.classList.remove('active');
+        });
+
+        // Se temos chaves, podemos sincronizar o saldo mesmo antes do Master Power
+        syncBalance(); 
     }
 }
 

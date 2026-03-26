@@ -3,201 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa - Gateway de Acesso</title>
-    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>FLUXO ALFA | Protocolo Sniper Elite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-deep: #05080c;
-            --accent-cyan: #00f5ff;
-            --accent-ruby: #ff2a6d;
-            --glass-bg: rgba(10, 15, 25, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.05);
+            --primary: #00F5FF;
+            --secondary: #90C23A;
+            --bg-dark: #020408;
+            --card-bg: rgba(13, 17, 23, 0.8);
         }
-
         body {
-            background-color: var(--bg-deep);
-            color: #f8fafc;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-image: 
-                radial-gradient(circle at 50% 10%, rgba(0, 245, 255, 0.06) 0%, transparent 60%);
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            background-image: radial-gradient(circle at 50% -20%, rgba(0, 245, 255, 0.15) 0%, transparent 50%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            padding: 20px;
+            overflow-x: hidden;
         }
-
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(24px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            width: 100%;
-            max-width: 420px;
-            padding: 40px;
-            position: relative;
-            z-index: 10;
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 50px rgba(0, 245, 255, 0.05);
         }
-
-        .custom-input {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
-            height: 54px;
-            padding: 0 20px;
-            font-size: 1rem;
-            color: white;
-            transition: all 0.3s ease;
-            width: 100%;
-            text-align: center;
-            letter-spacing: 0.5em;
-        }
-
-        .custom-input:focus {
-            background: rgba(255, 255, 255, 0.07);
-            border-color: var(--accent-cyan);
-            outline: none;
-            box-shadow: 0 0 0 4px rgba(0, 245, 255, 0.15);
-        }
-
-        .btn-premium {
-            width: 100%;
-            height: 54px;
-            background: var(--accent-cyan);
-            color: #000;
-            border-radius: 14px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-size: 0.85rem;
+        .neon-text { text-shadow: 0 0 15px var(--primary); }
+        .btn-gradient {
+            background: linear-gradient(135deg, var(--primary) 0%, #0099ff 100%);
+            box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            box-shadow: 0 4px 20px rgba(0, 245, 255, 0.3);
         }
-
-        .btn-premium:hover {
+        .btn-gradient:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0, 245, 255, 0.5);
+            box-shadow: 0 0 40px rgba(0, 245, 255, 0.5);
+            filter: brightness(1.1);
         }
-
-        .btn-premium:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
+        input {
+            background: rgba(0, 0, 0, 0.3) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            transition: all 0.3s;
         }
-
-        .error-msg {
-            display: none;
-            margin-top: 20px;
-            padding: 12px;
-            background: rgba(255, 42, 109, 0.1);
-            border: 1px solid rgba(255, 42, 109, 0.2);
-            border-radius: 12px;
-            color: var(--accent-ruby);
-            font-size: 0.8rem;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        .error-msg.show { display: flex; align-items: center; justify-content: center; gap: 8px; }
-
-        @keyframes scan {
-            0% { transform: translateY(-100%); opacity: 0; }
-            50% { opacity: 0.5; }
-            100% { transform: translateY(100%); opacity: 0; }
-        }
-
-        .scan-line {
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 100%;
-            background: linear-gradient(to bottom, transparent, var(--accent-cyan), transparent);
-            opacity: 0.1;
-            animation: scan 3s linear infinite;
-            pointer-events: none;
-            z-index: 1;
+        input:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 15px rgba(0, 245, 255, 0.1) !important;
+            outline: none;
         }
     </style>
 </head>
 <body>
 
-    <div class="scan-line"></div>
-
-    <div class="glass-panel text-center">
-        <div class="mb-8 relative inline-block">
-            <div class="absolute inset-0 bg-accent-cyan/20 blur-2xl rounded-full"></div>
-            <img src="logo.png" alt="Logo" class="relative z-10 w-24 h-24 mx-auto rounded-3xl shadow-xl">
-        </div>
-
-        <h1 class="text-2xl font-black italic uppercase italic tracking-tighter mb-1">
-            Sifras <span class="text-accent-cyan">Alfa</span>
-        </h1>
-        <p class="text-[0.6rem] text-slate-500 font-bold tracking-[0.4em] uppercase mb-10">Gateway de Segurança</p>
-
-        <div class="space-y-6">
-            <div class="space-y-2 text-left">
-                <label class="text-[0.65rem] text-slate-500 font-black uppercase tracking-widest ml-1">Chave de Acesso Sniper</label>
-                <input type="password" id="inputGateway" placeholder="••••••••" autofocus class="custom-input">
+    <div class="max-w-md w-full glass-card rounded-[32px] p-8 md:p-12 relative overflow-hidden">
+        <!-- Logo/Header -->
+        <div class="text-center mb-10">
+            <div class="inline-block p-4 bg-white/5 rounded-2xl mb-6">
+                <img src="logo.png" alt="Fluxo Alfa" class="h-20 w-auto">
             </div>
-
-            <button id="btnGateway" onclick="checkGateway()" class="btn-premium">
-                <i data-lucide="shield-check" class="w-5 h-5"></i> Validar Acesso
-            </button>
+            <h1 class="font-['Outfit'] text-4xl font-extrabold tracking-tighter uppercase leading-none">
+                Protocolo <span class="text-[#00F5FF]">Ferrari</span>
+            </h1>
+            <p class="text-slate-400 text-xs mt-3 font-bold tracking-[0.2em] uppercase">SNIPER ELITE v3.5</p>
         </div>
 
-        <div id="errorGateway" class="error-msg">
-            <i data-lucide="alert-circle" class="w-4 h-4"></i> Chave de acesso inválida
+        <div id="registration-form">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nome Completo</label>
+                    <input type="text" id="reg-name" placeholder="Seu Nome Completo" 
+                        class="w-full px-5 py-3.5 rounded-xl text-sm font-bold placeholder:text-slate-600 text-white">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">E-mail (Somente Gmail)</label>
+                    <input type="email" id="reg-email" placeholder="exemplo@gmail.com" 
+                        class="w-full px-5 py-3.5 rounded-xl text-sm font-bold placeholder:text-slate-600 text-white">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Experiência como Investidor</label>
+                    <select id="reg-experience" class="w-full px-5 py-3.5 rounded-xl text-sm font-bold text-white bg-[rgba(0,0,0,0.3)] border border-[rgba(255,255,255,0.1)] outline-none focus:border-[#00F5FF]">
+                        <option value="" disabled selected>Selecione seu nível...</option>
+                        <option value="ALTA PERFORMANCE">ALTA PERFORMANCE</option>
+                        <option value="MEDIA PERFORMANCE">MÉDIA PERFORMANCE</option>
+                        <option value="BAIXA PERFORMANCE">BAIXA PERFORMANCE (SEM EXPERIÊNCIA)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">WhatsApp</label>
+                    <input type="text" id="reg-whatsapp" placeholder="+55 (31) 9700-4567" 
+                        class="w-full px-5 py-3.5 rounded-xl text-sm font-bold placeholder:text-slate-600 text-white">
+                </div>
+                <div class="pt-2">
+                    <button onclick="handleRegistration()" id="btn-submit" 
+                        class="w-full py-4 rounded-2xl text-black font-black uppercase tracking-tighter text-base btn-gradient">
+                        Confirmar e Solicitar Acesso
+                    </button>
+                </div>
+            </div>
+            <p class="text-center text-[9px] text-slate-600 mt-6 font-bold uppercase tracking-widest">
+                Envio Seguro para o Sistema Central
+            </p>
         </div>
 
-        <div class="mt-12 pt-8 border-t border-white/5 space-y-2">
-            <p class="text-[0.6rem] text-slate-600 font-bold uppercase tracking-wider">Sifras Invest Financeiro LTDA</p>
-            <p class="text-[0.55rem] text-slate-700 font-bold mono">CNPJ: 63.326.067/0001-30</p>
+        <div id="registration-success" class="hidden text-center py-10">
+            <div class="text-5xl mb-6">🎯</div>
+            <h2 class="text-2xl font-black mb-2 uppercase">CADASTRO CONCLUÍDO</h2>
+            <p class="text-slate-400 text-sm leading-relaxed mb-6">Sua solicitação foi enviada "invisivelmente" ao sistema da mesa proprietária. Aguarde a liberação administrativa.</p>
+            <button onclick="location.href='/operacional'" class="px-8 py-4 bg-white/5 border border-white/10 rounded-xl text-[#00F5FF] text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all">Ir para Dashboard</button>
         </div>
     </div>
 
     <script>
-        lucide.createIcons();
+        async function handleRegistration() {
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const experience = document.getElementById('reg-experience').value;
+            const whatsapp = document.getElementById('reg-whatsapp').value;
 
-        document.getElementById('inputGateway').addEventListener('keydown', (e) => { 
-            if (e.key === 'Enter') checkGateway(); 
-        });
+            // Validação de Preenchimento
+            if(!name || !email || !experience || !whatsapp) {
+                alert("❗️ ATENÇÃO: Todos os campos são obrigatórios!");
+                return;
+            }
 
-        async function checkGateway() {
-            const accessKey = document.getElementById('inputGateway').value;
-            const btn = document.getElementById('btnGateway');
-            const errorMsg = document.getElementById('errorGateway');
-            if (!accessKey) return;
+            // Validação de Gmail
+            if(!email.toLowerCase().endsWith("@gmail.com")) {
+                alert("❗️ ERRO: Por favor, utilize um e-mail GMAIL válido.");
+                return;
+            }
 
+            const btn = document.getElementById('btn-submit');
+            btn.textContent = "ENVIANDO AO SISTEMA...";
             btn.disabled = true;
-            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Verificando...`;
-            errorMsg.classList.remove('show');
-            lucide.createIcons();
 
             try {
-                const res = await fetch('/gateway', {
+                const r = await fetch('/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ accessKey })
+                    body: JSON.stringify({ name, email, experience, whatsapp })
                 });
-                if (res.ok) {
-                    sessionStorage.setItem('gatewayOk', 'true');
-                    window.location.href = '/dashboard';
+                
+                if (r.ok) {
+                    document.getElementById('registration-form').classList.add('hidden');
+                    document.getElementById('registration-success').classList.remove('hidden');
+                    localStorage.setItem('alfa_pending_name', name);
                 } else {
-                    errorMsg.classList.add('show');
+                    const d = await r.json();
+                    alert("Erro no servidor: " + (d.error || "Tente novamente"));
                 }
             } catch (e) {
-                errorMsg.innerHTML = '<i data-lucide="wifi-off" class="w-4 h-4"></i> Falha na conexão com o servidor';
-                errorMsg.classList.add('show');
-                lucide.createIcons();
+                alert("Falha na conexão com o terminal master.");
+            } finally {
+                btn.textContent = "Confirmar e Solicitar Acesso";
+                btn.disabled = false;
             }
-            btn.disabled = false;
-            btn.innerHTML = `<i data-lucide="shield-check" class="w-5 h-5"></i> Validar Acesso`;
-            lucide.createIcons();
         }
     </script>
 </body>

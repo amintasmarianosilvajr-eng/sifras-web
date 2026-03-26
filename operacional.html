@@ -18,6 +18,24 @@
         </div>
     </div>
 
+    <!-- Overlay de Aguardando Aprovação (Ativo por Padrão) -->
+    <div id="approval-overlay" class="approval-overlay show">
+        <div class="approval-card">
+            <div class="approval-icon">🔒</div>
+            <h2 style="font-family:'Outfit'; font-size:2rem; color:#fff; margin-bottom:15px; text-transform:uppercase;">Conta em Processamento</h2>
+            <p style="color:var(--text-muted); font-size:1.1rem; line-height:1.6; margin-bottom:25px;">
+                Olá! Sua conta foi registrada com sucesso, mas ainda está <strong>aguardando ativação</strong> pelo administrador.
+            </p>
+            <div style="background:rgba(0, 245, 255, 0.05); padding:15px; border-radius:15px; border:1px solid rgba(0, 245, 255, 0.1);">
+                <span style="color:var(--primary-neon); font-weight:800; font-size:0.8rem; text-transform:uppercase;">Status do Cadastro</span>
+                <p style="color:#fff; font-size:0.9rem; margin-top:5px;">Aguardando Liberação Master</p>
+            </div>
+            <p style="margin-top:25px; font-size:0.8rem; color:var(--text-muted);">
+                Assim que sua chave for liberada, este painel será desbloqueado automaticamente.
+            </p>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Header Ferrari -->
         <header class="top-header">
@@ -34,9 +52,13 @@
                     <span class="label">PNL HOJE (SESSÃO)</span>
                     <div id="header-realtime-pnl" class="value waiting">SINCRONIZANDO...</div>
                 </div>
+                <div class="perf-item" style="border-right: 1px solid var(--card-border); padding-right: 20px;">
+                    <span class="label">REALIZADO BRL</span>
+                    <div id="header-brl-pnl" class="value" style="color:var(--accent-green); font-size:1.1rem; font-weight:900;">R$ 0,00</div>
+                </div>
                 <div class="perf-item">
                     <span class="label">CICLOS</span>
-                    <div id="cycle-counter" class="value cycle">0 / 24</div>
+                    <div id="cycle-counter" class="value cycle">0 / 5</div>
                 </div>
                 <div class="perf-item">
                     <span class="label">LATÊNCIA GLOBAL</span>
@@ -146,6 +168,16 @@
                         <input type="password" id="slot-1-secret" placeholder="Chave de Segurança">
                     </div>
                     <button onclick="saveSlot(1)" class="btn-save">AUTORIZAR CHAVES</button>
+                    
+                    <div class="percentage-selector" style="margin-top: 10px;">
+                        <label style="display: block; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; margin-bottom: 8px;">Capital por Ordem (% USDT)</label>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <button onclick="setBuyPercentage(25, this)" class="btn-pct">25%</button>
+                            <button onclick="setBuyPercentage(50, this)" class="btn-pct">50%</button>
+                            <button onclick="setBuyPercentage(75, this)" class="btn-pct">75%</button>
+                            <button onclick="setBuyPercentage(100, this)" class="btn-pct active">100%</button>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>
@@ -153,21 +185,12 @@
 
     <script src="script_alfa.js"></script>
     <script>
-        function panicStop() {
-            if(confirm("STOP GERAL: Deseja interromper todas as operações e vender a mercado?")) {
-                fetch('/panic', { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        key: document.getElementById('slot-1-key').value, 
-                        secret: document.getElementById('slot-1-secret').value 
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    alert(data.msg || "Comando de Panic Stop enviado!");
-                    location.reload();
-                });
+        async function panicStop() {
+            // Chama a função robusta do script_alfa.js
+            if (typeof forcePanic === 'function') {
+                await forcePanic();
+            } else {
+                alert("Erro: Motor operacional não carregado.");
             }
         }
     </script>

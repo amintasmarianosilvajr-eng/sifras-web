@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CENTRAL DE LEADS | FLUXO ALFA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-dark: #0A0F14;
+            --card-dark: #12181F;
+            --accent-cyan: #00F5FF;
+            --accent-emerald: #10B981;
+            --accent-ruby: #EF4444;
+        }
+        body { font-family: 'Outfit', sans-serif; background: var(--bg-dark); color: #D9DFE3; }
+        .glass { background: rgba(18, 24, 31, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+        .btn-grad { background: linear-gradient(90deg, #00F5FF, #00B2FF); transition: 0.3s; }
+        .btn-grad:hover { opacity: 0.9; transform: translateY(-1px); }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 900; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Header -->
+    <header class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+        <div class="flex items-center gap-4">
+            <img src="logo.png" alt="Fluxo Alfa" class="h-16 w-auto">
+            <div>
+                <h1 class="text-2xl font-black italic tracking-tighter">CENTRAL DE <span class="text-accent-cyan">LEADS</span></h1>
+                <p class="text-xs text-slate-500 uppercase font-bold tracking-widest">Gestão de Mentorados - Fluxo Alfa</p>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button onclick="exportLeads('csv')" class="bg-[#90C23A] hover:bg-[#a4d44b] text-black px-4 py-2 rounded font-black text-xs flex items-center gap-2">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> EXPORTAR EXCEL
+            </button>
+            <button onclick="exportLeads('word')" class="bg-accent-cyan hover:bg-[#00D0FF] text-black px-4 py-2 rounded font-black text-xs flex items-center gap-2">
+                <i data-lucide="file-text" class="w-4 h-4"></i> EXPORTAR WORD
+            </button>
+            <button onclick="localStorage.removeItem('sifras_token'); location.reload();" class="bg-accent-ruby/20 hover:bg-accent-ruby/40 text-accent-ruby px-4 py-2 rounded font-black text-xs">SAIR</button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 gap-6">
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="glass p-6 rounded-2xl border-l-4 border-accent-cyan">
+                    <p class="text-xs text-slate-500 font-bold uppercase">Total de Inscritos</p>
+                    <h2 id="stat-total" class="text-3xl font-black mt-1">0</h2>
+                </div>
+                <div class="glass p-6 rounded-2xl border-l-4 border-accent-emerald">
+                    <p class="text-xs text-slate-500 font-bold uppercase">Aprovados Ativos</p>
+                    <h2 id="stat-high" class="text-3xl font-black mt-1">0</h2>
+                </div>
+                <div class="glass p-6 rounded-2xl border-l-4 border-accent-ruby">
+                    <p class="text-xs text-slate-500 font-bold uppercase">Aguardando Liberação</p>
+                    <h2 id="stat-pending" class="text-3xl font-black mt-1">0</h2>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="glass rounded-3xl overflow-hidden shadow-2xl">
+                <div class="bg-white/5 p-4 border-b border-white/5 flex justify-between items-center">
+                    <h3 class="font-bold flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-accent-cyan"></i> MENTORADOS CADASTRADOS
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-[0.65rem] uppercase text-slate-500 tracking-tighter border-b border-white/5">
+                                <th class="p-6">Nome / Cadastro</th>
+                                <th class="p-6">E-mail</th>
+                                <th class="p-6">Performance</th>
+                                <th class="p-6">WhatsApp</th>
+                                <th class="p-6">Status</th>
+                                <th class="p-6">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leads-list" class="divide-y divide-white/5">
+                            <!-- Injetado via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const ACCESS_KEY = localStorage.getItem('sifras_token');
+
+        async function updateLeads() {
+            try {
+                const res = await fetch('/admin/overview', {
+                    headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
+                });
+                if (!res.ok) throw new Error('Falha no acesso');
+                const data = await res.json();
+                renderLeads(data.users || []);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderLeads(users) {
+            const list = document.getElementById('leads-list');
+            
+            // Stats
+            document.getElementById('stat-total').innerText = users.length;
+            document.getElementById('stat-high').innerText = users.filter(u => u.isApproved).length;
+            document.getElementById('stat-pending').innerText = users.filter(u => !u.isApproved).length;
+
+            list.innerHTML = users.map(u => {
+                const waLink = `https://wa.me/${u.whatsapp?.replace(/\D/g,'')}`;
+                
+                return `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="p-6">
+                        <div class="font-black text-white italic text-lg uppercase">${u.username}</div>
+                        <div class="text-[0.6rem] text-slate-500 uppercase font-black">${u.registrationDate ? new Date(u.registrationDate).toLocaleDateString() : '---'}</div>
+                    </td>
+                    <td class="p-6 text-slate-400 font-medium">${u.email || '---'}</td>
+                    <td class="p-6">
+                        <span class="status-badge bg-white/5 border border-white/10 text-accent-cyan">${u.experience || 'GERAL'}</span>
+                    </td>
+                    <td class="p-6">
+                        <a href="${waLink}" target="_blank" class="text-accent-emerald hover:underline font-bold flex items-center gap-1">
+                            <i data-lucide="message-circle" class="w-4 h-4"></i> ${u.whatsapp || '---'}
+                        </a>
+                    </td>
+                    <td class="p-6 font-bold text-xs ${u.isApproved ? 'text-accent-emerald' : 'text-accent-ruby'}">
+                        ${u.isApproved ? 'LIBERADO' : 'PENDENTE'}
+                    </td>
+                    <td class="p-6">
+                         ${!u.isApproved ? `
+                            <button onclick="approveLead('${u.username}')" class="text-[0.6rem] font-black uppercase bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20 px-4 py-2 rounded hover:bg-accent-cyan/20 transition-all">Aprovar Agora</button>
+                         ` : `
+                            <button onclick="deleteLead('${u.username}')" class="text-[0.6rem] font-black uppercase bg-accent-ruby/10 text-accent-ruby border border-accent-ruby/20 px-4 py-2 rounded hover:bg-accent-ruby/20 transition-all">Remover</button>
+                         `}
+                    </td>
+                </tr>`;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        async function approveLead(username) {
+            if (!confirm(`Confirmar liberação de acesso para ${username}?`)) return;
+            await fetch('/admin/approve-user', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${ACCESS_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ targetUser: username })
+            });
+            updateLeads();
+        }
+
+        async function deleteLead(username) {
+            if (!confirm(`Remover permanentemente ${username}?`)) return;
+            await fetch('/admin/delete-user', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${ACCESS_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ targetUser: username })
+            });
+            updateLeads();
+        }
+
+        function exportLeads(type) {
+            const url = type === 'csv' ? '/export-leads' : '/export-word';
+            window.open(`${url}?password=${ACCESS_KEY}`, '_blank');
+        }
+
+        window.onload = () => {
+            lucide.createIcons();
+            if (!localStorage.getItem('sifras_token')) {
+                const pass = prompt("Chave Mestre para Central de Leads:");
+                if (pass) {
+                    localStorage.setItem('sifras_token', pass);
+                    location.reload();
+                } else {
+                    document.body.innerHTML = "<h1 style='color:white;text-align:center;margin-top:20%'>ACESSO NEGADO</h1>";
+                    return;
+                }
+            }
+            updateLeads();
+            setInterval(updateLeads, 10000);
+        }
+    </script>
+</body>
+</html>

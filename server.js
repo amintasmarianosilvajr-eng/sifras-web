@@ -151,7 +151,7 @@ app.get('/export-leads', (req, res) => {
     }
 
     let csvContent = "\ufeff"; // UTF-8 BOM para Excel
-    csvContent += "Nome;Email;Experiencia;WhatsApp;Data Cadastro;Status;Aprovado\n";
+    csvContent += "Nome;Email;Experiencia;WhatsApp;Data Cadastro;Status;Aprovado;Degrau Escalada\n";
 
     Object.values(userStates).forEach(u => {
         const row = [
@@ -161,7 +161,8 @@ app.get('/export-leads', (req, res) => {
             u.whatsapp || 'N/A',
             u.registrationDate || 'N/A',
             u.status || 'OFFLINE',
-            u.isApproved ? 'SIM' : 'NÃO'
+            u.isApproved ? 'SIM' : 'NÃO',
+            u.staircaseIndex || 'N/A'
         ].join(';');
         csvContent += row + "\n";
     });
@@ -200,6 +201,7 @@ app.get('/export-word', (req, res) => {
                     <th>Experiência</th>
                     <th>WhatsApp</th>
                     <th>Data Cadastro</th>
+                    <th>Degrau Escalada</th>
                 </tr>
             </thead>
             <tbody>
@@ -210,6 +212,7 @@ app.get('/export-word', (req, res) => {
                         <td>${u.experience || '---'}</td>
                         <td>${u.whatsapp || '---'}</td>
                         <td>${u.registrationDate ? new Date(u.registrationDate).toLocaleDateString('pt-BR') : '---'}</td>
+                        <td>${u.staircaseIndex || '---'}</td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -241,9 +244,9 @@ app.get('/admin/overview', authAdmin, (req, res) => {
     res.json({
         users,
         serverUptime: process.uptime(),
-        globalPivot: globalMarket.top30[2]?.symbol || '---',
-        globalLatency: 42, // Mock ou implementar medição real
-        serverIp: '127.0.0.1'
+        globalPivot: globalMarket.top30[9]?.symbol || '---', // Mostra a 10ª (Alvo inicial)
+        globalLatency: 42, 
+        serverIp: req.headers['x-forwarded-for'] || 'Cloud Server'
     });
 });
 

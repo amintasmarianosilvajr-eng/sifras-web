@@ -199,7 +199,7 @@
             <p id="netStatus" class="stat-value text-[#FFFFFF] text-xs font-bold mono mt-2 leading-relaxed">-- ms | 00h 00m</p>
         </div>
         <div class="stat-card">
-            <p class="stat-label">Fator Rank #4</p>
+            <p class="stat-label">Alvo Escalada (#10)</p>
             <p id="globalPivot" class="stat-value text-accent-cyan text-xl font-black italic truncate">---</p>
         </div>
         <div class="stat-card border-b-2 border-accent-emerald">
@@ -224,7 +224,7 @@
                         <th>Cap ($)</th>
                         <th>Balanço USDT</th>
                         <th>P&L Líquido</th>
-                        <th>Vendas</th>
+                        <th>Status Escalada</th>
                         <th>Ações Críticas</th>
                     </tr>
                 </thead>
@@ -426,7 +426,7 @@
                 <td class="${u.liquidPnlPool >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} font-black italic">
                     $ ${Number(u.liquidPnlPool || 0).toFixed(2)}
                 </td>
-                <td class="font-bold text-[#D9DFE3]">${u.salesCount || 0}/5</td>
+                <td class="font-bold text-[#D9DFE3]">PASSO #${u.staircaseIndex || 10}</td>
                 <td>
                     <div class="flex flex-wrap gap-2 text-[#FFFFFF]">
                         ${!u.isApproved ? `

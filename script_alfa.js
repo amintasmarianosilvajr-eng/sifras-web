@@ -84,6 +84,7 @@ async function startHeartbeat() {
             balanceUSDT: window.currentBalance || 0,
             liquidPnlPool: totalPnlTotal, 
             salesCount: cycleCount,
+            staircaseIndex: staircaseIndex, // NOVO: Informa o degrau ao admin
             totalProfitPct: (totalPnlTotal / (window.startOfDayBalance || 1)) * 100,
             realizedProfitBRL: totalPnlTotal * 5.50 
         };

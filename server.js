@@ -52,6 +52,16 @@ app.use((req, res, next) => {
     next();
 });
 
+// --- ROTAS DE PÁGINAS ---
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/operacional', (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
+app.get('/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads.html')));
+
+// Suporte para letras maiúsculas (Obrigatório para alguns navegadores)
+app.get('/ADMIN', (req, res) => res.redirect('/admin'));
+app.get('/OPERACIONAL', (req, res) => res.redirect('/operacional'));
+
 app.use(express.static(path.join(__dirname, './')));
 
 // Fallback REST para Binance

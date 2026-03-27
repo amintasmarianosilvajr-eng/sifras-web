@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlfaBeta | Portal de Operações Financeiras</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        itau: { dark: '#003366', mid: '#004A99', light: '#0066CC', orange: '#FF6600', orangeHover: '#E65C00', surface: '#F4F6F9', card: '#FFFFFF', text: '#1A2B42' }
+      },
+      fontFamily: { nunito: ['Nunito Sans', 'sans-serif'] }
+    }
+  }
+}
+    </script>
+    <style>
+        @keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
+        @keyframes pulse-dot { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+        .fade-up { animation: fadeUp .4s ease-out both }
+        .pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite }
+        .delay-1 { animation-delay:.08s } .delay-2 { animation-delay:.16s } .delay-3 { animation-delay:.24s }
+        ::-webkit-scrollbar { width:6px } ::-webkit-scrollbar-thumb { background:#003366; border-radius:3px }
+    </style>
+</head>
+<body class="h-full font-nunito bg-itau-surface text-itau-text">
+    <div id="app" class="h-full w-full flex flex-col overflow-auto">
+
+        <!-- Header -->
+        <header id="main-header" class="bg-itau-dark text-white px-6 py-4 flex items-center justify-between shadow-lg">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-itau-orange rounded-lg flex items-center justify-center font-extrabold text-lg">AB</div>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight">AlfaBeta — Portal de Operações</h1>
+                    <p class="text-xs text-blue-200 opacity-80">Binance Real-Time Trading</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="clock" class="text-sm font-semibold tabular-nums"></div>
+                <div class="flex items-center gap-1.5 bg-itau-mid px-3 py-1.5 rounded-full text-xs font-semibold">
+                    <span class="w-2 h-2 rounded-full pulse-dot" id="conn-dot" style="background:#9CA3AF;"></span>
+                    <span id="conn-text">Desconectado</span>
+                </div>
+                <button onclick="window.location.href='/admin'" class="bg-itau-mid hover:bg-itau-light text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors">↩ ADMIN</button>
+            </div>
+        </header>
+
+        <main class="flex-1 p-5 max-w-7xl mx-auto w-full space-y-5">
+
+            <!-- API Config Card -->
+            <div id="api-config" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden fade-up">
+                <div class="bg-itau-dark px-5 py-3 flex items-center justify-between">
+                    <h2 class="text-white font-bold text-sm">🔐 Configuração Binance API</h2>
+                    <span id="api-status" class="text-xs bg-gray-500 text-white px-2 py-0.5 rounded-full font-semibold">NÃO CONFIGURADO</span>
+                </div>
+                <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">API Key</label>
+                        <input type="text" id="ab-key" placeholder="Cole sua API Key..." class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-mono focus:ring-2 focus:ring-itau-orange focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">Secret Key</label>
+                        <input type="password" id="ab-secret" placeholder="Cole sua Secret Key..." class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-mono focus:ring-2 focus:ring-itau-orange focus:border-transparent outline-none">
+                    </div>
+                    <button onclick="connectApi()" class="bg-itau-orange hover:bg-itau-orangeHover text-white font-bold py-2.5 rounded-lg transition-colors text-sm">
+                        <i data-lucide="plug" class="inline w-4 h-4 mr-1 -mt-0.5"></i> CONECTAR
+                    </button>
+                </div>
+            </div>
+
+            <!-- Balance + PNL -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 fade-up delay-1">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Saldo Total</p>
+                    <p id="bal-total" class="text-2xl font-extrabold text-itau-dark">$ 0.00</p>
+                    <p class="text-xs text-gray-400 mt-1">USDT</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">PNL Sessão</p>
+                    <p id="bal-pnl" class="text-2xl font-extrabold text-green-600">+$0.00</p>
+                    <p id="bal-pnl-pct" class="text-xs text-green-500 mt-1">0.00%</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Operações</p>
+                    <p id="op-count" class="text-2xl font-extrabold text-itau-dark">0</p>
+                    <p class="text-xs text-gray-400 mt-1">Nesta sessão</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">BTC/USDT</p>
+                    <p id="btc-price" class="text-2xl font-extrabold text-itau-dark">---</p>
+                    <p id="btc-var" class="text-xs text-gray-400 mt-1">---</p>
+                </div>
+            </div>
+
+            <!-- Parameter Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- Param 1 -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden fade-up delay-1">
+                    <div class="bg-itau-dark px-5 py-3 flex items-center justify-between">
+                        <h2 class="text-white font-bold text-sm">Parâmetro 1 — Volatilidade</h2>
+                        <span id="p1-status" class="text-xs bg-gray-500 text-white px-2 py-0.5 rounded-full font-semibold">AGUARDANDO</span>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="bg-itau-surface rounded-lg p-3">
+                                <p class="text-xs text-gray-500 mb-1">Moeda Alvo</p>
+                                <p id="p1-coin" class="font-bold text-itau-dark">3ª do Ranking</p>
+                            </div>
+                            <div class="bg-itau-surface rounded-lg p-3">
+                                <p class="text-xs text-gray-500 mb-1">Gatilho</p>
+                                <p class="font-bold text-itau-orange">0,2% / 30s</p>
+                            </div>
+                            <div class="bg-itau-surface rounded-lg p-3">
+                                <p class="text-xs text-gray-500 mb-1">Alvo de Lucro</p>
+                                <p class="font-bold text-green-600">+0,6%</p>
+                            </div>
+                            <div class="bg-itau-surface rounded-lg p-3">
+                                <p class="text-xs text-gray-500 mb-1">Status Atual</p>
+                                <p id="p1-phase" class="font-bold">Desligado</p>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>Volatilidade 30s</span><span id="p1-vol-val">0.00%</span>
+                            </div>
+                            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div id="p1-vol-bar" class="h-full bg-itau-orange rounded-full transition-all duration-500" style="width:0%"></div>
+                            </div>
+                        </div>
+                        <button id="btn-start-p1" onclick="startParam1()" class="w-full bg-itau-orange hover:bg-itau-orangeHover text-white font-bold py-2.5 rounded-lg transition-colors text-sm">
+                            <i data-lucide="play" class="inline w-4 h-4 mr-1 -mt-0.5"></i> Iniciar Parâmetro 1
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Param 2 -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden fade-up delay-2">
+                    <div class="bg-itau-dark px-5 py-3 flex items-center justify-between">
+                        <h2 class="text-white font-bold text-sm">Parâmetro 2 — Ranking</h2>
+                        <span id="p2-status" class="text-xs bg-gray-500 text-white px-2 py-0.5 rounded-full font-semibold">AGUARDANDO</span>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="bg-itau-surface rounded-lg p-3">
+                                <p class="text-xs text-gray-500 mb-1">Moeda Alvo</p>
+                                <p id="p2-coin" class="font-bold text-itau-dark">5ª Spot Positivo</p>
+                            </div>
+                            <div class="bg-itau-surface rounded-lg p-3">
+                                <p class="text-xs text-gray-500 mb-1">Gatilho</p>
+                                <p class="font-bold text-itau-orange">Positivo 30s</p>
+                            </div>
+                            <div class="bg-itau-surface rounded-lg p-3">
+                                <p class="text-xs text-gray-500 mb-1">Alvo de Lucro</p>
+                                <p class="font-bold text-green-600">+7,0%</p>
+                            </div>
+                            <div class="bg-itau-surface rounded-lg p-3">
+                                <p class="text-xs text-gray-500 mb-1">Status Atual</p>
+                                <p id="p2-phase" class="font-bold text-gray-400">Desabilitado</p>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>Progresso do Lucro</span><span id="p2-prof-val">0.00%</span>
+                            </div>
+                            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div id="p2-prof-bar" class="h-full bg-green-500 rounded-full transition-all duration-500" style="width:0%"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-center text-gray-400 py-2">
+                            Ativado automaticamente após lucro do Parâmetro 1
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ranking Binance Real -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden fade-up delay-2">
+                <div class="bg-itau-dark px-5 py-3 flex items-center justify-between">
+                    <h2 class="text-white font-bold text-sm">Ranking Live — Binance Spot (Top 20)</h2>
+                    <span class="flex items-center gap-1.5 text-xs text-blue-200"><span class="w-2 h-2 rounded-full bg-green-400 pulse-dot"></span> Dados em Tempo Real</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-itau-surface text-xs text-gray-500 uppercase">
+                            <tr>
+                                <th class="px-4 py-2 text-left">#</th>
+                                <th class="px-4 py-2 text-left">Par</th>
+                                <th class="px-4 py-2 text-right">Preço (USDT)</th>
+                                <th class="px-4 py-2 text-right">Variação 24H</th>
+                                <th class="px-4 py-2 text-right">Volume (USDT)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ranking-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Trade History -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden fade-up delay-3">
+                <div class="bg-itau-dark px-5 py-3 flex items-center justify-between">
+                    <h2 class="text-white font-bold text-sm">Histórico de Operações</h2>
+                    <span id="trade-count" class="text-xs text-blue-200">0 operações</span>
+                </div>
+                <div id="trade-list" class="divide-y divide-gray-50 max-h-72 overflow-y-auto">
+                    <div id="empty-trades" class="p-8 text-center text-gray-400 text-sm">
+                        Nenhuma operação registrada ainda
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-itau-dark text-white px-5 py-3 rounded-xl shadow-xl text-sm font-semibold transform translate-y-20 opacity-0 transition-all duration-300 z-50"></div>
+
+    <script>
+// ─── STATE ───
+let apiKey = localStorage.getItem('ab_api_key') || '';
+let apiSecret = localStorage.getItem('ab_api_secret') || '';
+let marketData = [];
+let activeParam = 0; // 0=idle, 1=param1 ativo, 2=param2 ativo
+let p1BuyPrice = 0, p1Symbol = '';
+let p2BuyPrice = 0, p2Symbol = '';
+let sessionStartBalance = null;
+let currentBalance = 0;
+let opCount = 0;
+let priceHistory = {}; // symbol -> [{price, time}]
+let mainInterval = null;
+
+// ─── INIT ───
+document.addEventListener('DOMContentLoaded', () => {
+    if (apiKey && apiSecret) {
+        document.getElementById('ab-key').value = apiKey;
+        document.getElementById('ab-secret').value = '••••••••••••••••';
+        setConnected(true);
+        syncBalance();
+    }
+    fetchMarket();
+    setInterval(fetchMarket, 3000); // Atualiza ranking a cada 3s
+    setInterval(updateClock, 1000);
+    updateClock();
+    lucide.createIcons();
+});
+
+function updateClock() {
+    document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR');
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.transform = 'translateY(0)';
+    t.style.opacity = '1';
+    setTimeout(() => { t.style.transform = 'translateY(20px)'; t.style.opacity = '0'; }, 3500);
+}
+
+// ─── API CONFIG ───
+function connectApi() {
+    const k = document.getElementById('ab-key').value.trim();
+    const s = document.getElementById('ab-secret').value.trim();
+    if (!k || !s || s === '••••••••••••••••') {
+        showToast('⚠️ Preencha a API Key e a Secret Key.');
+        return;
+    }
+    apiKey = k;
+    apiSecret = s;
+    localStorage.setItem('ab_api_key', k);
+    localStorage.setItem('ab_api_secret', s);
+    setConnected(true);
+    syncBalance();
+    showToast('✅ Conectado à Binance com sucesso!');
+}
+
+function setConnected(ok) {
+    const dot = document.getElementById('conn-dot');
+    const txt = document.getElementById('conn-text');
+    const badge = document.getElementById('api-status');
+    if (ok) {
+        dot.style.background = '#22C55E';
+        txt.textContent = 'Conectado';
+        badge.textContent = 'CONECTADO';
+        badge.className = 'text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-semibold';
+    } else {
+        dot.style.background = '#9CA3AF';
+        txt.textContent = 'Desconectado';
+        badge.textContent = 'NÃO CONFIGURADO';
+        badge.className = 'text-xs bg-gray-500 text-white px-2 py-0.5 rounded-full font-semibold';
+    }
+}
+
+// ─── BALANCE ───
+async function syncBalance() {
+    if (!apiKey || !apiSecret) return;
+    try {
+        const r = await fetch('/pnl-real', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: apiKey, secret: apiSecret })
+        });
+        const d = await r.json();
+        if (d.totalUsdt) {
+            currentBalance = d.totalUsdt;
+            if (!sessionStartBalance) sessionStartBalance = d.totalUsdt;
+            document.getElementById('bal-total').textContent = `$ ${d.totalUsdt.toFixed(2)}`;
+            const pnl = d.totalUsdt - sessionStartBalance;
+            const pnlPct = (pnl / sessionStartBalance) * 100;
+            const elPnl = document.getElementById('bal-pnl');
+            const elPctPnl = document.getElementById('bal-pnl-pct');
+            elPnl.textContent = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
+            elPnl.className = `text-2xl font-extrabold ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            elPctPnl.textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`;
+            elPctPnl.className = `text-xs mt-1 ${pnlPct >= 0 ? 'text-green-500' : 'text-red-500'}`;
+        }
+    } catch (e) {}
+    setTimeout(syncBalance, 8000);
+}
+
+// ─── MARKET DATA ───
+async function fetchMarket() {
+    try {
+        const r = await fetch('/moedas-ranking');
+        const data = await r.json();
+        if (data && data.length > 0) {
+            marketData = data.slice(0, 20);
+            renderRanking();
+            updateBtcHeader();
+            trackVolatility();
+
+            // Executar lógica dos parâmetros
+            if (activeParam === 1) runParam1Logic();
+            if (activeParam === 2) runParam2Logic();
+        }
+    } catch (e) {}
+}
+
+function renderRanking() {
+    const body = document.getElementById('ranking-body');
+    const html = marketData.map((c, i) => {
+        const sym = c.symbol.replace('USDT', '');
+        const v = parseFloat(c.vol);
+        const isP1Target = (i === 2 && activeParam === 1);
+        const isP2Target = (i === 4 && activeParam === 2);
+        const highlight = isP1Target || isP2Target;
+        const rowClass = highlight ? 'bg-orange-50 border-l-4 border-itau-orange' : 'hover:bg-itau-surface';
+        return `<tr class="${rowClass} transition-colors">
+            <td class="px-4 py-2.5 font-semibold text-gray-400">${i + 1}</td>
+            <td class="px-4 py-2.5 font-bold">${sym}<span class="text-gray-400 font-normal">/USDT</span></td>
+            <td class="px-4 py-2.5 text-right tabular-nums font-semibold">${c.price < 1 ? c.price.toFixed(6) : c.price.toFixed(2)}</td>
+            <td class="px-4 py-2.5 text-right tabular-nums font-semibold ${v >= 0 ? 'text-green-600' : 'text-red-600'}">${v >= 0 ? '+' : ''}${v.toFixed(2)}%</td>
+            <td class="px-4 py-2.5 text-right tabular-nums text-gray-500">${(c.quoteVol / 1e6).toFixed(1)}M</td>
+        </tr>`;
+    }).join('');
+    body.innerHTML = html;
+}
+
+function updateBtcHeader() {
+    const btc = marketData.find(c => c.symbol === 'BTCUSDT');
+    if (btc) {
+        document.getElementById('btc-price').textContent = `$${btc.price.toFixed(0)}`;
+        const v = parseFloat(btc.vol);
+        const el = document.getElementById('btc-var');
+        el.textContent = `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+        el.className = `text-xs mt-1 ${v >= 0 ? 'text-green-500' : 'text-red-500'}`;
+    }
+}
+
+// ─── VOLATILITY TRACKER (30s Window) ───
+function trackVolatility() {
+    const now = Date.now();
+    marketData.forEach(c => {
+        if (!priceHistory[c.symbol]) priceHistory[c.symbol] = [];
+        priceHistory[c.symbol].push({ price: c.price, time: now });
+        // Keep only last 30s
+        priceHistory[c.symbol] = priceHistory[c.symbol].filter(p => now - p.time < 30000);
+    });
+}
+
+function getVolatility30s(symbol) {
+    const hist = priceHistory[symbol];
+    if (!hist || hist.length < 2) return 0;
+    const oldest = hist[0].price;
+    const newest = hist[hist.length - 1].price;
+    return ((newest - oldest) / oldest) * 100;
+}
+
+// ─── PARAMETER 1 LOGIC ───
+function startParam1() {
+    if (!apiKey) { showToast('⚠️ Configure a API Binance primeiro.'); return; }
+    
+    if (mainInterval) clearInterval(mainInterval);
+    activeParam = 1;
+    p1BuyPrice = 0;
+    p2BuyPrice = 0;
+    p1Symbol = '';
+    priceHistory = {};
+    
+    document.getElementById('p1-status').textContent = 'ATIVO';
+    document.getElementById('p1-status').className = 'text-xs bg-itau-orange text-white px-2 py-0.5 rounded-full font-semibold';
+    document.getElementById('p1-phase').textContent = 'Monitorando...';
+    document.getElementById('p1-phase').style.color = '#1A2B42';
+    
+    document.getElementById('p2-status').textContent = 'AGUARDANDO';
+    document.getElementById('p2-status').className = 'text-xs bg-gray-500 text-white px-2 py-0.5 rounded-full font-semibold';
+    document.getElementById('p2-phase').textContent = 'Desabilitado';
+    document.getElementById('p2-phase').style.color = '#9CA3AF';
+    document.getElementById('p2-prof-val').textContent = '0.00%';
+    document.getElementById('p2-prof-bar').style.width = '0%';
+    
+    document.getElementById('btn-start-p1').innerHTML = '<i data-lucide="loader" class="inline w-4 h-4 mr-1 -mt-0.5 animate-spin"></i> Executando...';
+    lucide.createIcons();
+    
+    showToast('🚀 Parâmetro 1 iniciado — Monitorando volatilidade da #3');
+}
+
+function runParam1Logic() {
+    if (marketData.length < 3) return;
+    const coin = marketData[2]; // 3ª do ranking
+    const sym = coin.symbol.replace('USDT', '');
+    document.getElementById('p1-coin').textContent = `#3: ${sym}`;
+    
+    const vol30s = Math.abs(getVolatility30s(coin.symbol));
+    document.getElementById('p1-vol-val').textContent = vol30s.toFixed(3) + '%';
+    document.getElementById('p1-vol-bar').style.width = Math.min(vol30s / 0.2 * 100, 100) + '%';
+    
+    // GATILHO: 0.2% em 30s
+    if (vol30s >= 0.2 && p1BuyPrice === 0) {
+        p1BuyPrice = coin.price;
+        p1Symbol = coin.symbol;
+        document.getElementById('p1-phase').textContent = `Comprado @ $${coin.price.toFixed(4)}`;
+        document.getElementById('p1-phase').style.color = '#FF6600';
+        addTradeRecord('P1', sym, 'COMPRA', coin.price, 'executada');
+        showToast(`🔥 P1: Compra ${sym} @ $${coin.price < 1 ? coin.price.toFixed(4) : coin.price.toFixed(2)}`);
+        
+        // Executar ordem real
+        executeOrder(coin.symbol, 'BUY');
+    }
+    
+    // Monitorar alvo de 0.6%
+    if (p1BuyPrice > 0 && p1Symbol) {
+        const current = marketData.find(c => c.symbol === p1Symbol);
+        if (current) {
+            const pct = ((current.price - p1BuyPrice) / p1BuyPrice) * 100;
+            document.getElementById('p1-phase').textContent = `Lucro: ${pct.toFixed(3)}%`;
+            
+            if (pct >= 0.6) {
+                // VENDER!
+                executeOrder(p1Symbol, 'SELL');
+                addTradeRecord('P1', p1Symbol.replace('USDT',''), 'VENDA', current.price, 'lucro', pct);
+                showToast(`✅ P1: Venda com +${pct.toFixed(2)}% — Ativando P2!`);
+                
+                document.getElementById('p1-status').textContent = 'CONCLUÍDO';
+                document.getElementById('p1-status').className = 'text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-semibold';
+                document.getElementById('p1-phase').textContent = 'Concluído ✓';
+                document.getElementById('p1-phase').style.color = '#16a34a';
+                
+                p1BuyPrice = 0;
+                p1Symbol = '';
+                
+                // Ativar P2
+                activeParam = 2;
+                document.getElementById('p2-status').textContent = 'ATIVO';
+                document.getElementById('p2-status').className = 'text-xs bg-itau-orange text-white px-2 py-0.5 rounded-full font-semibold';
+                document.getElementById('p2-phase').textContent = 'Monitorando...';
+                document.getElementById('p2-phase').style.color = '#1A2B42';
+            }
+        }
+    }
+}
+
+// ─── PARAMETER 2 LOGIC ───
+function runParam2Logic() {
+    if (marketData.length < 5) return;
+    const coin = marketData[4]; // 5ª do ranking
+    const sym = coin.symbol.replace('USDT', '');
+    document.getElementById('p2-coin').textContent = `#5: ${sym}`;
+    
+    const vol30s = getVolatility30s(coin.symbol);
+    
+    // GATILHO: Variação positiva em 30s
+    if (vol30s > 0 && p2BuyPrice === 0) {
+        p2BuyPrice = coin.price;
+        p2Symbol = coin.symbol;
+        document.getElementById('p2-phase').textContent = `Comprado @ $${coin.price.toFixed(4)}`;
+        document.getElementById('p2-phase').style.color = '#FF6600';
+        addTradeRecord('P2', sym, 'COMPRA', coin.price, 'executada');
+        showToast(`🔥 P2: Compra ${sym} @ $${coin.price < 1 ? coin.price.toFixed(4) : coin.price.toFixed(2)}`);
+        
+        executeOrder(coin.symbol, 'BUY');
+    }
+    
+    // Monitorar alvo de 7%
+    if (p2BuyPrice > 0 && p2Symbol) {
+        const current = marketData.find(c => c.symbol === p2Symbol);
+        if (current) {
+            const pct = ((current.price - p2BuyPrice) / p2BuyPrice) * 100;
+            document.getElementById('p2-prof-val').textContent = pct.toFixed(2) + '%';
+            document.getElementById('p2-prof-bar').style.width = Math.min(Math.max(pct / 7 * 100, 0), 100) + '%';
+            document.getElementById('p2-phase').textContent = `Lucro: ${pct.toFixed(2)}%`;
+            
+            if (pct >= 7) {
+                executeOrder(p2Symbol, 'SELL');
+                addTradeRecord('P2', p2Symbol.replace('USDT',''), 'VENDA', current.price, 'lucro', pct);
+                showToast(`🏆 P2: Venda com +${pct.toFixed(2)}% — Ciclo Completo!`);
+                
+                document.getElementById('p2-status').textContent = 'CONCLUÍDO';
+                document.getElementById('p2-status').className = 'text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-semibold';
+                document.getElementById('p2-phase').textContent = 'Concluído ✓';
+                document.getElementById('p2-phase').style.color = '#16a34a';
+                
+                activeParam = 0;
+                p2BuyPrice = 0;
+                p2Symbol = '';
+                
+                document.getElementById('btn-start-p1').innerHTML = '<i data-lucide="refresh-cw" class="inline w-4 h-4 mr-1 -mt-0.5"></i> Reiniciar Ciclo';
+                lucide.createIcons();
+            }
+        }
+    }
+}
+
+// ─── ORDER EXECUTION ───
+async function executeOrder(symbol, side) {
+    if (!apiKey || !apiSecret) return;
+    try {
+        // Buscar info do par para precisão
+        const infoRes = await fetch(`/info-par?symbol=${symbol}`);
+        const info = await infoRes.json();
+        const filters = info.symbols?.[0]?.filters || [];
+        const lotSize = filters.find(f => f.filterType === 'LOT_SIZE');
+        const stepSize = lotSize ? parseFloat(lotSize.stepSize) : 0.001;
+        const precision = stepSize.toString().includes('.') ? stepSize.toString().split('.')[1].replace(/0+$/, '').length : 0;
+
+        let qty = 0;
+        if (side === 'BUY') {
+            const usable = currentBalance * 0.98; // 98% do saldo
+            const price = marketData.find(c => c.symbol === symbol)?.price || 1;
+            qty = parseFloat((usable / price).toFixed(precision));
+        } else {
+            // Para venda, precisa saber quanto tem do ativo
+            // Usa o saldo da conta
+            const accRes = await fetch('/pnl-real', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: apiKey, secret: apiSecret })
+            });
+            // Simplificação: vende tudo usando a mesma quantidade
+            qty = 0; // O servidor vai calcular
+        }
+
+        const r = await fetch('/executar-ordem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: apiKey, secret: apiSecret, symbol, side, qty: qty.toString() })
+        });
+        const d = await r.json();
+        if (d.orderId) {
+            showToast(`✅ Ordem ${side} executada: ${symbol}`);
+            opCount++;
+            document.getElementById('op-count').textContent = opCount;
+        } else {
+            showToast(`⚠️ Ordem ${side}: ${d.error?.msg || 'Erro desconhecido'}`);
+        }
+    } catch (e) {
+        showToast(`❌ Erro na execução: ${e.message}`);
+    }
+}
+
+// ─── TRADE LOG ───
+let tradeLog = [];
+
+function addTradeRecord(param, coin, action, price, status, profitPct = 0) {
+    const record = { param, coin, action, price, status, profitPct, time: new Date() };
+    tradeLog.unshift(record);
+    renderTradeLog();
+}
+
+function renderTradeLog() {
+    const list = document.getElementById('trade-list');
+    const empty = document.getElementById('empty-trades');
+    document.getElementById('trade-count').textContent = `${tradeLog.length} operações`;
+    
+    if (tradeLog.length === 0) { if (empty) empty.style.display = 'block'; return; }
+    if (empty) empty.style.display = 'none';
+    
+    list.innerHTML = tradeLog.map(t => {
+        const isProfit = t.status === 'lucro';
+        const isBuy = t.action === 'COMPRA';
+        return `<div class="flex items-center justify-between px-5 py-3 text-sm">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${t.param === 'P1' ? 'bg-[#003366]' : 'bg-[#004A99]'}">${t.param}</span>
+                <div>
+                    <p class="font-semibold">${t.coin}/USDT <span class="font-normal text-gray-500">— ${t.action}</span></p>
+                    <p class="text-xs text-gray-400">${t.time.toLocaleString('pt-BR')}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="font-bold ${isProfit ? 'text-green-600' : isBuy ? 'text-[#FF6600]' : 'text-gray-600'}">${isProfit ? '+' + t.profitPct.toFixed(2) + '%' : '$' + (t.price < 1 ? t.price.toFixed(4) : t.price.toFixed(2))}</p>
+                <p class="text-xs ${isProfit ? 'text-green-500' : 'text-gray-400'}">${t.status}</p>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Init
+lucide.createIcons();
+    </script>
+</body>
+</html>

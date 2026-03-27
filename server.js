@@ -61,8 +61,10 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/operacional', (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
 app.get('/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads.html')));
+app.get('/alfabeta', (req, res) => res.sendFile(path.join(__dirname, 'alfabeta.html')));
 app.get('/ADMIN', (req, res) => res.redirect('/admin'));
 app.get('/OPERACIONAL', (req, res) => res.redirect('/operacional'));
+app.get('/ALFABETA', (req, res) => res.redirect('/alfabeta'));
 
 app.use(express.static(path.join(__dirname, './')));
 

@@ -10,169 +10,151 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// --- CONFIG ---
-const MASTER_PASS = "ALFA2026";
-const ADMIN_TOKEN = "ALFA_SECRET_2026"; 
-const DATA_DIR = path.join(__dirname, 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-const LEADS_FILE = path.join(DATA_DIR, 'leads.json');
-
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-let userStates = {};
-if (fs.existsSync(USERS_FILE)) {
-    try { userStates = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch (e) {}
-}
-
-function saveStats() {
-    try {
-        fs.writeFileSync(USERS_FILE, JSON.stringify(userStates, null, 2));
-    } catch (e) {}
-}
-
-// --- ROTAS ---
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.get('/operacional', (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
-app.get('/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads.html')));
+// Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, './')));
 
-// Login Master
-app.post('/login-master', (req, res) => {
-    const { password } = req.body;
-    if (password === MASTER_PASS) {
-        res.json({ success: true, token: 'ALFA-MASTER-TOKEN' });
-    } else {
-        res.status(401).json({ success: false, error: 'Senha incorreta' });
-    }
+app.get('/operacional', (req, res) => {
+    res.sendFile(path.join(__dirname, 'operacional.html'));
 });
 
-// SINCRONIZAÇÃO DE PERFIL - Recupera chaves de qualquer navegador
-app.post('/sync-profile', (req, res) => {
-    const { username } = req.body;
-    if (!username) return res.status(400).json({ error: 'Invalido' });
-    
-    const finalName = username.trim().toUpperCase();
-    const saved = userStates[finalName];
-    
-    if (saved) {
-        // Devolve o que temos salvo
-        res.json({ 
-            found: true, 
-            keys: { key: saved.key || '', secret: saved.secret || '' },
-            state: { cycleCount: saved.cycleCount || 0, staircaseIndex: saved.stairs || 10, accumulatedPnl: saved.accumulatedPnl || 0 }
-        });
-    } else {
-        res.json({ found: false });
-    }
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'operacional.html'));
 });
 
-// Heartbeat - LIBERADO SEMPRE (Se a senha passou, está liberado)
-app.post('/heartbeat', (req, res) => {
-    const { username, state, keys } = req.body;
-    if (!username) return res.json({ success: true, isApproved: true });
-    
-    const finalName = username.trim().toUpperCase();
-    
-    // Atualiza o estado central (memória do servidor)
-    userStates[finalName] = { 
-        ...userStates[finalName], 
-        ...state, 
-        key: keys?.key || userStates[finalName]?.key,
-        secret: keys?.secret || userStates[finalName]?.secret,
-        lastSeen: Date.now(), 
-        isApproved: true 
-    };
-    
-    // Salva no arquivo users.json imediatamente
-    saveStats();
-    
-    const command = userStates[finalName].remoteCommand;
-    if (command === 'STOP') userStates[finalName].remoteCommand = null;
-    
-    res.json({ success: true, isApproved: true, command: command || null });
-});
+// --- DATABASE & STATE ---
+const DATA_DIR = path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-// APIs de Mercado e Ordens
-app.get('/moedas-ranking', async (req, res) => {
-    try {
-        const r = await axios.get('https://api.binance.com/api/v3/ticker/24hr', { timeout: 3000 });
-        const list = r.data.filter(t => t.symbol.endsWith('USDT'))
-            .map(t => ({ symbol: t.symbol, price: parseFloat(t.lastPrice), vol: parseFloat(t.priceChangePercent) }))
-            .sort((a,b) => b.vol - a.vol).slice(0, 30);
-        res.json(list);
-    } catch(e) { res.json([]); }
+let globalMarket = { top30: [], allTickersMap: new Map() };
+let binanceWS = null;
+
+function signRequest(params, secret) {
+    return crypto.createHmac('sha256', secret).update(params).digest('hex');
+}
+
+function startBinanceWS() {
+    if (binanceWS) binanceWS.terminate();
+    binanceWS = new WebSocket('wss://stream.binance.com:9443/ws/!ticker@arr');
+
+    binanceWS.on('message', (data) => {
+        const tickers = JSON.parse(data);
+        const usdtTickers = tickers
+            .filter(t => t.s.endsWith('USDT'))
+            .map(t => ({
+                symbol: t.s,
+                price: parseFloat(t.c),
+                vol: parseFloat(t.P),
+                quoteVol: parseFloat(t.q)
+            }))
+            .filter(t => t.quoteVol > 1000000)
+            .filter(t => !['USDC','FDUSD','TUSD','EUR','TRY','BRL','DAI','PAXG'].some(s => t.symbol.includes(s)))
+            .sort((a,b) => b.vol - a.vol);
+
+        globalMarket.top30 = usdtTickers.slice(0, 30);
+        usdtTickers.forEach(t => globalMarket.allTickersMap.set(t.symbol, t.price));
+    });
+
+    binanceWS.on('error', () => setTimeout(startBinanceWS, 5000));
+}
+
+app.get('/moedas-ranking', (req, res) => {
+    res.json(globalMarket.top30);
 });
 
 app.post('/pnl-real', async (req, res) => {
     const { key, secret } = req.body;
+    if (!key || !secret) return res.status(400).json({ error: 'Faltam credenciais' });
+
     try {
         const timestamp = Date.now();
         const query = `timestamp=${timestamp}&recvWindow=10000`;
-        const signature = crypto.createHmac('sha256', secret).update(query).digest('hex');
-        const r = await axios.get(`https://api.binance.com/api/v3/account?${query}&signature=${signature}`, { headers: { 'X-MBX-APIKEY': key } });
+        const signature = signRequest(query, secret);
         
-        // PEGA APENAS O SALDO EM USDT (Dólar Real)
-        const usdtAsset = r.data.balances.find(b => b.asset === 'USDT');
-        const totalUsdt = parseFloat(usdtAsset?.free || 0) + parseFloat(usdtAsset?.locked || 0);
-        
+        const response = await axios.get(`https://api.binance.com/api/v3/account?${query}&signature=${signature}`, {
+            headers: { 'X-MBX-APIKEY': key }
+        });
+
+        const balances = response.data.balances.filter(b => parseFloat(b.free) + parseFloat(b.locked) > 0);
+        let totalUsdt = 0;
+
+        for (const b of balances) {
+            const amount = parseFloat(b.free) + parseFloat(b.locked);
+            if (b.asset === 'USDT') {
+                totalUsdt += amount;
+            } else {
+                const pair = b.asset + 'USDT';
+                const price = globalMarket.allTickersMap.get(pair);
+                if (price) totalUsdt += amount * price;
+            }
+        }
         res.json({ totalUsdt });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
 });
 
+// CORE SNIPER ENGINE: Blindagem de Lote e Parametros (v3.5)
 app.post('/executar-ordem', async (req, res) => {
-    const { key, secret, symbol, side, qty, buyPercentage } = req.body;
+    const { key, secret, symbol, side, qty } = req.body;
+    if (!key || !secret) return res.status(400).json({ error: 'Faltam credenciais' });
+
     try {
-        // SINCRONIA DE HORÁRIO COM BINANCE
-        const timeRes = await axios.get('https://api.binance.com/api/v3/time');
-        const timestamp = timeRes.data.serverTime;
-        
-        let query = `symbol=${symbol}&side=${side}&type=MARKET&timestamp=${timestamp}&recvWindow=10000`;
+        const timestamp = Date.now();
+        const params = { symbol, side, type: 'MARKET', timestamp, recvWindow: 10000 };
 
         if (side === 'BUY') {
-            const accQuery = `timestamp=${timestamp}&recvWindow=10000`;
-            const accSig = crypto.createHmac('sha256', secret).update(accQuery).digest('hex');
-            const accRes = await axios.get(`https://api.binance.com/api/v3/account?${accQuery}&signature=${accSig}`, { headers: { 'X-MBX-APIKEY': key } });
+            const qAcc = `timestamp=${timestamp}&recvWindow=10000`;
+            const sAcc = signRequest(qAcc, secret);
+            const aRes = await axios.get(`https://api.binance.com/api/v3/account?${qAcc}&signature=${sAcc}`, {
+                headers: { 'X-MBX-APIKEY': key }
+            });
+            const usdt = aRes.data.balances.find(b => b.asset === 'USDT');
+            const free = parseFloat(usdt ? usdt.free : 0);
             
-            const usdtBalance = parseFloat(accRes.data.balances.find(b => b.asset === 'USDT')?.free || 0);
-            const pct = buyPercentage || 100;
-            const spendAmount = (usdtBalance * (pct / 100)) * 0.99; 
-            
-            if (spendAmount < 10) throw new Error("Saldo insuficiente (min $10 USDT)");
-            query += `&quoteOrderQty=${spendAmount.toFixed(2)}`;
+            if (free < 10) throw new Error(`Saldo USDT Insuficiente ($${free.toFixed(2)})`);
+
+            // BUSCAR INFO DE PRECISÃO (FILTROS)
+            const iRes = await axios.get(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`);
+            const filters = iRes.data.symbols[0].filters;
+            const lSize = filters.find(f => f.filterType === 'LOT_SIZE');
+            const pRes = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+            const price = parseFloat(pRes.data.price);
+
+            const step = parseFloat(lSize.stepSize);
+            const calculatedQty = (free * 0.99) / price;
+            params.quantity = (Math.floor(calculatedQty / step) * step).toFixed(8).replace(/\.?0+$/, "");
         } else {
-            if (!qty) throw new Error("Quantidade de venda não informada");
-            query += `&quantity=${qty}`;
+            params.quantity = qty;
         }
 
-        const signature = crypto.createHmac('sha256', secret).update(query).digest('hex');
-        const response = await axios.post(`https://api.binance.com/api/v3/order?${query}&signature=${signature}`, null, { headers: { 'X-MBX-APIKEY': key } });
+        const queryString = new URLSearchParams(params).toString();
+        const signature = signRequest(queryString, secret);
+        const finalUrl = `https://api.binance.com/api/v3/order?${queryString}&signature=${signature}`;
+
+        // Executa a ordem enviando 'null' como body (correção do bug dos 8 parâmetros)
+        const response = await axios.post(finalUrl, null, {
+            headers: { 'X-MBX-APIKEY': key }
+        });
         res.json(response.data);
-    } catch (e) { 
-        const errorMsg = e.response?.data?.msg || e.message || "Erro desconhecido";
-        res.status(500).json({ error: errorMsg }); 
+    } catch (error) {
+        const msg = error.response?.data?.msg || error.message;
+        console.error("Order Fail:", msg);
+        res.status(500).json({ error: msg });
     }
 });
 
 app.get('/info-par', async (req, res) => {
+    const symbol = req.query.symbol;
     try {
-        const r = await axios.get(`https://api.binance.com/api/v3/exchangeInfo?symbol=${req.query.symbol}`);
-        res.json(r.data);
-    } catch(e) { res.status(500).json({ error: e.message }); }
+        const response = await axios.get(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`);
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
-// Admin Control
-app.get('/admin/overview', (req, res) => {
-    if (req.headers.authorization !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).send();
-    res.json({ users: Object.values(userStates) });
+const PORT = process.env.PORT || 3014;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 ALFA MASTER ELITE na Porta ${PORT}`);
+    startBinanceWS();
 });
-
-app.post('/admin/reset-all-users', (req, res) => {
-    if (req.headers.authorization !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).send();
-    userStates = {};
-    if (fs.existsSync(USERS_FILE)) fs.unlinkSync(USERS_FILE);
-    res.json({ success: true });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 TERMINAL ALFA ATIVO NA PORTA ${PORT}`));

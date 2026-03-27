@@ -334,9 +334,23 @@ async function sendOrder(side, symbol, qty = null) {
     }
 }
 
+let lastRankingHash = "";
 function renderRanking(ranking) {
     const grid = document.getElementById('dynamic-targets-grid');
     if (!grid) return;
+    
+    // ANTI-FLICKER: Só renderiza se a ordem das moedas mudar
+    const currentHash = ranking.slice(0, 10).map(c => c.symbol).join('|');
+    if (currentHash === lastRankingHash) {
+        // Se a ordem for igual, apenas atualiza as porcentagens sem piscar o HTML
+        ranking.slice(0, 10).forEach((c, i) => {
+            const el = document.querySelectorAll('.coin-vol')[i];
+            if (el) el.textContent = `${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%`;
+        });
+        return;
+    }
+    
+    lastRankingHash = currentHash;
     grid.innerHTML = ranking.slice(0, 10).map((c, i) => `
         <div class="ranking-item ${i === 2 ? 'log-neon-scan' : ''}">
             <span class="rank-num">#${i + 1}</span>
@@ -346,7 +360,12 @@ function renderRanking(ranking) {
     `).join('');
 }
 
+let lastLogMsg = "";
 function addLog(msg, type = 'system') {
+    // ANTI-SPAM: Não escreve a mesma mensagem de erro repetidamente
+    if (msg === lastLogMsg && type === 'error') return;
+    lastLogMsg = msg;
+
     const monitor = document.getElementById('log-monitor');
     if (!monitor) return;
     const time = new Date().toLocaleTimeString();
@@ -359,6 +378,9 @@ function addLog(msg, type = 'system') {
         html = `<div class="${cls}"><span class="log-timestamp">${time}</span><span class="log-entry-text">${msg}</span></div>`;
     }
     monitor.innerHTML = html + monitor.innerHTML;
+    
+    // Limpar logs antigos (manter apenas 50)
+    if (monitor.children.length > 50) monitor.removeChild(monitor.lastChild);
 }
 
 function startCooldownPeriod(isStaircaseEnd = false) {

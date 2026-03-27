@@ -460,9 +460,22 @@ function saveSlot(id) {
     
     activeSlots[1] = { ...activeSlots[1], ...s };
     localStorage.setItem('alfa_slot_1', JSON.stringify(s));
-    addLog(`Configurações salvas.`, 'system');
     
-    // REGISTRA NO SERVIDOR para que o Admin veja o cliente
+    // TORNA O ROBÔ VIRGEM PARA ESTE CLIENTE:
+    // Ao salvar as chaves, resetamos o lucro e o degrau para o início
+    cycleCount = 0;
+    staircaseIndex = 10;
+    startOfDayBalance = null;
+    window.accumulatedPnl = 0;
+    saveGlobalState(); 
+    
+    // Limpa o monitor de logs para começar limpo
+    const monitor = document.getElementById('log-monitor');
+    if(monitor) monitor.innerHTML = '';
+    
+    addLog(`⚙️ Configurações autorizadas. Bot em estado virgem.`, 'system');
+    
+    // REGISTRA NO SERVIDOR para o Admin ver o cliente com o nome dele
     fetch('/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

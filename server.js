@@ -33,74 +33,36 @@ function signRequest(params, secret) {
 }
 
 function startBinanceWS() {
-    if (binanceWS) binanceWS.terminate();
-    binanceWS = new WebSocket('wss://stream.binance.com:9443/ws/!ticker@arr');
-
-    binanceWS.on('message', (data) => {
-        const tickers = JSON.parse(data);
-        const usdtTickers = tickers
-            .filter(t => t.s.endsWith('USDT'))
-            .map(t => ({
-                symbol: t.s,
-                price: parseFloat(t.c),
-                vol: parseFloat(t.P),
-                quoteVol: parseFloat(t.q)
-            }))
-            .filter(t => t.quoteVol > 100000)
-            .filter(t => !['USDC','FDUSD','TUSD','EUR','TRY','BRL','DAI','PAXG'].some(s => t.symbol.includes(s)))
-            .sort((a,b) => b.vol - a.vol);
-
-        globalMarket.top30 = usdtTickers.slice(0, 30);
-        usdtTickers.forEach(t => globalMarket.allTickersMap.set(t.symbol, t.price));
+    const WebSocket = require("ws");
+    const ws = new WebSocket("wss://stream.binance.com:9443/ws/!ticker@arr");
+    
+    ws.on("message", (data) => {
+        try {
+            const tickers = JSON.parse(data);
+            if (!Array.isArray(tickers)) return;
+            
+            const list = tickers
+                .filter(t => t.s.endsWith("USDT") && parseFloat(t.q) > 1000000)
+                .map(t => ({
+                    symbol: t.s,
+                    vol: parseFloat(t.P),
+                    quoteVol: parseFloat(t.q)
+                }))
+                .sort((a, b) => b.vol - a.vol)
+                .slice(0, 30);
+            
+            if (list.length > 0) globalMarket.top30 = list;
+        } catch (e) {}
     });
 
-    binanceWS.on('error', () => setTimeout(startBinanceWS, 5000));
+    ws.on("error", () => {
+        setTimeout(startBinanceWS, 5000);
+    });
+
+    ws.on("close", () => {
+        setTimeout(startBinanceWS, 5000);
+    });
 }
-
-app.get('/moedas-ranking', (req, res) => {
-    res.json(globalMarket.top30);
-});
-
-app.post('/pnl-real', async (req, res) => {
-    const { key, secret } = req.body;
-    if (!key || !secret) return res.status(400).json({ error: 'Faltam credenciais' });
-
-    try {
-        const timestamp = Date.now();
-        const query = `timestamp=${timestamp}&recvWindow=10000`;
-        const signature = signRequest(query, secret);
-        
-        const response = await axios.get(`https://api.binance.com/api/v3/account?${query}&signature=${signature}`, {
-            headers: { 'X-MBX-APIKEY': key }
-        });
-
-        const balances = response.data.balances.filter(b => parseFloat(b.free) + parseFloat(b.locked) > 0);
-        let totalUsdt = 0;
-
-        for (const b of balances) {
-            const amount = parseFloat(b.free) + parseFloat(b.locked);
-            if (b.asset === 'USDT') {
-                totalUsdt += amount;
-            } else {
-                const pair = b.asset + 'USDT';
-                const price = globalMarket.allTickersMap.get(pair);
-                if (price) totalUsdt += amount * price;
-            }
-        }
-        res.json({ totalUsdt });
-    } catch (error) {
-        res.status(500).json({ error: error.response?.data || error.message });
-    }
-});
-
-// CORE SNIPER ENGINE: Blindagem de Lote e Parametros (v3.5)
-app.post('/executar-ordem', async (req, res) => {
-    const { key, secret, symbol, side, qty } = req.body;
-    if (!key || !secret) return res.status(400).json({ error: 'Faltam credenciais' });
-
-    try {
-        const timestamp = Date.now();
-        const params = { symbol, side, type: 'MARKET', timestamp, recvWindow: 10000 };
 
         if (side === 'BUY') {
             const qAcc = `timestamp=${timestamp}&recvWindow=10000`;
@@ -158,4 +120,10 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('MOTOR LIGADO NA PORTA: ' + PORT);
     if (typeof startBinanceWS === 'function') startBinanceWS();
 });
+
+
+
+
+
+
 

@@ -153,9 +153,8 @@ app.get("/info-par", async (req, res) => {
     }
 });
 
-const PORT = 3014;
-app.listen(PORT, "0.0.0.0", () => {
-    console.log("--- MOTOR LIGADO NA PORTA 3014 ---");
-    if (typeof startBinanceWS === "function") startBinanceWS();
+const PORT = process.env.PORT || 3014;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log('MOTOR LIGADO NA PORTA: ' + PORT);
+    if (typeof startBinanceWS === 'function') startBinanceWS();
 });
-

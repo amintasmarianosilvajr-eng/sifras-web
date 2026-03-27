@@ -158,3 +158,4 @@ app.listen(PORT, "0.0.0.0", () => {
     console.log("--- MOTOR LIGADO NA PORTA 3014 ---");
     if (typeof startBinanceWS === "function") startBinanceWS();
 });
+

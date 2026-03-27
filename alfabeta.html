@@ -117,7 +117,7 @@ tailwind.config = {
                             </div>
                             <div class="bg-itau-surface rounded-lg p-3">
                                 <p class="text-xs text-gray-500 mb-1">Alvo de Lucro</p>
-                                <p class="font-bold text-green-600">+0,6%</p>
+                                <p class="font-bold text-green-600">+0,7%</p>
                             </div>
                             <div class="bg-itau-surface rounded-lg p-3">
                                 <p class="text-xs text-gray-500 mb-1">Status Atual</p>
@@ -156,7 +156,7 @@ tailwind.config = {
                             </div>
                             <div class="bg-itau-surface rounded-lg p-3">
                                 <p class="text-xs text-gray-500 mb-1">Alvo de Lucro</p>
-                                <p class="font-bold text-green-600">+7,0%</p>
+                                <p class="font-bold text-green-600">+0,7%</p>
                             </div>
                             <div class="bg-itau-surface rounded-lg p-3">
                                 <p class="text-xs text-gray-500 mb-1">Status Atual</p>
@@ -441,14 +441,14 @@ function runParam1Logic() {
         executeOrder(coin.symbol, 'BUY');
     }
     
-    // Monitorar alvo de 0.6%
+    // Monitorar alvo de 0.7%
     if (p1BuyPrice > 0 && p1Symbol) {
         const current = marketData.find(c => c.symbol === p1Symbol);
         if (current) {
             const pct = ((current.price - p1BuyPrice) / p1BuyPrice) * 100;
             document.getElementById('p1-phase').textContent = `Lucro: ${pct.toFixed(3)}%`;
             
-            if (pct >= 0.6) {
+            if (pct >= 0.7) {
                 // VENDER!
                 executeOrder(p1Symbol, 'SELL');
                 addTradeRecord('P1', p1Symbol.replace('USDT',''), 'VENDA', current.price, 'lucro', pct);
@@ -500,10 +500,10 @@ function runParam2Logic() {
         if (current) {
             const pct = ((current.price - p2BuyPrice) / p2BuyPrice) * 100;
             document.getElementById('p2-prof-val').textContent = pct.toFixed(2) + '%';
-            document.getElementById('p2-prof-bar').style.width = Math.min(Math.max(pct / 7 * 100, 0), 100) + '%';
+            document.getElementById('p2-prof-bar').style.width = Math.min(Math.max(pct / 0.7 * 100, 0), 100) + '%';
             document.getElementById('p2-phase').textContent = `Lucro: ${pct.toFixed(2)}%`;
             
-            if (pct >= 7) {
+            if (pct >= 0.7) {
                 executeOrder(p2Symbol, 'SELL');
                 addTradeRecord('P2', p2Symbol.replace('USDT',''), 'VENDA', current.price, 'lucro', pct);
                 showToast(`🏆 P2: Venda com +${pct.toFixed(2)}% — Ciclo Completo!`);

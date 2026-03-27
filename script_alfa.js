@@ -6,7 +6,7 @@
 const CONFIG = {
     UPDATE_INTERVAL: 1000, 
     LOG_INTERVAL: 3000,   
-    TARGET_PROFIT: 0.5, // Reduzido conforme solicitado para Protocolo Escalada
+    TARGET_PROFIT: 0.7, // Padronizado: 0,7% de lucro geral
     STAIRCASE_START: 10,
     SLEEP_AFTER_N1: 1200000, // 20 minutos em ms
     BLACKLIST: [

@@ -12,171 +12,153 @@
 <body>
     <div id="profit-overlay" class="profit-overlay">
         <div class="profit-card">
-            <img src="logo.png" alt="Fluxo Alfa" class="overlay-logo">
             <h2 style="font-family:'Outfit'; font-size:3rem; color:#fff; margin-bottom:10px;">META ALCANÇADA!</h2>
             <p style="color:var(--accent-green); font-weight:800; font-size:1.2rem; text-transform:uppercase; letter-spacing:2px;">Sniper Finalizado com Sucesso.</p>
         </div>
     </div>
 
-
-
     <div class="app-container">
         <!-- Header Ferrari -->
-        <header class="top-header">
-            <div class="brand">
-                <img src="logo.png" alt="Sifras" class="logo">
-                <div class="brand-text">
-                    <h1>FLUXO ALFA</h1>
-                    <span class="badge-real">BINANCE HUB REALT-TIME</span>
+        <header class="main-header">
+            <div class="header-left">
+                <div class="brand-box">
+                    <img src="https://static.wixstatic.com/media/067451_2a61f3647f154379965158671404c0cb~mv2.png" alt="Fluxo Alfa" class="main-logo">
+                    <div class="brand-text">
+                        <h1>FLUXO ALFA <span>v3.5</span></h1>
+                        <p>BINANCE HUB REALT-TIME</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="header-performance">
-                <div class="perf-item" style="border-right: 1px solid var(--card-border); padding-right: 20px;">
-                    <span class="label">PNL HOJE (SESSÃO)</span>
-                    <div id="header-realtime-pnl" class="value waiting">SINCRONIZANDO...</div>
+            <div class="header-center">
+                <div class="metric-card">
+                    <span class="metric-label">PNL HOJE (SESSÃO)</span>
+                    <span id="header-realtime-pnl" class="metric-value waiting">AGUARDANDO...</span>
                 </div>
-                <div class="perf-item" style="border-right: 1px solid var(--card-border); padding-right: 20px;">
-                    <span class="label">REALIZADO BRL</span>
-                    <div id="header-brl-pnl" class="value" style="color:var(--accent-green); font-size:1.1rem; font-weight:900;">R$ 0,00</div>
+                <div class="metric-card mobile-hide">
+                    <span class="metric-label">REALIZADO BRL</span>
+                    <span id="header-brl-pnl" class="metric-value">R$ 0,00</span>
                 </div>
-                <div class="perf-item">
-                    <span class="label">DEGRAU</span>
-                    <div id="cycle-counter" class="value cycle">0 / 5</div>
+                <div class="metric-card mobile-hide">
+                    <span class="metric-label">DEGRAU</span>
+                    <span id="cycle-counter" class="metric-value" style="color:var(--primary-neon);">PASSO #10</span>
                 </div>
-                <div class="perf-item">
-                    <span class="label">LATÊNCIA GLOBAL</span>
-                    <div id="header-latency" class="value waiting" style="font-size: 0.9rem; color: var(--primary-neon);">-- ms</div>
+                <div class="metric-card mobile-hide">
+                    <span class="metric-label">LATÊNCIA GLOBAL</span>
+                    <span id="header-latency" class="metric-value" style="font-size:0.8rem; color:var(--text-muted);">--- ms</span>
                 </div>
-                <div style="display:flex; gap:15px; margin-left: 15px;">
-                    <button id="master-toggle-btn" onclick="masterToggle()" class="btn-connect">CONECTAR MASTER</button>
-                    <button onclick="panicStop()" class="btn-connect" style="border-color:var(--danger-neon); color:var(--danger-neon); background:rgba(248, 81, 73, 0.05);">PANIC STOP</button>
-                </div>
+            </div>
+
+            <div class="header-right">
+                <button id="master-toggle-btn" onclick="masterToggle()" class="btn-master">CONECTAR MASTER</button>
+                <button onclick="location.href='/'" class="btn-panic" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; margin-left:10px;">SAIR</button>
             </div>
         </header>
 
-        <main class="dashboard-grid">
-            <!-- Hub de Monitoramento Global -->
-            <section class="card monitor-card" style="grid-column: span 1;">
-                <div class="card-header">
-                    <h3 style="font-size:0.8rem; text-transform:uppercase; font-weight:800; color:var(--text-muted);">Monitor Operacional Ativo</h3>
-                    <div id="system-status-pill" class="status-pill waiting">OFFLINE</div>
-                </div>
-                
-                <div id="active-trade-container" class="trade-container hidden">
-                    <div class="trade-main-info">
-                        <h2 id="monitoring-symbol">---</h2>
-                        <div class="pnl-display">
-                            <span id="monitoring-pl" class="pnl-pct">+0.00%</span>
-                            <span id="monitoring-pnl-usdt" class="pnl-cash">($0.00)</span>
-                        </div>
-                    </div>
-
-                    <div class="trade-metrics">
-                        <div class="m-item">
-                            <span class="m-label">ENTRADA</span>
-                            <span id="monitoring-buy-price" class="m-value highlighted">$0.0000</span>
-                        </div>
-                        <div class="m-item">
-                            <span class="m-label">VALOR ATUAL</span>
-                            <span id="monitoring-current-price" class="m-value">$0.0000</span>
-                        </div>
-                        <div class="m-item">
-                            <span class="m-label">ALVO SNIPER</span>
-                            <span id="monitoring-target-price" class="m-value target">$0.0000</span>
-                        </div>
-                    </div>
-
-                    <div class="progress-section" style="margin-top:auto;">
-                        <div class="progress-bar-wrap">
-                            <div id="trade-progress-fill" class="progress-fill"></div>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-size:0.6rem; font-weight:800; color:var(--text-muted); margin-top:12px;">
-                            <span>INÍCIO (0.00%)</span>
-                            <span>META ALFA (+0.80%)</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="no-trade-msg" class="empty-msg">
-                    <p style="font-family:'Outfit'; font-size:1.2rem; letter-spacing:1px; text-transform:uppercase;">Aguardando Sinal do Monitor #3...</p>
-                </div>
-            </section>
-
-            <!-- Ranking e Log Dinâmico -->
-            <div class="secondary-column" style="display:flex; flex-direction:column; gap:2rem;">
-                <!-- NOVO: GABINETE BINANCE (PROMINENTE) -->
-                <section class="card binance-cabinet-card" style="border-right: 4px solid var(--accent-green); background: linear-gradient(135deg, rgba(13,17,23,0.95) 0%, rgba(1,4,9,1) 100%);">
+        <main class="app-grid">
+            <!-- Coluna Esquerda: Monitor Operacional -->
+            <section class="ops-section grid-span-8">
+                <div class="section-card ops-monitor">
                     <div class="card-header">
-                        <h3 style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Gabinete Binance (Fundo Real)</h3>
+                        <h2>MONITOR OPERACIONAL ATIVO</h2>
+                        <span id="system-status-pill" class="status-pill offline">OFFLINE</span>
                     </div>
-                    <div style="padding: 10px 0;">
-                        <span style="font-size:0.7rem; color:var(--text-muted); font-weight:800; text-transform: uppercase;">Saldo Estimado</span>
-                        <h2 id="cabinet-total-balance" style="font-family:'Outfit'; font-size:3.5rem; line-height:1; margin:8px 0; color:#fff; letter-spacing:-2px;">$ 0.00 <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span></h2>
-                        <div id="cabinet-realtime-pnl" style="font-family:'Inter'; font-weight:800; font-size:1.1rem; color:var(--text-muted); margin-top: 5px;">
-                            PNL HOJE: <span class="val-pnl" style="color:var(--text-muted);">---</span>
+
+                    <div id="active-trade-container" class="trade-monitor hidden">
+                        <div class="monitoring-grid">
+                            <div class="mon-item">
+                                <span class="mon-label">ATIVO</span>
+                                <span id="monitoring-symbol" class="mon-value">---</span>
+                            </div>
+                            <div class="mon-item">
+                                <span class="mon-label">PREÇO ENTRADA</span>
+                                <span id="monitoring-buy-price" class="mon-value">---</span>
+                            </div>
+                            <div class="mon-item">
+                                <span class="mon-label">PREÇO ATUAL</span>
+                                <span id="monitoring-current-price" class="mon-value">---</span>
+                            </div>
+                            <div class="mon-item">
+                                <span class="mon-label">ALVO (0.8%)</span>
+                                <span id="monitoring-target-price" class="mon-value" style="color:var(--primary-neon);">---</span>
+                            </div>
+                        </div>
+
+                        <div class="pnl-visual-box">
+                            <div class="pnl-header">
+                                <span id="monitoring-pl" class="pnl-pct">+0.00%</span>
+                                <span id="monitoring-pnl-usdt" class="pnl-usdt">($0.00)</span>
+                            </div>
+                            <div class="pnl-progress-bar">
+                                <div id="trade-progress-fill" class="pnl-fill"></div>
+                            </div>
                         </div>
                     </div>
-                </section>
 
-                <section class="card ranking-card">
+                    <div id="no-trade-msg" class="empty-state">
+                        <div class="spinning-loader"></div>
+                        <p>AGUARDANDO SINAL DO MONITOR #3...</p>
+                    </div>
+                </div>
+
+                <div class="section-card log-monitor-box">
                     <div class="card-header">
-                        <h3 style="font-size:0.8rem; text-transform:uppercase; font-weight:800;">Radar de Volatilidade (Scanner)</h3>
+                        <h2>LOG DINÂMICO (FEEDBACK 5S)</h2>
                     </div>
-                    <div id="dynamic-targets-grid" class="ranking-list"></div>
-                </section>
-            </div>
-
-            <!-- LOG DINÂMICO E CONFIGURAÇÕES -->
-            <section class="card logs-card" style="grid-column: span 1; display:flex; flex-direction:column; min-height: 400px;">
-                <div class="card-header">
-                    <h3 style="font-size:0.8rem; text-transform:uppercase; font-weight:800;">Log Dinâmico (Feedback 5s)</h3>
-                </div>
-                <div id="log-monitor" class="log-container" style="flex:1;">
-                    <div class="log-entry system">[SISTEMA] Aguardando acionamento master...</div>
+                    <div id="log-monitor" class="log-entries">
+                        <!-- Logs aqui -->
+                    </div>
                 </div>
             </section>
 
-            <section class="card config-card" style="grid-column: span 1;">
-                <div class="config-grid" style="grid-template-columns: 1fr; gap: 15px;">
-                    <div class="input-group">
-                        <label>Identificação do Operador</label>
-                        <input type="text" id="slot-1-name" placeholder="Nome do Cliente">
+            <!-- Coluna Direita: Painel de Controle e Balanço -->
+            <aside class="side-section grid-span-4">
+                <div class="section-card account-cabinet">
+                    <div class="cabinet-header">
+                        <span class="cabinet-title">GABINETE BINANCE (FUNDO REAL)</span>
+                        <div class="live-signal">LIVE</div>
                     </div>
-                    <div class="input-group">
-                        <label>Binance API Key</label>
-                        <input type="password" id="slot-1-key" placeholder="Chave de Acesso">
+                    <div class="cabinet-body">
+                        <span class="label">SALDO ESTIMADO</span>
+                        <div id="cabinet-total-balance" class="big-balance">$ 0.00 <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span></div>
+                        <div id="cabinet-realtime-pnl" class="mini-pnl">PNL HOJE: <span style="color:var(--text-muted);">AGUARDANDO...</span></div>
                     </div>
-                    <div class="input-group">
-                        <label>Binance Secret Key</label>
-                        <input type="password" id="slot-1-secret" placeholder="Chave de Segurança">
+                </div>
+
+                <div class="section-card settings-card">
+                    <div class="card-header">
+                        <h2>TERMINAL DE CONFIGURAÇÃO</h2>
                     </div>
-                    <button onclick="saveSlot(1)" class="btn-save">AUTORIZAR CHAVES</button>
-                    
-                    <div class="percentage-selector" style="margin-top: 10px;">
-                        <label style="display: block; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; margin-bottom: 8px;">Capital por Ordem (% USDT)</label>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
-                            <button onclick="setBuyPercentage(25, this)" class="btn-pct">25%</button>
-                            <button onclick="setBuyPercentage(50, this)" class="btn-pct">50%</button>
-                            <button onclick="setBuyPercentage(75, this)" class="btn-pct">75%</button>
-                            <button onclick="setBuyPercentage(100, this)" class="btn-pct active">100%</button>
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label>IDENTIFICAÇÃO DO OPERADOR</label>
+                            <input type="text" id="slot-1-name" placeholder="Assinatura Master" class="input-alfa">
                         </div>
+                        <div class="form-group">
+                            <label>BINANCE API KEY</label>
+                            <input type="password" id="slot-1-key" placeholder="••••••••••••••••" class="input-alfa">
+                        </div>
+                        <div class="form-group">
+                            <label>BINANCE SECRET KEY</label>
+                            <input type="password" id="slot-1-secret" placeholder="••••••••••••••••" class="input-alfa">
+                        </div>
+                        <button onclick="saveSlot()" class="btn-primary">AUTORIZAR CHAVES</button>
                     </div>
                 </div>
-            </section>
+
+                <div class="section-card volatility-radar">
+                    <div class="card-header">
+                        <h2>RADAR DE VOLATILIDADE (SCANNER)</h2>
+                    </div>
+                    <div id="dynamic-targets-grid" class="radar-grid">
+                        <!-- Ranking Aqui -->
+                    </div>
+                </div>
+            </aside>
         </main>
     </div>
 
-    <script src="script_alfa.js?v=3"></script>
-    <script>
-        async function panicStop() {
-            // Chama a função robusta do script_alfa.js
-            if (typeof forcePanic === 'function') {
-                await forcePanic();
-            } else {
-                alert("Erro: Motor operacional não carregado.");
-            }
-        }
-    </script>
+    <!-- SCRIPT MASTER CONSOLIDADO (SEM CACHE) -->
+    <script src="alfa_sniper_master.js"></script>
 </body>
 </html>

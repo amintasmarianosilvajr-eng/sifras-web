@@ -143,10 +143,10 @@ app.post('/executar-ordem', async (req, res) => {
     }
 });
 
-app.get('/info-par', async (req, res) => {
+app.get("/info-par", async (req, res) => {
     const symbol = req.query.symbol;
     try {
-        const response = await axios.get(\https://api.binance.com/api/v3/exchangeInfo?symbol=\\);
+        const response = await axios.get(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`);
         res.json(response.data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -154,7 +154,7 @@ app.get('/info-par', async (req, res) => {
 });
 
 const PORT = 3014;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log('MOTOR LIGADO NA PORTA 3014');
-    if (typeof startBinanceWS === 'function') startBinanceWS();
+app.listen(PORT, "0.0.0.0", () => {
+    console.log("--- MOTOR LIGADO NA PORTA 3014 ---");
+    if (typeof startBinanceWS === "function") startBinanceWS();
 });

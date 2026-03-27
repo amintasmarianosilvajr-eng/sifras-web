@@ -123,23 +123,24 @@ app.post('/pnl-real', async (req, res) => {
 app.post('/executar-ordem', async (req, res) => {
     const { key, secret, symbol, side, qty, buyPercentage } = req.body;
     try {
-        const timestamp = Date.now();
+        // SINCRONIA DE HORÁRIO COM BINANCE
+        const timeRes = await axios.get('https://api.binance.com/api/v3/time');
+        const timestamp = timeRes.data.serverTime;
+        
         let query = `symbol=${symbol}&side=${side}&type=MARKET&timestamp=${timestamp}&recvWindow=10000`;
 
         if (side === 'BUY') {
-            // Se for COMPRA, primeiro pegamos o saldo em USDT para saber quanto gastar
             const accQuery = `timestamp=${timestamp}&recvWindow=10000`;
             const accSig = crypto.createHmac('sha256', secret).update(accQuery).digest('hex');
             const accRes = await axios.get(`https://api.binance.com/api/v3/account?${accQuery}&signature=${accSig}`, { headers: { 'X-MBX-APIKEY': key } });
             
             const usdtBalance = parseFloat(accRes.data.balances.find(b => b.asset === 'USDT')?.free || 0);
             const pct = buyPercentage || 100;
-            const spendAmount = (usdtBalance * (pct / 100)) * 0.99; // 1% de margem para taxas
+            const spendAmount = (usdtBalance * (pct / 100)) * 0.99; 
             
             if (spendAmount < 10) throw new Error("Saldo insuficiente (min $10 USDT)");
             query += `&quoteOrderQty=${spendAmount.toFixed(2)}`;
         } else {
-            // Se for VENDA, usamos a quantidade exata de moedas
             if (!qty) throw new Error("Quantidade de venda não informada");
             query += `&quantity=${qty}`;
         }
@@ -148,7 +149,7 @@ app.post('/executar-ordem', async (req, res) => {
         const response = await axios.post(`https://api.binance.com/api/v3/order?${query}&signature=${signature}`, null, { headers: { 'X-MBX-APIKEY': key } });
         res.json(response.data);
     } catch (e) { 
-        const errorMsg = e.response?.data?.msg || e.message;
+        const errorMsg = e.response?.data?.msg || e.message || "Erro desconhecido";
         res.status(500).json({ error: errorMsg }); 
     }
 });

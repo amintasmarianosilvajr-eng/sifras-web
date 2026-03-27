@@ -207,8 +207,19 @@ async function executeTrade(coin) {
         addLog(`✅ ORDEM EXECUTADA! ${currentTrade.symbol} sniperado com sucesso. $${res.cummulativeQuoteQty} USDT investidos.`, 'system');
         initPriceSocket(currentTrade.fullSymbol);
     } else {
-        addLog(`❌ FALHA NA ENTRADA: O motor não recebeu confirmação da ordem.`, 'error');
+        addLog(`❌ FALHA NA ENTRADA: A Binance recusou a ordem. Entrando em pausa de segurança (30s)...`, 'error');
         resetTrade();
+        
+        // Ativa Cooldown de Erro para parar a piscadeira
+        isCooldownActive = true;
+        const elCycle = document.getElementById('cycle-counter');
+        if (elCycle) elCycle.innerHTML = `<span style="color:var(--danger-neon);">ERRO</span> 00:30`;
+        
+        setTimeout(() => {
+            isCooldownActive = false;
+            if (elCycle) elCycle.textContent = `PASSO #${staircaseIndex}`;
+            addLog(`🔄 Pausa de erro concluída. Retomando escaneamento...`, 'system');
+        }, 30000);
     }
 }
 

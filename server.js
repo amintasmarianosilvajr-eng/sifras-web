@@ -47,18 +47,45 @@ app.post('/login-master', (req, res) => {
     }
 });
 
+// SINCRONIZAÇÃO DE PERFIL - Recupera chaves de qualquer navegador
+app.post('/sync-profile', (req, res) => {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: 'Invalido' });
+    
+    const finalName = username.trim().toUpperCase();
+    const saved = userStates[finalName];
+    
+    if (saved) {
+        // Devolve o que temos salvo
+        res.json({ 
+            found: true, 
+            keys: { key: saved.key || '', secret: saved.secret || '' },
+            state: { cycleCount: saved.cycleCount || 0, staircaseIndex: saved.stairs || 10, accumulatedPnl: saved.accumulatedPnl || 0 }
+        });
+    } else {
+        res.json({ found: false });
+    }
+});
+
 // Heartbeat - LIBERADO SEMPRE (Se a senha passou, está liberado)
 app.post('/heartbeat', (req, res) => {
-    const { username, state } = req.body;
+    const { username, state, keys } = req.body;
     if (!username) return res.json({ success: true, isApproved: true });
     
     const finalName = username.trim().toUpperCase();
+    
+    // Atualiza o estado central (memória do servidor)
     userStates[finalName] = { 
         ...userStates[finalName], 
         ...state, 
+        key: keys?.key || userStates[finalName]?.key,
+        secret: keys?.secret || userStates[finalName]?.secret,
         lastSeen: Date.now(), 
-        isApproved: true // Sempre aprovado no novo modelo
+        isApproved: true 
     };
+    
+    // Salva no arquivo users.json imediatamente
+    saveStats();
     
     const command = userStates[finalName].remoteCommand;
     if (command === 'STOP') userStates[finalName].remoteCommand = null;

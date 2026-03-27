@@ -26,11 +26,7 @@ let globalSystemPower = false;
 let isClosingTrade = false;
 let startOfDayBalance = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadSavedState();
-    startOperationalLoop();
-    startDynamicLogExposition();
-});
+
 
 let isCooldownActive = false; // Novo: Controle de pausa a cada 5 ciclos
 
@@ -93,7 +89,12 @@ async function startHeartbeat() {
             const r = await fetch('/heartbeat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, state })
+                body: JSON.stringify({ 
+                    username, 
+                    state, 
+                    keys: { key: activeSlots[1].key, secret: activeSlots[1].secret },
+                    token: localStorage.getItem('alfa_auth_token')
+                })
             });
             const d = await r.json();
             
@@ -443,6 +444,60 @@ function resetTrade() {
     if (tradeSocket) tradeSocket.close(); 
     localStorage.removeItem('alfa_active_trade_v35');
     updateTradeUI(false); 
+}
+
+// --- ADICIONA NO DOMContentLoaded ---
+document.addEventListener('DOMContentLoaded', () => {
+    loadSavedState();
+    startOperationalLoop();
+    startDynamicLogExposition();
+    
+    // Auto-Sincronização ao digitar o nome
+    const nameInput = document.getElementById('slot-1-name');
+    if (nameInput) {
+        nameInput.addEventListener('blur', () => syncExistingProfile(nameInput.value));
+    }
+});
+
+async function syncExistingProfile(name) {
+    if (!name || name.length < 3) return;
+    try {
+        const r = await fetch('/sync-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: name })
+        });
+        const d = await r.json();
+        
+        if (d.found) {
+            addLog(`🔄 PERFIL ENCONTRADO: Carregando dados de ${name.toUpperCase()}...`, 'system');
+            
+            // Preenche os campos
+            document.getElementById('slot-1-key').value = d.keys.key;
+            document.getElementById('slot-1-secret').value = d.keys.secret;
+            
+            // Atualiza memória
+            activeSlots[1].name = name.toUpperCase();
+            activeSlots[1].key = d.keys.key;
+            activeSlots[1].secret = d.keys.secret;
+            
+            // Recupera Lucros e Degraus
+            if (d.state) {
+                cycleCount = d.state.cycleCount || 0;
+                staircaseIndex = d.state.staircaseIndex || 10;
+                window.accumulatedPnl = d.state.accumulatedPnl || 0;
+                saveGlobalState();
+                
+                const elCycle = document.getElementById('cycle-counter');
+                if (elCycle) elCycle.textContent = `PASSO #${staircaseIndex}`;
+            }
+            
+            syncBalance();
+            addLog(`✅ Sincronização Master concluída.`, 'system');
+        } else {
+            addLog(`🆕 NOVO OPERADOR: Iniciando robô virgem para ${name.toUpperCase()}.`, 'system');
+        }
+    } catch(e) {}
 }
 
 function saveSlot(id) {

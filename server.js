@@ -26,6 +26,10 @@ const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 let globalMarket = { top30: [], allTickersMap: new Map() };
+
+app.get('/moedas-ranking', (req, res) => {
+    res.json(globalMarket.top30);
+});
 let binanceWS = null;
 
 function signRequest(params, secret) {
@@ -120,6 +124,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('MOTOR LIGADO NA PORTA: ' + PORT);
     if (typeof startBinanceWS === 'function') startBinanceWS();
 });
+
 
 
 

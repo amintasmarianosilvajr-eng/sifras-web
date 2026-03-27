@@ -84,7 +84,12 @@ app.post('/pnl-real', async (req, res) => {
         const query = `timestamp=${timestamp}&recvWindow=10000`;
         const signature = crypto.createHmac('sha256', secret).update(query).digest('hex');
         const r = await axios.get(`https://api.binance.com/api/v3/account?${query}&signature=${signature}`, { headers: { 'X-MBX-APIKEY': key } });
-        res.json({ totalUsdt: r.data.balances.reduce((acc, b) => acc + (parseFloat(b.free) + parseFloat(b.locked)), 0) }); // Simplificado para teste
+        
+        // PEGA APENAS O SALDO EM USDT (Dólar Real)
+        const usdtAsset = r.data.balances.find(b => b.asset === 'USDT');
+        const totalUsdt = parseFloat(usdtAsset?.free || 0) + parseFloat(usdtAsset?.locked || 0);
+        
+        res.json({ totalUsdt });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

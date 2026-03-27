@@ -95,7 +95,11 @@ function analyzeSniper(ranking) {
     if (targetCoin) executeTrade(targetCoin);
 }
 
+let instantBlacklist = [];
+
 async function executeTrade(coin) {
+    if (instantBlacklist.includes(coin.symbol)) return;
+
     const tp = coin.price * (1 + (CONFIG.TARGET_PROFIT / 100));
     currentTrade = { symbol: coin.symbol.replace('USDT', ''), fullSymbol: coin.symbol, buyPrice: coin.price, targetPrice: tp, qty: 0 };
     updateTradeUI(true);
@@ -123,23 +127,25 @@ async function executeTrade(coin) {
         }
     } catch (e) {
         const msg = typeof e === 'string' ? e : (e.message || "Erro");
-        addLog(`🛑 FALHA EM ${currentTrade.symbol}: ${msg}. PULANDO MOEDA...`, 'error');
+        addLog(`🛑 FALHA EM ${currentTrade.symbol}: ${msg}. MOEDA BLOQUEADA (10min). PULANDO...`, 'error');
+        
+        // ADICIONA NA LISTA NEGRA POR 10 MINUTOS
+        instantBlacklist.push(currentTrade.fullSymbol);
+        setTimeout(() => {
+            instantBlacklist = instantBlacklist.filter(s => s !== currentTrade.fullSymbol);
+        }, 600000);
+
         resetTrade();
         
-        // PULA PARA A PRÓXIMA MOEDA SE ESSA DER ERRO
+        // PULA PARA A PRÓXIMA MOEDA IMEDIATAMENTE (SEM PAUSA)
         staircaseIndex--;
-        if (staircaseIndex < 1) staircaseIndex = 10;
+        if (staircaseIndex < 1) staircaseIndex = 1; 
         const elCycle = document.getElementById('cycle-counter');
         if (elCycle) elCycle.textContent = `PASSO #${staircaseIndex}`;
-        
-        startSafetyCooldown();
     }
 }
 
-function startSafetyCooldown() {
-    isCooldownActive = true;
-    setTimeout(() => isCooldownActive = false, 10000); // 10s de calma
-}
+
 
 function addLog(msg, type = 'system') {
     if (msg === lastLogMsg && type === 'error') return;

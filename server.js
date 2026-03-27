@@ -1,16 +1,16 @@
-﻿const express = require('express');
-const cors = require('cors');
+const express = require('express');
+const cors = require('cors');    
 const crypto = require('crypto');
-const axios = require('axios');
-const WebSocket = require('ws');
-const fs = require('fs');
-const path = require('path');
+const axios = require('axios');  
+const WebSocket = require('ws'); 
+const fs = require('fs');        
+const path = require('path');    
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Servir arquivos estÃ¡ticos
+// Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, './')));
 
 app.get('/operacional', (req, res) => {
@@ -30,21 +30,20 @@ let globalMarket = { top30: [], allTickersMap: new Map() };
 app.get('/moedas-ranking', (req, res) => {
     res.json(globalMarket.top30);
 });
-let binanceWS = null;
 
 function signRequest(params, secret) {
     return crypto.createHmac('sha256', secret).update(params).digest('hex');
 }
 
 function startBinanceWS() {
-    const WebSocket = require("ws");
+    console.log("Iniciando WebSocket Binance...");
     const ws = new WebSocket("wss://stream.binance.com:9443/ws/!ticker@arr");
-    
+
     ws.on("message", (data) => {
         try {
             const tickers = JSON.parse(data);
             if (!Array.isArray(tickers)) return;
-            
+
             const list = tickers
                 .filter(t => t.s.endsWith("USDT") && parseFloat(t.q) > 1000000)
                 .map(t => ({
@@ -54,20 +53,30 @@ function startBinanceWS() {
                 }))
                 .sort((a, b) => b.vol - a.vol)
                 .slice(0, 30);
-            
+
             if (list.length > 0) globalMarket.top30 = list;
-        } catch (e) {}
+        } catch (e) {
+            console.error("Erro no processamento do WebSocket:", e.message);
+        }
     });
 
-    ws.on("error", () => {
+    ws.on("error", (err) => {
+        console.error("Erro no WebSocket:", err.message);
         setTimeout(startBinanceWS, 5000);
     });
 
     ws.on("close", () => {
+        console.log("WebSocket fechado, reconectando...");
         setTimeout(startBinanceWS, 5000);
     });
 }
 
+app.post('/ordem', async (req, res) => {
+    const { key, secret, symbol, side, qty } = req.body;
+    const timestamp = Date.now();
+    let params = { symbol, side, type: 'MARKET', timestamp, recvWindow: 10000 };
+
+    try {
         if (side === 'BUY') {
             const qAcc = `timestamp=${timestamp}&recvWindow=10000`;
             const sAcc = signRequest(qAcc, secret);
@@ -76,10 +85,9 @@ function startBinanceWS() {
             });
             const usdt = aRes.data.balances.find(b => b.asset === 'USDT');
             const free = parseFloat(usdt ? usdt.free : 0);
-            
+
             if (free < 10) throw new Error(`Saldo USDT Insuficiente ($${free.toFixed(2)})`);
 
-            // BUSCAR INFO DE PRECISÃƒO (FILTROS)
             const iRes = await axios.get(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`);
             const filters = iRes.data.symbols[0].filters;
             const lSize = filters.find(f => f.filterType === 'LOT_SIZE');
@@ -97,7 +105,6 @@ function startBinanceWS() {
         const signature = signRequest(queryString, secret);
         const finalUrl = `https://api.binance.com/api/v3/order?${queryString}&signature=${signature}`;
 
-        // Executa a ordem enviando 'null' como body (correÃ§Ã£o do bug dos 8 parÃ¢metros)
         const response = await axios.post(finalUrl, null, {
             headers: { 'X-MBX-APIKEY': key }
         });
@@ -124,11 +131,3 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('MOTOR LIGADO NA PORTA: ' + PORT);
     if (typeof startBinanceWS === 'function') startBinanceWS();
 });
-
-
-
-
-
-
-
-

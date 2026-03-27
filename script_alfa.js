@@ -439,14 +439,34 @@ function resetTrade() {
 
 function saveSlot(id) {
     const s = { 
-        name: document.getElementById('slot-1-name').value, 
-        key: document.getElementById('slot-1-key').value, 
-        secret: document.getElementById('slot-1-secret').value,
+        name: document.getElementById('slot-1-name').value.trim(), 
+        key: document.getElementById('slot-1-key').value.trim(), 
+        secret: document.getElementById('slot-1-secret').value.trim(),
         buyPercentage: activeSlots[1].buyPercentage || 100
     };
+    
+    if (!s.name) {
+        alert("Por favor, preencha a Identificação do Operador.");
+        return;
+    }
+    
     activeSlots[1] = { ...activeSlots[1], ...s };
     localStorage.setItem('alfa_slot_1', JSON.stringify(s));
     addLog(`Configurações salvas.`, 'system');
+    
+    // REGISTRA NO SERVIDOR para que o Admin veja o cliente
+    fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: s.name, email: s.name + '@cliente', experience: 'auto', whatsapp: 'N/A' })
+    }).then(() => {
+        addLog(`[SISTEMA] Aguardando acionamento master...`, 'system');
+    }).catch(() => {});
+    
+    // MOSTRA O OVERLAY DE ESPERA (agora o heartbeat já tem o nome correto)
+    const overlay = document.getElementById('approval-overlay');
+    if (overlay) overlay.classList.add('show');
+    
     syncBalance();
 }
 
@@ -548,6 +568,12 @@ function loadSavedState() {
              if (b.innerText === `${pct}%`) b.classList.add('active');
              else b.classList.remove('active');
         });
+
+        // Se temos um nome salvo, mostra o overlay até o heartbeat confirmar aprovação
+        if (activeSlots[1].name) {
+            const overlay = document.getElementById('approval-overlay');
+            if (overlay) overlay.classList.add('show');
+        }
 
         // Se temos chaves, podemos sincronizar o saldo mesmo antes do Master Power
         syncBalance(); 

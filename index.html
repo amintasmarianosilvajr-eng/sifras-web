@@ -34,34 +34,11 @@
     </div>
 
     <script>
+        // ACESSO DIRETO SEM SENHA
+        window.location.href = '/operacional';
+        
         async function handleLogin() {
-            const pass = document.getElementById('master-pass').value;
-            if(!pass) return alert("DIGITE A SENHA");
-
-            const btn = document.getElementById('btn-submit');
-            btn.textContent = "VALIDANDO...";
-            btn.disabled = true;
-
-            try {
-                const r = await fetch('/login-master', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: pass })
-                });
-                
-                if (r.ok) {
-                    localStorage.setItem('alfa_auth', 'MASTER');
-                    localStorage.setItem('alfa_pending_name', 'OPERADOR MASTER');
-                    window.location.href = '/operacional';
-                } else {
-                    alert("🛑 SENHA INCORRETA");
-                }
-            } catch (e) {
-                alert("FALHA NA CONEXÃO");
-            } finally {
-                btn.textContent = "LIBERAR ACESSO";
-                btn.disabled = false;
-            }
+            window.location.href = '/operacional';
         }
     </script>
 </body>

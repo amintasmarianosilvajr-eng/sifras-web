@@ -3,159 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLUXO ALFA | Protocolo Sniper Elite</title>
+    <title>ALFA SNIPER | ACESSO MASTER</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary: #00F5FF;
-            --secondary: #90C23A;
-            --bg-dark: #020408;
-            --card-bg: rgba(13, 17, 23, 0.8);
-        }
-        body {
-            background-color: var(--bg-dark);
-            color: white;
-            font-family: 'Inter', sans-serif;
-            background-image: radial-gradient(circle at 50% -20%, rgba(0, 245, 255, 0.15) 0%, transparent 50%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            overflow-x: hidden;
-        }
-        .glass-card {
-            background: var(--card-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 50px rgba(0, 245, 255, 0.05);
-        }
-        .neon-text { text-shadow: 0 0 15px var(--primary); }
-        .btn-gradient {
-            background: linear-gradient(135deg, var(--primary) 0%, #0099ff 100%);
-            box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .btn-gradient:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 40px rgba(0, 245, 255, 0.5);
-            filter: brightness(1.1);
-        }
-        input {
-            background: rgba(0, 0, 0, 0.3) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            transition: all 0.3s;
-        }
-        input:focus {
-            border-color: var(--primary) !important;
-            box-shadow: 0 0 15px rgba(0, 245, 255, 0.1) !important;
-            outline: none;
-        }
+        body { background: #020408; font-family: 'Inter', sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .glow { box-shadow: 0 0 50px rgba(0, 245, 255, 0.2); }
     </style>
 </head>
 <body>
-
-    <div class="max-w-md w-full glass-card rounded-[32px] p-8 md:p-12 relative overflow-hidden">
-        <!-- Logo/Header -->
+    <div class="w-full max-w-[420px] bg-[#0d1117]/80 backdrop-blur-2xl border border-white/10 rounded-[40px] p-10 glow mx-4">
         <div class="text-center mb-10">
-            <div class="inline-block p-4 bg-white/5 rounded-2xl mb-6">
-                <img src="logo.png" alt="Fluxo Alfa" class="h-20 w-auto">
-            </div>
-            <h1 class="font-['Outfit'] text-4xl font-extrabold tracking-tighter uppercase leading-none">
-                Protocolo <span class="text-[#00F5FF]">Ferrari</span>
-            </h1>
-            <p class="text-slate-400 text-xs mt-3 font-bold tracking-[0.2em] uppercase">SNIPER ELITE v3.5</p>
+            <img src="https://static.wixstatic.com/media/067451_2a61f3647f154379965158671404c0cb~mv2.png" class="h-20 mx-auto drop-shadow-[0_0_15px_#00F5FF]">
+            <h1 class="text-3xl font-black mt-4 tracking-tighter text-white">PROTOCOLO <span class="text-[#00F5FF]">FERRARI</span></h1>
         </div>
 
-        <div id="registration-form">
+        <div id="login-form" class="space-y-6">
             <div class="space-y-4">
-                <div>
-                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nome Completo</label>
-                    <input type="text" id="reg-name" placeholder="Seu Nome Completo" 
-                        class="w-full px-5 py-3.5 rounded-xl text-sm font-bold placeholder:text-slate-600 text-white">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">E-mail (Somente Gmail)</label>
-                    <input type="email" id="reg-email" placeholder="exemplo@gmail.com" 
-                        class="w-full px-5 py-3.5 rounded-xl text-sm font-bold placeholder:text-slate-600 text-white">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Experiência como Investidor</label>
-                    <select id="reg-experience" class="w-full px-5 py-3.5 rounded-xl text-sm font-bold text-white bg-[rgba(0,0,0,0.3)] border border-[rgba(255,255,255,0.1)] outline-none focus:border-[#00F5FF]">
-                        <option value="" disabled selected>Selecione seu nível...</option>
-                        <option value="ALTA PERFORMANCE">ALTA PERFORMANCE</option>
-                        <option value="MEDIA PERFORMANCE">MÉDIA PERFORMANCE</option>
-                        <option value="BAIXA PERFORMANCE">BAIXA PERFORMANCE (SEM EXPERIÊNCIA)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">WhatsApp</label>
-                    <input type="text" id="reg-whatsapp" placeholder="+55 (31) 9700-4567" 
-                        class="w-full px-5 py-3.5 rounded-xl text-sm font-bold placeholder:text-slate-600 text-white">
-                </div>
-                <div class="pt-2">
-                    <button onclick="handleRegistration()" id="btn-submit" 
-                        class="w-full py-4 rounded-2xl text-black font-black uppercase tracking-tighter text-base btn-gradient">
-                        Confirmar e Solicitar Acesso
-                    </button>
-                </div>
+                <label class="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] block text-center">Criptografia de Acesso Master</label>
+                <input type="password" id="master-pass" placeholder="••••••••" 
+                    class="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-5 text-white placeholder-zinc-800 outline-none focus:border-[#00F5FF]/40 focus:bg-black/60 transition-all text-center text-3xl tracking-[0.4em] font-black">
+                
+                <button id="btn-submit" onclick="handleLogin()" 
+                    class="w-full bg-[#00F5FF] text-black font-black uppercase py-5 rounded-2xl tracking-[0.2em] shadow-[0_0_30px_rgba(0,245,255,0.3)] hover:scale-[1.02] active:scale-95 transition-all">
+                    LIBERAR ACESSO
+                </button>
             </div>
-            <p class="text-center text-[9px] text-slate-600 mt-6 font-bold uppercase tracking-widest">
-                Envio Seguro para o Sistema Central
-            </p>
-        </div>
-
-        <div id="registration-success" class="hidden text-center py-10">
-            <div class="text-5xl mb-6">🎯</div>
-            <h2 class="text-2xl font-black mb-2 uppercase">CADASTRO CONCLUÍDO</h2>
-            <p class="text-slate-400 text-sm leading-relaxed mb-6">Sua solicitação foi enviada "invisivelmente" ao sistema da mesa proprietária. Aguarde a liberação administrativa.</p>
-            <button onclick="location.href='/operacional'" class="px-8 py-4 bg-white/5 border border-white/10 rounded-xl text-[#00F5FF] text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all">Ir para Dashboard</button>
+            <p class="text-center text-[9px] text-zinc-600 font-bold uppercase tracking-widest mt-8">SNIPER ELITE v3.5 - MASTER READY</p>
         </div>
     </div>
 
     <script>
-        async function handleRegistration() {
-            const name = document.getElementById('reg-name').value;
-            const email = document.getElementById('reg-email').value;
-            const experience = document.getElementById('reg-experience').value;
-            const whatsapp = document.getElementById('reg-whatsapp').value;
-
-            // Validação de Preenchimento
-            if(!name || !email || !experience || !whatsapp) {
-                alert("❗️ ATENÇÃO: Todos os campos são obrigatórios!");
-                return;
-            }
-
-            // Validação de Gmail
-            if(!email.toLowerCase().endsWith("@gmail.com")) {
-                alert("❗️ ERRO: Por favor, utilize um e-mail GMAIL válido.");
-                return;
-            }
+        async function handleLogin() {
+            const pass = document.getElementById('master-pass').value;
+            if(!pass) return alert("DIGITE A SENHA");
 
             const btn = document.getElementById('btn-submit');
-            btn.textContent = "ENVIANDO AO SISTEMA...";
+            btn.textContent = "VALIDANDO...";
             btn.disabled = true;
 
             try {
-                const r = await fetch('/register', {
+                const r = await fetch('/login-master', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, experience, whatsapp })
+                    body: JSON.stringify({ password: pass })
                 });
                 
                 if (r.ok) {
-                    document.getElementById('registration-form').classList.add('hidden');
-                    document.getElementById('registration-success').classList.remove('hidden');
-                    localStorage.setItem('alfa_pending_name', name);
+                    localStorage.setItem('alfa_auth', 'MASTER');
+                    localStorage.setItem('alfa_pending_name', 'OPERADOR MASTER');
+                    window.location.href = '/operacional';
                 } else {
-                    const d = await r.json();
-                    alert("Erro no servidor: " + (d.error || "Tente novamente"));
+                    alert("🛑 SENHA INCORRETA");
                 }
             } catch (e) {
-                alert("Falha na conexão com o terminal master.");
+                alert("FALHA NA CONEXÃO");
             } finally {
-                btn.textContent = "Confirmar e Solicitar Acesso";
+                btn.textContent = "LIBERAR ACESSO";
                 btn.disabled = false;
             }
         }

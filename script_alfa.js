@@ -99,6 +99,14 @@ async function startHeartbeat() {
             
             updateApprovalUI(d.isApproved);
 
+            // Se o servidor diz que não estamos registrados (foi deletado/resetado)
+            if (d.notRegistered) {
+                console.warn("⚠️ ACESSO REVOGADO: Usuário não encontrado no servidor.");
+                localStorage.clear(); // Limpa TUDO: chaves, nome, estado
+                window.location.href = '/'; // Volta para a tela de registro/login
+                return;
+            }
+
             if (d.command === 'STOP' && globalSystemPower) {
                 addLog(`⚠️ COMANDO REMOTO: Parada solicitada via Admin.`, 'error');
                 if (currentTrade) {
@@ -459,13 +467,22 @@ function saveSlot(id) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: s.name, email: s.name + '@cliente', experience: 'auto', whatsapp: 'N/A' })
-    }).then(() => {
-        addLog(`[SISTEMA] Aguardando acionamento master...`, 'system');
-    }).catch(() => {});
-    
-    // MOSTRA O OVERLAY DE ESPERA (agora o heartbeat já tem o nome correto)
-    const overlay = document.getElementById('approval-overlay');
-    if (overlay) overlay.classList.add('show');
+    }).then(r => r.json()).then(data => {
+        // Se já foi aprovado, NÃO mostra overlay — vai direto
+        if (data.alreadyApproved) {
+            addLog(`✅ Chaves autorizadas. Sistema liberado.`, 'system');
+            const overlay = document.getElementById('approval-overlay');
+            if (overlay) overlay.classList.remove('show');
+        } else {
+            addLog(`[SISTEMA] Aguardando liberação do administrador...`, 'system');
+            const overlay = document.getElementById('approval-overlay');
+            if (overlay) overlay.classList.add('show');
+        }
+    }).catch(() => {
+        // Em caso de erro de rede, mostra overlay por segurança
+        const overlay = document.getElementById('approval-overlay');
+        if (overlay) overlay.classList.add('show');
+    });
     
     syncBalance();
 }
@@ -569,10 +586,25 @@ function loadSavedState() {
              else b.classList.remove('active');
         });
 
-        // Se temos um nome salvo, mostra o overlay até o heartbeat confirmar aprovação
+        // Se temos um nome salvo, verifica aprovação IMEDIATAMENTE via heartbeat inline
+        // Em vez de forçar overlay e esperar 3s pelo heartbeat normal
         if (activeSlots[1].name) {
             const overlay = document.getElementById('approval-overlay');
-            if (overlay) overlay.classList.add('show');
+            // Faz um heartbeat instantâneo para saber se já está aprovado
+            fetch('/heartbeat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: activeSlots[1].name, state: { status: 'OFFLINE' } })
+            }).then(r => r.json()).then(d => {
+                if (d.isApproved === true) {
+                    if (overlay) overlay.classList.remove('show');
+                } else {
+                    if (overlay) overlay.classList.add('show');
+                }
+            }).catch(() => {
+                // Em caso de erro de rede, mostra overlay por segurança
+                if (overlay) overlay.classList.add('show');
+            });
         }
 
         // Se temos chaves, podemos sincronizar o saldo mesmo antes do Master Power

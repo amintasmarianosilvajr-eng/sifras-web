@@ -46,7 +46,7 @@ function startBinanceWS() {
                 vol: parseFloat(t.P),
                 quoteVol: parseFloat(t.q)
             }))
-            .filter(t => t.quoteVol > 1000000)
+            .filter(t => t.quoteVol > 100000)
             .filter(t => !['USDC','FDUSD','TUSD','EUR','TRY','BRL','DAI','PAXG'].some(s => t.symbol.includes(s)))
             .sort((a,b) => b.vol - a.vol);
 
@@ -158,3 +158,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('MOTOR LIGADO NA PORTA: ' + PORT);
     if (typeof startBinanceWS === 'function') startBinanceWS();
 });
+

@@ -51,12 +51,11 @@
 
             <div class="header-right">
                 <button id="master-toggle-btn" onclick="masterToggle()" class="btn-master">CONECTAR MASTER</button>
-                <button onclick="location.href='/'" class="btn-panic" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; margin-left:10px;">SAIR</button>
+                <button onclick="location.href='/'" class="btn-panic" style="margin-left:10px;">PANIC STOP</button>
             </div>
         </header>
 
         <main class="app-grid">
-            <!-- Coluna Esquerda: Monitor Operacional -->
             <section class="ops-section grid-span-8">
                 <div class="section-card ops-monitor">
                     <div class="card-header">
@@ -79,7 +78,7 @@
                                 <span id="monitoring-current-price" class="mon-value">---</span>
                             </div>
                             <div class="mon-item">
-                                <span class="mon-label">ALVO (0.8%)</span>
+                                <span class="mon-label">ALVO (0.7%)</span>
                                 <span id="monitoring-target-price" class="mon-value" style="color:var(--primary-neon);">---</span>
                             </div>
                         </div>
@@ -105,13 +104,10 @@
                     <div class="card-header">
                         <h2>LOG DINÂMICO (FEEDBACK 5S)</h2>
                     </div>
-                    <div id="log-monitor" class="log-entries">
-                        <!-- Logs aqui -->
-                    </div>
+                    <div id="log-monitor" class="log-entries"></div>
                 </div>
             </section>
 
-            <!-- Coluna Direita: Painel de Controle e Balanço -->
             <aside class="side-section grid-span-4">
                 <div class="section-card account-cabinet">
                     <div class="cabinet-header">
@@ -120,8 +116,8 @@
                     </div>
                     <div class="cabinet-body">
                         <span class="label">SALDO ESTIMADO</span>
-                        <div id="cabinet-total-balance" class="big-balance">$ 0.00 <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span></div>
-                        <div id="cabinet-realtime-pnl" class="mini-pnl">PNL HOJE: <span style="color:var(--text-muted);">AGUARDANDO...</span></div>
+                        <div id="cabinet-total-balance" class="big-balance">$ 0,00 <span style="font-size:1.5rem; color:#888;">USDT</span></div>
+                        <div id="cabinet-realtime-pnl" class="mini-pnl">PNL HOJE: <span style="color:var(--primary-neon);">+0.00%</span></div>
                     </div>
                 </div>
 
@@ -136,11 +132,11 @@
                         </div>
                         <div class="form-group">
                             <label>BINANCE API KEY</label>
-                            <input type="password" id="slot-1-key" placeholder="••••••••••••••••" class="input-alfa">
+                            <input type="password" id="slot-1-key" placeholder="API Key" class="input-alfa">
                         </div>
                         <div class="form-group">
                             <label>BINANCE SECRET KEY</label>
-                            <input type="password" id="slot-1-secret" placeholder="••••••••••••••••" class="input-alfa">
+                            <input type="password" id="slot-1-secret" placeholder="Secret Key" class="input-alfa">
                         </div>
                         <button onclick="saveSlot()" class="btn-primary">AUTORIZAR CHAVES</button>
                     </div>
@@ -150,15 +146,13 @@
                     <div class="card-header">
                         <h2>RADAR DE VOLATILIDADE (SCANNER)</h2>
                     </div>
-                    <div id="dynamic-targets-grid" class="radar-grid">
-                        <!-- Ranking Aqui -->
-                    </div>
+                    <div id="dynamic-targets-grid" class="radar-grid"></div>
                 </div>
             </aside>
         </main>
     </div>
 
-    <!-- SCRIPT MASTER CONSOLIDADO (SEM CACHE) -->
+    <!-- SCRIPT DEFINITIVO -->
     <script src="alfa_sniper_master.js"></script>
 </body>
 </html>

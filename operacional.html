@@ -4,155 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FLUXO ALFA v3.5 | FERRARI SNIPER</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style_alfa.css">
 </head>
 <body>
     <div id="profit-overlay" class="profit-overlay">
         <div class="profit-card">
+            <img src="logo.png" alt="Fluxo Alfa" class="overlay-logo">
             <h2 style="font-family:'Outfit'; font-size:3rem; color:#fff; margin-bottom:10px;">META ALCANÇADA!</h2>
             <p style="color:var(--accent-green); font-weight:800; font-size:1.2rem; text-transform:uppercase; letter-spacing:2px;">Sniper Finalizado com Sucesso.</p>
         </div>
     </div>
 
-    <div class="app-container">
-        <!-- Header Ferrari -->
-        <header class="main-header">
-            <div class="header-left">
-                <div class="brand-box">
-                    <img src="https://static.wixstatic.com/media/067451_2a61f3647f154379965158671404c0cb~mv2.png" alt="Fluxo Alfa" class="main-logo">
-                    <div class="brand-text">
-                        <h1>FLUXO ALFA <span>v3.5</span></h1>
-                        <p>BINANCE HUB REALT-TIME</p>
-                    </div>
-                </div>
+    <!-- Header Ferrari -->
+    <header class="top-header">
+        <div class="brand">
+            <img src="logo.png" alt="Fluxo Alfa" class="logo">
+            <div>
+                <h1>FLUXO ALFA <span class="badge-real">v3.5 SIFRAS</span></h1>
+                <p style="font-size:0.6rem; color:var(--text-muted); font-weight:800; letter-spacing:1px;">BINANCE HUB REAL-TIME</p>
             </div>
+        </div>
 
-            <div class="header-center">
-                <div class="metric-card">
-                    <span class="metric-label">PNL HOJE (SESSÃO)</span>
-                    <span id="header-realtime-pnl" class="metric-value waiting">AGUARDANDO...</span>
-                </div>
-                <div class="metric-card mobile-hide">
-                    <span class="metric-label">REALIZADO BRL</span>
-                    <span id="header-brl-pnl" class="metric-value">R$ 0,00</span>
-                </div>
-                <div class="metric-card mobile-hide">
-                    <span class="metric-label">DEGRAU</span>
-                    <span id="cycle-counter" class="metric-value" style="color:var(--primary-neon);">PASSO #10</span>
-                </div>
-                <div class="metric-card mobile-hide">
-                    <span class="metric-label">LATÊNCIA GLOBAL</span>
-                    <span id="header-latency" class="metric-value" style="font-size:0.8rem; color:var(--text-muted);">--- ms</span>
-                </div>
+        <div class="header-performance">
+            <div class="perf-item">
+                <span class="label">PNL HOJE (SESSÃO)</span>
+                <span id="header-realtime-pnl" class="value waiting">AGUARDANDO...</span>
             </div>
-
-            <div class="header-right">
-                <button id="master-toggle-btn" onclick="masterToggle()" class="btn-master">CONECTAR MASTER</button>
-                <button onclick="location.href='/'" class="btn-panic" style="margin-left:10px;">PANIC STOP</button>
+            <div class="perf-item mobile-hide">
+                <span class="label">RECURSO DISPONÍVEL</span>
+                <span id="cabinet-total-balance" class="value">$ 0.00</span>
             </div>
-        </header>
+            <div class="perf-item">
+                <span class="label">ESTÁGIO</span>
+                <span id="cycle-counter" class="value cycle">PASSO #10</span>
+            </div>
+            <div class="perf-item">
+                <button id="master-toggle-btn" onclick="masterToggle()" class="btn-connect">CONECTAR MASTER</button>
+            </div>
+        </div>
+    </header>
 
-        <main class="app-grid">
-            <section class="ops-section grid-span-8">
-                <div class="section-card ops-monitor">
-                    <div class="card-header">
-                        <h2>MONITOR OPERACIONAL ATIVO</h2>
-                        <span id="system-status-pill" class="status-pill offline">OFFLINE</span>
-                    </div>
+    <main class="dashboard-grid">
+        <!-- Coluna Esquerda -->
+        <div class="left-col">
+            <section class="card monitor-card">
+                <div class="card-header">
+                    <h2 style="font-family:'Outfit'; font-size:1.2rem;">MONITOR OPERACIONAL</h2>
+                    <span id="system-status-pill" class="status-pill" style="color:var(--text-muted);">OFFLINE</span>
+                </div>
 
-                    <div id="active-trade-container" class="trade-monitor hidden">
-                        <div class="monitoring-grid">
-                            <div class="mon-item">
-                                <span class="mon-label">ATIVO</span>
-                                <span id="monitoring-symbol" class="mon-value">---</span>
-                            </div>
-                            <div class="mon-item">
-                                <span class="mon-label">PREÇO ENTRADA</span>
-                                <span id="monitoring-buy-price" class="mon-value">---</span>
-                            </div>
-                            <div class="mon-item">
-                                <span class="mon-label">PREÇO ATUAL</span>
-                                <span id="monitoring-current-price" class="mon-value">---</span>
-                            </div>
-                            <div class="mon-item">
-                                <span class="mon-label">ALVO (0.7%)</span>
-                                <span id="monitoring-target-price" class="mon-value" style="color:var(--primary-neon);">---</span>
-                            </div>
-                        </div>
+                <!-- Estado: Sem Trade -->
+                <div id="no-trade-msg" class="empty-msg">
+                    <p>AGUARDANDO SINAL DO SCANNER #3...</p>
+                </div>
 
-                        <div class="pnl-visual-box">
-                            <div class="pnl-header">
-                                <span id="monitoring-pl" class="pnl-pct">+0.00%</span>
-                                <span id="monitoring-pnl-usdt" class="pnl-usdt">($0.00)</span>
-                            </div>
-                            <div class="pnl-progress-bar">
-                                <div id="trade-progress-fill" class="pnl-fill"></div>
-                            </div>
+                <!-- Estado: Em Trade -->
+                <div id="active-trade-container" class="active-trade-view hidden">
+                    <div class="trade-main-info">
+                        <div id="monitoring-symbol">---</div>
+                        <div class="pnl-group">
+                            <span id="monitoring-pl" class="pnl-pct">+0.00%</span>
+                            <span id="monitoring-pnl-usdt" class="pnl-cash">$ 0.00</span>
                         </div>
                     </div>
 
-                    <div id="no-trade-msg" class="empty-state">
-                        <div class="spinning-loader"></div>
-                        <p>AGUARDANDO SINAL DO MONITOR #3...</p>
+                    <div class="trade-metrics">
+                        <div class="m-item">
+                            <span class="m-label">ENTRADA</span>
+                            <span id="monitoring-buy-price" class="m-value">---</span>
+                        </div>
+                        <div class="m-item">
+                            <span class="m-label">PREÇO ATUAL</span>
+                            <span id="monitoring-current-price" class="m-value highlighted">---</span>
+                        </div>
+                        <div class="m-item">
+                            <span class="m-label">ALVO (0.7%)</span>
+                            <span id="monitoring-target-price" class="m-value target">---</span>
+                        </div>
+                    </div>
+
+                    <div class="progress-bar-wrap">
+                        <div id="trade-progress-fill" class="progress-fill" style="width: 0%"></div>
                     </div>
                 </div>
 
-                <div class="section-card log-monitor-box">
-                    <div class="card-header">
-                        <h2>LOG DINÂMICO (FEEDBACK 5S)</h2>
+                <div style="margin-top:40px;">
+                    <h3 style="font-size:0.7rem; color:var(--text-muted); margin-bottom:15px; font-weight:800;">LOG DE TELEMETRIA</h3>
+                    <div id="log-monitor">
+                        <!-- Logs -->
                     </div>
-                    <div id="log-monitor" class="log-entries"></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Coluna Direita -->
+        <div class="right-col">
+            <section class="card" style="margin-bottom:2rem; border-top: 4px solid var(--accent-green);">
+                <div class="card-header" style="margin-bottom:15px;">
+                    <h2 style="font-size:0.9rem; font-weight:900;">RADAR DE VOLATILIDADE</h2>
+                    <span class="badge-real" style="color:var(--accent-green);">SCANNER ATIVO</span>
+                </div>
+                <div id="dynamic-targets-grid">
+                    <!-- Ranking -->
                 </div>
             </section>
 
-            <aside class="side-section grid-span-4">
-                <div class="section-card account-cabinet">
-                    <div class="cabinet-header">
-                        <span class="cabinet-title">GABINETE BINANCE (FUNDO REAL)</span>
-                        <div class="live-signal">LIVE</div>
-                    </div>
-                    <div class="cabinet-body">
-                        <span class="label">SALDO ESTIMADO</span>
-                        <div id="cabinet-total-balance" class="big-balance">$ 0,00 <span style="font-size:1.5rem; color:#888;">USDT</span></div>
-                        <div id="cabinet-realtime-pnl" class="mini-pnl">PNL HOJE: <span style="color:var(--primary-neon);">+0.00%</span></div>
-                    </div>
+            <section class="card settings-box">
+                <div class="card-header" style="margin-bottom:20px;">
+                    <h2 style="font-size:0.9rem; font-weight:900;">CONFIGURAÇÃO MASTER</h2>
                 </div>
-
-                <div class="section-card settings-card">
-                    <div class="card-header">
-                        <h2>TERMINAL DE CONFIGURAÇÃO</h2>
+                <div style="display:grid; gap:15px;">
+                    <div class="input-group">
+                        <label>OPERADOR</label>
+                        <input type="text" id="slot-1-name" placeholder="Nome">
                     </div>
-                    <div class="settings-form">
-                        <div class="form-group">
-                            <label>IDENTIFICAÇÃO DO OPERADOR</label>
-                            <input type="text" id="slot-1-name" placeholder="Assinatura Master" class="input-alfa">
-                        </div>
-                        <div class="form-group">
-                            <label>BINANCE API KEY</label>
-                            <input type="password" id="slot-1-key" placeholder="API Key" class="input-alfa">
-                        </div>
-                        <div class="form-group">
-                            <label>BINANCE SECRET KEY</label>
-                            <input type="password" id="slot-1-secret" placeholder="Secret Key" class="input-alfa">
-                        </div>
-                        <button onclick="saveSlot()" class="btn-primary">AUTORIZAR CHAVES</button>
+                    <div class="input-group">
+                        <label>BINANCE KEY</label>
+                        <input type="password" id="slot-1-key" placeholder="API Key">
                     </div>
-                </div>
-
-                <div class="section-card volatility-radar">
-                    <div class="card-header">
-                        <h2>RADAR DE VOLATILIDADE (SCANNER)</h2>
+                    <div class="input-group">
+                        <label>BINANCE SECRET</label>
+                        <input type="password" id="slot-1-secret" placeholder="Secret Key">
                     </div>
-                    <div id="dynamic-targets-grid" class="radar-grid"></div>
+                    <button onclick="saveSlot()" class="btn-save">AUTORIZAR CHAVES</button>
+                    <button onclick="location.href='/'" class="btn-connect" style="border-color:rgba(255,255,255,0.1); color:rgba(255,255,255,0.4); margin-top:10px;">SAIR DO SISTEMA</button>
                 </div>
             </aside>
-        </main>
-    </div>
+        </div>
+    </main>
 
-    <!-- SCRIPT DEFINITIVO -->
     <script src="alfa_sniper_master.js"></script>
 </body>
 </html>

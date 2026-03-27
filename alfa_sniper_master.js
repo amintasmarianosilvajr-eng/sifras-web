@@ -1,5 +1,5 @@
 /**
- * SIFRAS ALFA SNIPER ELITE v3.5 - MASTER CONSOLIDADO 
+ * SIFRAS ALFA SNIPER ELITE v3.5 - FERRARI CONSOLIDADO 
  */
 
 const CONFIG = {
@@ -7,7 +7,6 @@ const CONFIG = {
     LOG_INTERVAL: 5000,   
     TARGET_PROFIT: 0.7,
     STAIRCASE_START: 10,
-    SLEEP_AFTER_N1: 1200000,
     BLACKLIST: ['SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV']
 };
 
@@ -16,7 +15,6 @@ let currentTrade = null;
 let staircaseIndex = 10;
 let globalSystemPower = false;
 let isCooldownActive = false;
-let startOfDayBalance = null;
 let tradeSocket = null;
 let lastRankingHash = "";
 let lastLogMsg = "";
@@ -76,17 +74,17 @@ function renderRanking(ranking) {
     const currentHash = ranking.slice(0, 10).map(c => c.symbol).join('|');
     if (currentHash === lastRankingHash) {
         ranking.slice(0, 10).forEach((c, i) => {
-            const el = document.querySelectorAll('.coin-vol')[i];
-            if (el) el.textContent = `${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%`;
+            const els = document.querySelectorAll('.coin-vol');
+            if (els[i]) els[i].textContent = `${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%`;
         });
         return;
     }
     lastRankingHash = currentHash;
     grid.innerHTML = ranking.slice(0, 10).map((c, i) => `
-        <div class="ranking-item">
-            <span class="rank-num">#${i + 1}</span>
-            <span class="coin-name">${c.symbol.replace('USDT', '')}</span>
-            <span class="coin-vol">${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%</span>
+        <div class="log-card" style="margin-bottom:8px; padding:10px; display:flex; justify-content:space-between; ${i === staircaseIndex - 1 ? 'border:1px solid var(--primary-neon); background:rgba(0,245,255,0.05);' : ''}">
+            <span style="font-weight:900; color:var(--text-muted);">#${i + 1}</span>
+            <span style="font-weight:800; color:#fff;">${c.symbol.replace('USDT', '')}</span>
+            <span class="coin-vol" style="font-weight:900; color:var(--accent-green);">${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%</span>
         </div>
     `).join('');
 }
@@ -111,34 +109,36 @@ async function executeTrade(coin) {
                 secret: activeSlots[1].secret, 
                 symbol: currentTrade.fullSymbol, 
                 side: 'BUY',
-                buyPercentage: activeSlots[1].buyPercentage || 100
+                buyPercentage: 100
             })
         });
         const d = await r.json();
         
         if (d.orderId) {
             currentTrade.qty = parseFloat(d.executedQty || 0);
-            addLog(`✅ COMPRA EXECUTADA EM ${currentTrade.symbol}`, 'buy_neon');
+            addLog(`✅ COMPRA EXECUTADA EM ${currentTrade.symbol}`, 'buy');
             initPriceSocket(currentTrade.fullSymbol);
         } else {
             throw new Error(d.error || "Rejeição Binance");
         }
     } catch (e) {
-        const msg = typeof e === 'string' ? e : (e.message || "Erro de Conexão");
-        addLog(`🛑 FALHA BINANCE: ${msg}. ENTRANDO EM PAUSA (60S)`, 'error');
+        const msg = typeof e === 'string' ? e : (e.message || "Erro");
+        addLog(`🛑 FALHA EM ${currentTrade.symbol}: ${msg}. PULANDO MOEDA...`, 'error');
         resetTrade();
+        
+        // PULA PARA A PRÓXIMA MOEDA SE ESSA DER ERRO
+        staircaseIndex--;
+        if (staircaseIndex < 1) staircaseIndex = 10;
+        const elCycle = document.getElementById('cycle-counter');
+        if (elCycle) elCycle.textContent = `PASSO #${staircaseIndex}`;
+        
         startSafetyCooldown();
     }
 }
 
 function startSafetyCooldown() {
     isCooldownActive = true;
-    const el = document.getElementById('cycle-counter');
-    if (el) el.innerHTML = `<span style="color:#ff0000">PAUSA</span>`;
-    setTimeout(() => {
-        isCooldownActive = false;
-        if (el) el.textContent = `PASSO #${staircaseIndex}`;
-    }, 60000);
+    setTimeout(() => isCooldownActive = false, 10000); // 10s de calma
 }
 
 function addLog(msg, type = 'system') {
@@ -159,6 +159,11 @@ function updateTradeUI(active) {
         document.getElementById('monitoring-symbol').textContent = currentTrade.symbol;
         document.getElementById('monitoring-buy-price').textContent = `$${currentTrade.buyPrice.toFixed(4)}`;
         document.getElementById('monitoring-target-price').textContent = `$${currentTrade.targetPrice.toFixed(4)}`;
+        document.getElementById('system-status-pill').textContent = 'EM TRADE';
+        document.getElementById('system-status-pill').style.color = 'var(--accent-green)';
+    } else {
+        document.getElementById('system-status-pill').textContent = globalSystemPower ? 'SCANNING' : 'OFFLINE';
+        document.getElementById('system-status-pill').style.color = globalSystemPower ? 'var(--primary-neon)' : 'var(--text-muted)';
     }
 }
 
@@ -166,7 +171,7 @@ function masterToggle() {
     globalSystemPower = !globalSystemPower;
     const btn = document.getElementById('master-toggle-btn');
     btn.textContent = globalSystemPower ? 'DESCONECTAR' : 'CONECTAR MASTER';
-    btn.style.borderColor = globalSystemPower ? '#ff4d4d' : '#00f5ff';
+    btn.classList.toggle('active', globalSystemPower);
     activeSlots[1].monitoring = globalSystemPower;
     if (globalSystemPower) syncBalance();
     updateTradeUI(false);
@@ -184,7 +189,7 @@ async function syncBalance() {
         if (d.totalUsdt) {
             window.currentBalance = d.totalUsdt;
             const el = document.getElementById('cabinet-total-balance');
-            if (el) el.innerHTML = `$ ${d.totalUsdt.toFixed(2)} <span style="font-size:1.5rem; color:#888;">USDT</span>`;
+            if (el) el.textContent = `$ ${d.totalUsdt.toFixed(2)}`;
         }
     } catch(e) {}
 }
@@ -201,8 +206,7 @@ function saveSlot() {
     const s = { 
         name: document.getElementById('slot-1-name').value.trim(), 
         key: document.getElementById('slot-1-key').value.trim(), 
-        secret: document.getElementById('slot-1-secret').value.trim(),
-        buyPercentage: 100
+        secret: document.getElementById('slot-1-secret').value.trim()
     };
     activeSlots[1] = { ...activeSlots[1], ...s };
     localStorage.setItem('alfa_slot_1', JSON.stringify(s));
@@ -237,6 +241,53 @@ async function syncExistingProfile(name) {
             activeSlots[1].key = d.keys.key;
             activeSlots[1].secret = d.keys.secret;
             syncBalance();
+        }
+    } catch(e) {}
+}
+
+function initPriceSocket(symbol) {
+    if(tradeSocket) tradeSocket.close();
+    tradeSocket = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
+    tradeSocket.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        const price = parseFloat(d.c);
+        updateTradePrice(price);
+    };
+}
+
+function updateTradePrice(price) {
+    if(!currentTrade) return;
+    document.getElementById('monitoring-current-price').textContent = `$${price.toFixed(4)}`;
+    const pl = ((price - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
+    const plEl = document.getElementById('monitoring-pl');
+    plEl.textContent = `${pl >= 0 ? '+' : ''}${pl.toFixed(2)}%`;
+    plEl.style.color = pl >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
+    
+    const progress = Math.min((pl / CONFIG.TARGET_PROFIT) * 100, 100);
+    document.getElementById('trade-progress-fill').style.width = `${Math.max(progress, 0)}%`;
+    
+    if (pl >= CONFIG.TARGET_PROFIT) executeSell();
+}
+
+async function executeSell() {
+    try {
+        const r = await fetch('/executar-ordem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                key: activeSlots[1].key, 
+                secret: activeSlots[1].secret, 
+                symbol: currentTrade.fullSymbol, 
+                side: 'SELL',
+                qty: currentTrade.qty
+            })
+        });
+        const d = await r.json();
+        if (d.orderId) {
+            addLog(`🚀 ALVO ATINGIDO! VENDA EXECUTADA EM ${currentTrade.symbol}`, 'sell');
+            resetTrade();
+            staircaseIndex--;
+            if (staircaseIndex < 1) staircaseIndex = 10;
         }
     } catch(e) {}
 }

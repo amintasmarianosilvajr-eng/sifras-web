@@ -194,11 +194,13 @@ function analyzeAlfa(ranking) {
 
 function updateChronometry() {
     // 1. Ciclo de Sincronia (10s)
-    if (!currentTrade && !isClosingTrade && activeSlots[1].monitoring) {
-        syncCountdown--;
-        if (syncCountdown < 0) {
-            syncCountdown = 10;
-            fetchRanking(); 
+    if (activeSlots[1].monitoring) {
+        if (!isClosingTrade && !isOpeningTrade) {
+            syncCountdown--;
+            if (syncCountdown < 0) {
+                syncCountdown = 10;
+                fetchRanking(); 
+            }
         }
     } else {
         syncCountdown = 10; 

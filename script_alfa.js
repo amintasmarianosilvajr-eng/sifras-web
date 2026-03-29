@@ -23,6 +23,7 @@ let currentBalance = 0;
 let sessionProfitUsdt = 0; // Lucro acumulado na sessão
 let sessionStartBalance = 0; 
 let isClosingTrade = false;
+let isOpeningTrade = false;
 let tradeStartTime = null;
 let previousRanking = null; // Memória para cálculo de aceleração
 let globalCurrentPrice = 0; // Armazena preço do ticker para o painel admin
@@ -94,7 +95,7 @@ async function syncBalance() {
             await pushStateToServer();
         }
 
-        if (data.activeAssetQty !== undefined && currentTrade && !isClosingTrade) {
+        if (data.activeAssetQty !== undefined && currentTrade && !isClosingTrade && !isOpeningTrade) {
             // Se o valor retido do ativo for menor que ~1 dólar (resíduo), significa que o usuário vendeu manualmente
             if ((data.activeAssetQty * currentTrade.buyPrice) < 1) {
                  addLog(`VENDA MANUAL DETECTADA NA BINANCE. Encerrando monitoramento de ${currentTrade.symbol}.`, 'system');
@@ -233,8 +234,9 @@ function updateChronometry() {
 // --- TRADING OPERACIONAL ---
 
 async function executeTrade(coin) {
-    if (currentTrade || !activeSlots[1].key) return;
+    if (currentTrade || !activeSlots[1].key || isOpeningTrade) return;
     
+    isOpeningTrade = true;
     currentTrade = { ...coin, buyPrice: coin.price };
     tradeStartTime = Date.now();
     
@@ -286,6 +288,8 @@ async function executeTrade(coin) {
         addLog(`Buy Error: ${e.message}`, 'system');
         currentTrade = null;
         tradeStartTime = null;
+    } finally {
+        isOpeningTrade = false;
     }
 }
 

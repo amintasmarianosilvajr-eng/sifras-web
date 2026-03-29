@@ -97,6 +97,19 @@ class BinanceService {
         return parseFloat(usdt ? usdt.free : 0) + parseFloat(usdt ? usdt.locked : 0);
     }
 
+    async getAssetBalance(key, secret, asset) {
+        try {
+            const timestamp = Date.now();
+            const query = `timestamp=${timestamp}&recvWindow=10000`;
+            const signature = crypto.createHmac('sha256', secret).update(query).digest('hex');
+            const r = await axios.get(`https://api.binance.com/api/v3/account?${query}&signature=${signature}`, {
+                headers: { 'X-MBX-APIKEY': key }
+            });
+            const bal = r.data.balances.find(b => b.asset === asset);
+            return parseFloat(bal ? bal.free : 0) + parseFloat(bal ? bal.locked : 0);
+        } catch(e) { return 0; }
+    }
+
     async executeOrder(key, secret, symbol, side, qty) {
         const timestamp = Date.now();
         let params = { symbol, side, type: 'MARKET', timestamp, recvWindow: 10000 };

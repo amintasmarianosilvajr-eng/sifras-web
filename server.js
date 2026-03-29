@@ -127,9 +127,16 @@ app.post('/save-alfa-state', async (req, res, next) => {
 
 app.post('/pnl-real', async (req, res, next) => {
     try {
-        const { key, secret } = req.body;
+        const { key, secret, activeSymbol } = req.body;
         const totalUsdt = await binance.getBalance(key, secret);
-        res.json({ totalUsdt });
+        
+        let activeAssetQty = 0;
+        if (activeSymbol) {
+             const baseAsset = activeSymbol.replace('USDT', '');
+             activeAssetQty = await binance.getAssetBalance(key, secret, baseAsset);
+        }
+        
+        res.json({ totalUsdt, activeAssetQty });
     } catch (e) { next(e); }
 });
 

@@ -55,7 +55,11 @@ async function syncBalance() {
         const res = await fetch('/pnl-real', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: slot.key, secret: slot.secret })
+            body: JSON.stringify({ 
+                key: slot.key, 
+                secret: slot.secret,
+                activeSymbol: currentTrade ? currentTrade.symbol : null
+            })
         });
         const data = await res.json();
         
@@ -71,6 +75,18 @@ async function syncBalance() {
             const balanceEl = document.getElementById('cabinet-total-balance');
             if (balanceEl) {
                 balanceEl.innerHTML = `$ ${data.totalUsdt.toFixed(2)} <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span>`;
+            }
+        }
+
+        if (data.activeAssetQty !== undefined && currentTrade && !isClosingTrade) {
+            // Se o valor retido do ativo for menor que ~1 dólar (resíduo), significa que o usuário vendeu manualmente
+            if ((data.activeAssetQty * currentTrade.buyPrice) < 1) {
+                 addLog(`VENDA MANUAL DETECTADA NA BINANCE. Encerrando monitoramento de ${currentTrade.symbol}.`, 'system');
+                 currentTrade = null;
+                 tradeStartTime = null;
+                 document.getElementById('active-trade-container').classList.add('hidden');
+                 document.getElementById('no-trade-msg').classList.remove('hidden');
+                 await pushStateToServer();
             }
         }
     } catch (e) {

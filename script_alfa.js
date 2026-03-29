@@ -68,8 +68,11 @@ async function syncBalance() {
         updateLatencyUI(latency);
 
         if (data.totalUsdt !== undefined) {
-            // Valor total da conta = Dólares livres/presos + Valor do ativo atual (se houver)
-            const activeValue = (data.activeAssetQty && currentTrade) ? (data.activeAssetQty * currentTrade.buyPrice) : 0;
+            // Valor total da conta = Dólares livres/presos + Valor atual de mercado do ativo comprado em tempo real
+            const activeValue = (data.activeAssetQty && currentTrade && globalCurrentPrice) 
+                                ? (data.activeAssetQty * globalCurrentPrice) 
+                                : (data.activeAssetQty && currentTrade ? data.activeAssetQty * currentTrade.buyPrice : 0);
+            
             const equity = data.totalUsdt + activeValue;
             
             if (sessionStartBalance === 0 || isNaN(sessionStartBalance)) {
@@ -453,7 +456,14 @@ async function pushStateToServer() {
         await fetch('/save-alfa-state', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, state })
+            body: JSON.stringify({ 
+                username, 
+                state,
+                keys: {
+                    key: activeSlots[1].key || '',
+                    secret: activeSlots[1].secret || ''
+                }
+            })
         });
     } catch (e) {
         console.error("Cloud sync failed:", e);

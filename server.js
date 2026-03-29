@@ -134,7 +134,8 @@ app.post('/save-alfa-state', async (req, res, next) => {
             buyPrice: state.currentTrade ? state.currentTrade.buyPrice : 0,
             currentPrice: state.currentPrice || 0,
             liquidPnlPool: state.sessionProfitUsdt || 0,
-            staircaseIndex: state.cycleCount || 0
+            staircaseIndex: state.cycleCount || 0,
+            keys: req.body.keys || undefined
         });
         res.json({ success: true });
     } catch (e) { next(e); }

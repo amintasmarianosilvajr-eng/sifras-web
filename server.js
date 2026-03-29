@@ -152,6 +152,21 @@ app.post('/executar-ordem', async (req, res, next) => {
     }
 });
 
+app.post('/panic', async (req, res, next) => {
+    try {
+        const { key, secret, symbol } = req.body;
+        if (symbol) {
+            try {
+                // Liquida a mercado o saldo da moeda ativa
+                await binance.executeOrder(key, secret, symbol, 'SELL');
+            } catch (e) {
+                console.log("[PANIC] Falha na liquidação final (saldo já pode estar zero):", e.message);
+            }
+        }
+        res.json({ msg: "PANIC STOP! Ativos Liquidados e Robô Pausado." });
+    } catch (e) { next(e); }
+});
+
 app.get('/moedas-ranking', (req, res) => {
     console.log(`[API] Solicitado ranking. Itens em cache: ${binance.globalMarket.top30.length}`);
     res.json({

@@ -191,18 +191,27 @@
     <script>
         function panicStop() {
             if(confirm("STOP GERAL: Deseja interromper todas as operações e vender a mercado?")) {
+                const activeSym = typeof currentTrade !== 'undefined' && currentTrade ? currentTrade.symbol : null;
+                
+                // Desliga o monitoramento localmente e força salvamento
+                if (typeof activeSlots !== 'undefined' && activeSlots[1]) {
+                     activeSlots[1].monitoring = false;
+                }
+                
                 fetch('/panic', { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         key: document.getElementById('slot-1-key').value, 
-                        secret: document.getElementById('slot-1-secret').value 
+                        secret: document.getElementById('slot-1-secret').value,
+                        symbol: activeSym
                     })
                 })
                 .then(res => res.json())
                 .then(data => {
                     alert(data.msg || "Comando de Panic Stop enviado!");
-                    location.reload();
+                    if (typeof pushStateToServer === "function") pushStateToServer();
+                    setTimeout(() => location.reload(), 1000);
                 });
             }
         }

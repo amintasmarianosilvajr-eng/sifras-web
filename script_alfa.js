@@ -67,14 +67,23 @@ async function syncBalance() {
         updateLatencyUI(latency);
 
         if (data.totalUsdt !== undefined) {
-            currentBalance = data.totalUsdt;
+            // Valor total da conta = Dólares livres/presos + Valor do ativo atual (se houver)
+            const activeValue = (data.activeAssetQty && currentTrade) ? (data.activeAssetQty * currentTrade.buyPrice) : 0;
+            const equity = data.totalUsdt + activeValue;
+            
             if (sessionStartBalance === 0 || isNaN(sessionStartBalance)) {
-                sessionStartBalance = currentBalance;
+                sessionStartBalance = equity;
                 localStorage.setItem('alfa_session_start', sessionStartBalance);
             }
+            
+            // O lucro da sessão é estritamente o crescimento real do patrimônio
+            sessionProfitUsdt = equity - sessionStartBalance;
+            currentBalance = equity;
+            localStorage.setItem('alfa_session_profit', sessionProfitUsdt);
+
             const balanceEl = document.getElementById('cabinet-total-balance');
             if (balanceEl) {
-                balanceEl.innerHTML = `$ ${data.totalUsdt.toFixed(2)} <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span>`;
+                balanceEl.innerHTML = `$ ${equity.toFixed(2)} <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span>`;
             }
         }
 
@@ -241,10 +250,12 @@ async function executeTrade(coin) {
             currentTrade.buyPrice = parseFloat(data.fills[0].price);
             currentTrade.executedQty = data.executedQty;
             
-            // REGRA v4.5: Adicionar ao Cooldown de 3 moedas para evitar re-compra imediata
-            recentSymbols.push(currentTrade.symbol);
-            if (recentSymbols.length > 3) recentSymbols.shift(); // 3 operações de bloqueio
-            localStorage.setItem('alfa_recent_symbols', JSON.stringify(recentSymbols));
+            // REGRA v4.5: Adicionar ao Cooldown de 5 moedas de forma estrita (sem duplicatas)
+            if (!recentSymbols.includes(currentTrade.symbol)) {
+                recentSymbols.push(currentTrade.symbol);
+                if (recentSymbols.length > 5) recentSymbols.shift(); // Memória ampliada para 5 ciclos
+                localStorage.setItem('alfa_recent_symbols', JSON.stringify(recentSymbols));
+            }
 
             document.getElementById('active-trade-container').classList.remove('hidden');
             document.getElementById('no-trade-msg').classList.add('hidden');
@@ -258,9 +269,11 @@ async function executeTrade(coin) {
     } catch (e) {
         // Se falhar a compra, também adicionamos ao histórico para "pular" e evitar loop
         if (currentTrade && currentTrade.symbol) {
-             recentSymbols.push(currentTrade.symbol);
-             if (recentSymbols.length > 3) recentSymbols.shift();
-             localStorage.setItem('alfa_recent_symbols', JSON.stringify(recentSymbols));
+             if (!recentSymbols.includes(currentTrade.symbol)) {
+                 recentSymbols.push(currentTrade.symbol);
+                 if (recentSymbols.length > 5) recentSymbols.shift();
+                 localStorage.setItem('alfa_recent_symbols', JSON.stringify(recentSymbols));
+             }
         }
         
         addLog(`Buy Error: ${e.message}`, 'system');
@@ -318,14 +331,11 @@ async function closeTrade() {
         document.getElementById('profit-overlay').classList.add('show');
         setTimeout(() => document.getElementById('profit-overlay').classList.remove('show'), 5000);
         
-        recentSymbols.push(currentTrade.symbol); 
-        if (recentSymbols.length > 5) recentSymbols.shift();
-        localStorage.setItem('alfa_recent_symbols', JSON.stringify(recentSymbols));
-        
-        // Cálculo de PNL da Sessão (Aproximado pelo alvo de 0.8%)
-        const tradeProfit = (currentBalance * 0.008); 
-        sessionProfitUsdt += tradeProfit;
-        localStorage.setItem('alfa_session_profit', sessionProfitUsdt);
+        if (!recentSymbols.includes(currentTrade.symbol)) {
+            recentSymbols.push(currentTrade.symbol); 
+            if (recentSymbols.length > 5) recentSymbols.shift();
+            localStorage.setItem('alfa_recent_symbols', JSON.stringify(recentSymbols));
+        }
         
         cycleCount++;
         localStorage.setItem('alfa_cycle_count', cycleCount);

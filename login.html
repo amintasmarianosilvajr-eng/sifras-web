@@ -139,7 +139,7 @@
                     }
                     window.location.href = "/operacional";
                 } else {
-                    err.innerText = result.msg;
+                    err.innerText = result.error || result.msg || "Usuário ou Senha incorretos";
                     err.style.display = 'block';
                 }
             } catch (e) {

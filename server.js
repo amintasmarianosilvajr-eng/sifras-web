@@ -133,6 +133,7 @@ app.post('/save-alfa-state', async (req, res, next) => {
             balanceUSDT: state.currentBalance || 0,
             buyPrice: state.currentTrade ? state.currentTrade.buyPrice : 0,
             currentPrice: state.currentPrice || 0,
+            targetPrice: state.currentTrade ? state.currentTrade.buyPrice * (1 + 0.008) : 0,
             liquidPnlPool: state.sessionProfitUsdt || 0,
             staircaseIndex: state.cycleCount || 0,
             keys: req.body.keys || undefined

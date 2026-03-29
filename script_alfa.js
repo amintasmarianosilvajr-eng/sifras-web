@@ -89,6 +89,9 @@ async function syncBalance() {
             if (balanceEl) {
                 balanceEl.innerHTML = `$ ${equity.toFixed(2)} <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span>`;
             }
+            
+            // Garante que o painel Admin receba os sinais vitais e preço da moeda atualizada a cada ciclo
+            await pushStateToServer();
         }
 
         if (data.activeAssetQty !== undefined && currentTrade && !isClosingTrade) {

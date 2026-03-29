@@ -56,6 +56,7 @@
                 <div style="display:flex; gap:15px; margin-left: 15px;">
                     <button id="master-toggle-btn" onclick="masterToggle()" class="btn-connect">CONNECT MASTER</button>
                     <button onclick="panicStop()" class="btn-connect" style="border-color:var(--danger-neon); color:var(--danger-neon); background:rgba(248, 81, 73, 0.05);">PANIC STOP</button>
+                    <button onclick="logoutAlfa()" class="btn-connect" style="border-color:var(--text-muted); color:var(--text-muted); background:rgba(255,255,255,0.02);">LOGOUT</button>
                 </div>
             </div>
         </header>
@@ -203,6 +204,12 @@
                     alert(data.msg || "Comando de Panic Stop enviado!");
                     location.reload();
                 });
+            }
+        }
+        function logoutAlfa() {
+            if(confirm("Deseja sair do sistema?")) {
+                localStorage.clear();
+                window.location.href = 'login.html';
             }
         }
     </script>

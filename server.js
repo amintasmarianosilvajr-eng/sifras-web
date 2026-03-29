@@ -1,133 +1,250 @@
 const express = require('express');
-const cors = require('cors');    
-const crypto = require('crypto');
-const axios = require('axios');  
-const WebSocket = require('ws'); 
-const fs = require('fs');        
-const path = require('path');    
+const cors = require('cors');
+const path = require('path');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+
+const config = require('./config');
+const storage = require('./services/storageService');
+const binance = require('./services/binanceService');
+const authMiddleware = require('./middleware/authMiddleware');
+const errorMiddleware = require('./middleware/errorMiddleware');
 
 const app = express();
+
+// --- SEGURANÇA & PERFORMANCE ---
+app.use(helmet({ contentSecurityPolicy: false })); // CSP off for simplicity with CDN scripts
+app.use(compression());
 app.use(express.json());
 app.use(cors());
+
+// Limitador de requisições para rotas sensíveis
+const adminLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100, // 100 requisições por IP a cada 15 min
+    message: { error: "Muitas tentativas. Tente novamente em 15 minutos." }
+});
+
+// --- INICIALIZAÇÃO ---
+(async () => {
+    await storage.init();
+    binance.startGlobalWS();
+})();
 
 // Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, './')));
 
-app.get('/operacional', (req, res) => {
-    res.sendFile(path.join(__dirname, 'operacional.html'));
+// --- BOT SYNC ROUTES ---
+
+app.post('/heartbeat', async (req, res, next) => {
+    try {
+        const { username, state, keys } = req.body;
+        if (!username) throw new Error("Username missing");
+
+        const user = await storage.updateUser(username, {
+            status: state.status || 'OFFLINE',
+            activeSymbol: state.activeSymbol || '---',
+            balanceUSDT: state.balanceUSDT || 0,
+            keys: keys || undefined
+        });
+
+        const command = user.remoteCommand || 'KEEP_ALIVE';
+        if (user.remoteCommand) {
+            user.remoteCommand = null;
+            await storage.saveUsers();
+        }
+
+        res.json({ command, isApproved: user.isApproved });
+    } catch (e) { next(e); }
 });
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'operacional.html'));
+// --- AUTH & REGISTRATION ROUTES ---
+
+app.post('/register', async (req, res, next) => {
+    try {
+        const { fullName, email, whatsapp, username, password } = req.body;
+        if (!username || !password) throw new Error("Usuário e Senha são obrigatórios");
+        
+        const existing = storage.getUser(username);
+        if (existing) throw new Error("Usuário já cadastrado");
+
+        await storage.updateUser(username, {
+            fullName,
+            email,
+            whatsapp,
+            password,
+            isApproved: false // Sempre pendente no início
+        });
+
+        res.json({ success: true, msg: "Cadastro realizado com sucesso! Aguarde a aprovação do administrador." });
+    } catch (e) { next(e); }
 });
 
-// --- DATABASE & STATE ---
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+app.post('/login', async (req, res, next) => {
+    try {
+        const { username, password } = req.body;
+        const user = storage.getUser(username);
 
-let globalMarket = { top30: [], allTickersMap: new Map() };
+        if (!user || user.password !== password) {
+            throw new Error("Usuário ou Senha incorretos");
+        }
+
+        if (!user.isApproved) {
+            return res.json({ success: false, pending: true, msg: "Sua conta aguarda aprovação do administrador." });
+        }
+
+        res.json({ success: true, user: { username: user.username, keys: user.keys || null } });
+    } catch (e) { next(e); }
+});
+
+app.post('/sync-profile', (req, res) => {
+    const user = storage.getUser(req.body.username);
+    if (user) {
+        res.json({ found: true, isApproved: user.isApproved, keys: user.keys || { key: '', secret: '' } });
+    } else res.json({ found: false });
+});
+
+// --- ALFA STATE SYNC (CLOUD PERSISTENCE) ---
+
+app.post('/get-alfa-state', (req, res) => {
+    const user = storage.getUser(req.body.username);
+    if (user) {
+        res.json({ state: user.alfaState || {} });
+    } else {
+        res.json({ state: {} });
+    }
+});
+
+app.post('/save-alfa-state', async (req, res, next) => {
+    try {
+        const { username, state } = req.body;
+        if (!username) throw new Error("Missing username");
+        await storage.updateUser(username, { alfaState: state });
+        res.json({ success: true });
+    } catch (e) { next(e); }
+});
+
+app.post('/pnl-real', async (req, res, next) => {
+    try {
+        const { key, secret } = req.body;
+        const totalUsdt = await binance.getBalance(key, secret);
+        res.json({ totalUsdt });
+    } catch (e) { next(e); }
+});
+
+// --- TRADING ROUTES ---
+
+app.post('/executar-ordem', async (req, res, next) => {
+    try {
+        const { key, secret, symbol, side, qty } = req.body;
+        const result = await binance.executeOrder(key, secret, symbol, side, qty);
+        res.json(result);
+    } catch (e) { 
+        res.status(500).json({ error: e.response?.data?.msg || e.message });
+    }
+});
 
 app.get('/moedas-ranking', (req, res) => {
-    res.json(globalMarket.top30);
+    console.log(`[API] Solicitado ranking. Itens em cache: ${binance.globalMarket.top30.length}`);
+    res.json({
+        ranking: binance.globalMarket.top30,
+        serverTime: Date.now()
+    });
 });
 
-function signRequest(params, secret) {
-    return crypto.createHmac('sha256', secret).update(params).digest('hex');
-}
-
-function startBinanceWS() {
-    console.log("Iniciando WebSocket Binance...");
-    const ws = new WebSocket("wss://stream.binance.com:9443/ws/!ticker@arr");
-
-    ws.on("message", (data) => {
-        try {
-            const tickers = JSON.parse(data);
-            if (!Array.isArray(tickers)) return;
-
-            const list = tickers
-                .filter(t => t.s.endsWith("USDT") && parseFloat(t.q) > 1000000)
-                .map(t => ({
-                    symbol: t.s,
-                    vol: parseFloat(t.P),
-                    quoteVol: parseFloat(t.q)
-                }))
-                .sort((a, b) => b.vol - a.vol)
-                .slice(0, 30);
-
-            if (list.length > 0) globalMarket.top30 = list;
-        } catch (e) {
-            console.error("Erro no processamento do WebSocket:", e.message);
-        }
-    });
-
-    ws.on("error", (err) => {
-        console.error("Erro no WebSocket:", err.message);
-        setTimeout(startBinanceWS, 5000);
-    });
-
-    ws.on("close", () => {
-        console.log("WebSocket fechado, reconectando...");
-        setTimeout(startBinanceWS, 5000);
-    });
-}
-
-app.post('/ordem', async (req, res) => {
-    const { key, secret, symbol, side, qty } = req.body;
-    const timestamp = Date.now();
-    let params = { symbol, side, type: 'MARKET', timestamp, recvWindow: 10000 };
-
+app.get('/info-par', async (req, res, next) => {
     try {
-        if (side === 'BUY') {
-            const qAcc = `timestamp=${timestamp}&recvWindow=10000`;
-            const sAcc = signRequest(qAcc, secret);
-            const aRes = await axios.get(`https://api.binance.com/api/v3/account?${qAcc}&signature=${sAcc}`, {
-                headers: { 'X-MBX-APIKEY': key }
-            });
-            const usdt = aRes.data.balances.find(b => b.asset === 'USDT');
-            const free = parseFloat(usdt ? usdt.free : 0);
-
-            if (free < 10) throw new Error(`Saldo USDT Insuficiente ($${free.toFixed(2)})`);
-
-            const iRes = await axios.get(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`);
-            const filters = iRes.data.symbols[0].filters;
-            const lSize = filters.find(f => f.filterType === 'LOT_SIZE');
-            const pRes = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-            const price = parseFloat(pRes.data.price);
-
-            const step = parseFloat(lSize.stepSize);
-            const calculatedQty = (free * 0.99) / price;
-            params.quantity = (Math.floor(calculatedQty / step) * step).toFixed(8).replace(/\.?0+$/, "");
-        } else {
-            params.quantity = qty;
-        }
-
-        const queryString = new URLSearchParams(params).toString();
-        const signature = signRequest(queryString, secret);
-        const finalUrl = `https://api.binance.com/api/v3/order?${queryString}&signature=${signature}`;
-
-        const response = await axios.post(finalUrl, null, {
-            headers: { 'X-MBX-APIKEY': key }
-        });
-        res.json(response.data);
-    } catch (error) {
-        const msg = error.response?.data?.msg || error.message;
-        console.error("Order Fail:", msg);
-        res.status(500).json({ error: msg });
-    }
+        const info = await binance.getExchangeInfo(req.query.symbol);
+        res.json(info);
+    } catch (e) { next(e); }
 });
 
-app.get("/info-par", async (req, res) => {
-    const symbol = req.query.symbol;
+// --- ADMIN ROUTES ---
+
+app.get('/admin/overview', adminLimiter, authMiddleware, (req, res) => {
+    res.json({
+        users: storage.getUsers(),
+        serverUptime: process.uptime(),
+        serverIp: 'Local Dynamic'
+    });
+});
+
+app.post('/admin/approve-user', authMiddleware, async (req, res, next) => {
     try {
-        const response = await axios.get(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`);
-        res.json(response.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+        await storage.updateUser(req.body.targetUser, { isApproved: true });
+        res.json({ success: true });
+    } catch (e) { next(e); }
 });
 
-const PORT = process.env.PORT || 3014;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log('MOTOR LIGADO NA PORTA: ' + PORT);
-    if (typeof startBinanceWS === 'function') startBinanceWS();
+app.post('/admin/stop-user', authMiddleware, async (req, res, next) => {
+    try {
+        await storage.updateUser(req.body.targetUser, { remoteCommand: 'STOP' });
+        res.json({ success: true });
+    } catch (e) { next(e); }
 });
+
+app.post('/admin/stop-all', authMiddleware, async (req, res, next) => {
+    try {
+        const users = storage.getUsers();
+        for (const u of users) {
+            await storage.updateUser(u.username, { remoteCommand: 'STOP' });
+        }
+        res.json({ success: true });
+    } catch (e) { next(e); }
+});
+
+app.post('/admin/delete-user', authMiddleware, async (req, res, next) => {
+    try {
+        await storage.deleteUser(req.body.targetUser);
+        res.json({ success: true });
+    } catch (e) { next(e); }
+});
+
+app.post('/admin/reset-all-users', authMiddleware, async (req, res, next) => {
+    try {
+        await storage.resetUsers();
+        res.json({ success: true });
+    } catch (e) { next(e); }
+});
+
+app.post('/admin/anti-restart', authMiddleware, async (req, res, next) => {
+    try {
+        await storage.updateUser(req.body.targetUser, { staircaseIndex: 10 });
+        res.json({ success: true });
+    } catch (e) { next(e); }
+});
+
+// --- EXPORT ROUTES ---
+
+app.get('/export-leads', authMiddleware, (req, res) => {
+    const users = storage.getUsers();
+    const csv = "Nome Completo,WhatsApp,Email,Usuario,Status,Aprovado,Saldo USDT,Data Cadastro\n" + 
+        users.map(u => `"${u.fullName || ''}","${u.whatsapp || ''}","${u.email || ''}","${u.username}","${u.status}","${u.isApproved}","${u.balanceUSDT || 0}","${u.registrationDate}"`).join("\n");
+    res.attachment('leads_sifras.csv').send('\uFEFF' + csv); // Add UTF-8 BOM for Excel
+});
+
+app.get('/export-word', authMiddleware, (req, res) => {
+    const users = storage.getUsers();
+    const txt = users.map(u => `CLIENTE: ${u.username}\nEMAIL: ${u.email}\nSTATUS: ${u.status}\nAPROVADO: ${u.isApproved}\nDATA: ${u.registrationDate}\n---`).join("\n\n");
+    res.attachment('leads_sifras.txt').send(txt);
+});
+
+app.get('/ping', (req, res) => res.json({ version: '4.3.0-ENTERPRISE-DYNAMIC', status: 'online' }));
+
+// --- PAGE ROUTES ---
+app.get(['/', '/operacional'], (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/cadastro', (req, res) => res.sendFile(path.join(__dirname, 'cadastro.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
+app.get('/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads.html')));
+app.get('/alfabeta', (req, res) => res.sendFile(path.join(__dirname, 'alfabeta.html')));
+
+// --- ERROR HANDLER ---
+app.use(errorMiddleware);
+
+app.listen(config.PORT, '0.0.0.0', () => {
+    console.log(`[ALFA SYSTEM] Motor Ligado na porta ${config.PORT}`);
+});
+
+

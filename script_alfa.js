@@ -1,11 +1,11 @@
 /**
- * SIFRAS ALFA SNIPER ELITE v3.5 FERRARI
- * Protocolo de Monitoramento #3 | Alvo 0.8% | Sem Stop Loss
+ * SIFRAS ALFA PREMIUM v3.7
+ * Protocolo de Monitoramento Ativo | Alvo 0.8% | Ciclo 10s
  */
 
 const CONFIG = {
-    UPDATE_INTERVAL: 2000,
-    LOG_INTERVAL: 5000,
+    SYNC_INTERVAL: 10000,
+    UPDATE_UI_INTERVAL: 1000,
     TARGET_PROFIT: 0.8,
     BLACKLIST: [
         'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV',
@@ -18,284 +18,483 @@ let activeSlots = { 1: { key: '', secret: '', name: '', monitoring: false } };
 let currentTrade = null;
 let cycleCount = 0;
 let lastExecutedSymbol = null;
-let tradeSocket = null;
-let globalSystemPower = false;
+let recentSymbols = []; 
+let currentBalance = 0; 
+let sessionProfitUsdt = 0; // Lucro acumulado na sessão
+let sessionStartBalance = 0; 
 let isClosingTrade = false;
-let startOfDayBalance = null;
+let tradeStartTime = null;
+let previousRanking = null; // Memória para cálculo de aceleração
+
+// Timers
+let syncCountdown = 10;
+let uiTimer = null;
+
+// --- INICIALIZAÇÃO ---
 
 document.addEventListener('DOMContentLoaded', () => {
     loadSavedState();
-    startOperationalLoop();
-    startDynamicLogExposition();
+    uiTimer = setInterval(tick, 1000);
 });
 
-async function startOperationalLoop() {
-    while (true) {
-        if (globalSystemPower) {
-            try {
-                const ranking = await fetchRanking();
-                if (ranking && ranking.length >= 5) {
-                    renderRanking(ranking);
-                    if (!currentTrade && activeSlots[1].monitoring) {
-                        analyzeSniper(ranking);
-                    }
-                }
-            } catch (e) {
-                console.error("Operational fail:", e);
+function tick() {
+    updateChronometry();
+    if (activeSlots[1].monitoring) {
+        updateMonitoringUI();
+        if (Date.now() % 10000 < 1000) syncBalance(); 
+    }
+    updateSessionUI(); // Garante atualização constante dos indicadores
+}
+
+async function syncBalance() {
+    const slot = activeSlots[1];
+    if (!slot.key || !slot.secret || !slot.monitoring) return;
+
+    try {
+        const tStart = performance.now();
+        const res = await fetch('/pnl-real', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: slot.key, secret: slot.secret })
+        });
+        const data = await res.json();
+        
+        const latency = Math.round(performance.now() - tStart);
+        updateLatencyUI(latency);
+
+        if (data.totalUsdt !== undefined) {
+            currentBalance = data.totalUsdt;
+            if (sessionStartBalance === 0 || isNaN(sessionStartBalance)) {
+                sessionStartBalance = currentBalance;
+                localStorage.setItem('alfa_session_start', sessionStartBalance);
+            }
+            const balanceEl = document.getElementById('cabinet-total-balance');
+            if (balanceEl) {
+                balanceEl.innerHTML = `$ ${data.totalUsdt.toFixed(2)} <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span>`;
             }
         }
-        await new Promise(r => setTimeout(r, CONFIG.UPDATE_INTERVAL));
-    }
-}
-
-function startDynamicLogExposition() {
-    setInterval(() => {
-        if (!globalSystemPower || currentTrade || isClosingTrade) return;
-        addLog(`[SCANNER FERRARI] Monitorando Pixels. Pivô Rank #3 ativo.`, 'scan');
-    }, CONFIG.LOG_INTERVAL);
-}
-
-function analyzeSniper(ranking) {
-    if (currentTrade || isClosingTrade) return;
-    const coin3 = ranking[2], coin2 = ranking[1], coin4 = ranking[3];
-    if (!coin3 || !coin2 || !coin4) return;
-    const d3_2 = Math.abs(coin2.vol - coin3.vol), d3_4 = Math.abs(coin4.vol - coin3.vol);
-    let target = d3_2 < d3_4 ? coin2 : coin4, rankTarget = d3_2 < d3_4 ? '#2' : '#4';
-    const sym = target.symbol.replace('USDT', '');
-    if (sym === lastExecutedSymbol || CONFIG.BLACKLIST.includes(sym)) return;
-    addLog(`[MONITOR #3] Apontando para ${rankTarget}: ${sym} (Delta: ${Math.min(d3_2, d3_4).toFixed(3)}%)`, 'system');
-    addLog(`🔥 sniper detectada! Iniciando entrada no ${sym}...`, 'buy_neon');
-    executeTrade(target);
-}
-
-async function executeTrade(coin) {
-    const tp = coin.price * (1 + (CONFIG.TARGET_PROFIT / 100));
-    currentTrade = { symbol: coin.symbol.replace('USDT', ''), fullSymbol: coin.symbol, buyPrice: coin.price, targetPrice: tp, qty: 0, startTime: Date.now() };
-    updateTradeUI(true);
-    const res = await sendOrder('BUY', currentTrade.fullSymbol);
-    if (res && res.orderId) {
-        currentTrade.qty = parseFloat(res.executedQty || 0);
-        saveActiveTrade();
-        addLog(`✅ ORDEM EXECUTADA! ${currentTrade.symbol} sniperado com sucesso. $${res.cummulativeQuoteQty} USDT investidos.`, 'system');
-        initPriceSocket(currentTrade.fullSymbol);
-    } else {
-        addLog(`❌ FALHA NA ENTRADA: O motor não recebeu confirmação da ordem.`, 'error');
-        resetTrade();
-    }
-}
-
-function saveActiveTrade() {
-    localStorage.setItem('alfa_active_trade_v35', JSON.stringify(currentTrade));
-}
-
-function initPriceSocket(symbol) {
-    if (tradeSocket) tradeSocket.close();
-    tradeSocket = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
-    tradeSocket.onmessage = (e) => {
-        const d = JSON.parse(e.data);
-        if (d && d.c) updateLivePNL(parseFloat(d.c));
-    };
-}
-
-function updateLivePNL(curr) {
-    if (!currentTrade || isClosingTrade) return;
-    const pnl = ((curr - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
-    const pnlUsdt = (pnl / 100) * (currentTrade.buyPrice * currentTrade.qty);
-    document.getElementById('monitoring-pl').textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
-    document.getElementById('monitoring-pl').style.color = pnl >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
-    document.getElementById('monitoring-pnl-usdt').textContent = `($${pnlUsdt >= 0 ? '+' : ''}${pnlUsdt.toFixed(2)})`;
-    document.getElementById('monitoring-current-price').textContent = `$${curr.toFixed(4)}`;
-    const prog = Math.max(0, Math.min(100, (pnl / CONFIG.TARGET_PROFIT) * 100));
-    document.getElementById('trade-progress-fill').style.width = `${prog}%`;
-    if (pnl >= CONFIG.TARGET_PROFIT && !isClosingTrade) { isClosingTrade = true; liquidateTrade(pnl); }
-}
-
-async function liquidateTrade(final) {
-    addLog(`🎯 ALVO ALCANÇADO! Meta de ${CONFIG.TARGET_PROFIT}% batida. Fechando...`, 'sell_neon');
-    const info = await fetchOrderInfo(currentTrade.fullSymbol);
-    let q = currentTrade.qty;
-    if (info) {
-        const step = parseFloat(info.symbols[0].filters.find(f => f.filterType === 'LOT_SIZE').stepSize);
-        q = (Math.floor((q * 0.999) / step) * step).toFixed(8).replace(/\.?0+$/, "");
-    }
-    const res = await sendOrder('SELL', currentTrade.fullSymbol, q);
-    if (res && res.orderId) {
-        addLog(`💰 LUCRO NO BOLSO! ${currentTrade.symbol} liquidado com sucesso.`, 'sell_neon');
-        showProfitOverlay();
-        lastExecutedSymbol = currentTrade.symbol; cycleCount++; saveGlobalState(); resetTrade(); syncBalance();
-    } else { 
-        addLog(`❌ ERRO NA LIQUIDAÇÃO. Finalize manualmente na Binance!`, 'error'); 
-        isClosingTrade = false; 
+    } catch (e) {
+        console.error("Error in Sync Balance:", e);
     }
 }
 
 async function fetchRanking() {
-    const start = performance.now();
-    try { 
-        const r = await fetch('/moedas-ranking'); 
-        const end = performance.now();
-        const lat = Math.round(end - start);
-        const elLat = document.getElementById('header-latency');
-        if (elLat) {
-            elLat.textContent = `${lat} ms`;
-            elLat.style.color = lat < 250 ? 'var(--primary-neon)' : (lat < 600 ? '#f1c40f' : 'var(--danger-neon)');
-        }
-        return await r.json(); 
-    } catch(e) { return null; }
-}
-
-async function sendOrder(side, symbol, qty = null) {
-    const body = { key: activeSlots[1].key, secret: activeSlots[1].secret, symbol, side };
-    if (qty) body.qty = qty;
     try {
-        const r = await fetch('/executar-ordem', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        const d = await r.json();
-        if (d.error) throw new Error(d.error);
-        return d;
-    } catch(e) { 
-        addLog(`⚠️ ORDEM RECUSADA: ${e.message}`, 'error');
-        return null; 
+        const tStart = performance.now();
+        const res = await fetch('/moedas-ranking');
+        const data = await res.json();
+        
+        const latency = Math.round(performance.now() - tStart);
+        updateLatencyUI(latency);
+
+        if (data.ranking) {
+            // Cálculo de Aceleração (Delta 10s)
+            if (previousRanking) {
+                data.ranking.forEach(current => {
+                    const prev = previousRanking.find(p => p.symbol === current.symbol);
+                    current.delta = prev ? (current.vol - prev.vol) : 0;
+                });
+            } else {
+                data.ranking.forEach(current => current.delta = 0);
+            }
+            // Atualiza memória
+            previousRanking = JSON.parse(JSON.stringify(data.ranking));
+
+            renderRanking(data.ranking);
+            if (!currentTrade && !isClosingTrade && activeSlots[1].monitoring) {
+                analyzeAlfa(data.ranking);
+            }
+        }
+    } catch (e) {
+        addLog("Error syncing Non-Binary Pixel Control.", "system");
     }
 }
 
-function renderRanking(ranking) {
+function renderRanking(list) {
     const grid = document.getElementById('dynamic-targets-grid');
     if (!grid) return;
-    grid.innerHTML = ranking.slice(0, 10).map((c, i) => `
-        <div class="ranking-item ${i === 2 ? 'log-neon-scan' : ''}">
-            <span class="rank-num">#${i + 1}</span>
-            <span class="coin-name">${c.symbol.replace('USDT', '')}</span>
-            <span class="coin-vol">${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%</span>
+    grid.innerHTML = list.slice(0, 15).map((item, i) => `
+        <div class="log-card ${i === 1 ? 'log-neon-scan' : ''}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:900; font-size:1rem;">#${i + 1} ${item.symbol.replace('USDT', '')}</span>
+                <span style="color:var(--accent-green); font-weight:800;">${item.vol.toFixed(2)}%</span>
+            </div>
+            <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">VOL: $${(item.quoteVol / 1000000).toFixed(1)}M</div>
         </div>
     `).join('');
 }
 
-function addLog(msg, type = 'system') {
-    const monitor = document.getElementById('log-monitor');
-    if (!monitor) return;
-    const time = new Date().toLocaleTimeString();
-    let html = "";
-    if (type.includes('neon')) {
-        const cls = type.includes('buy') ? 'log-neon-buy' : 'log-neon-sell';
-        html = `<div class="log-card ${cls}"><span class="log-timestamp">${time}</span><span class="log-entry-text" style="font-weight:900;">${msg.toUpperCase()}</span></div>`;
-    } else {
-        const cls = type === 'scan' ? 'log-neon-scan' : `log-entry ${type}`;
-        html = `<div class="${cls}"><span class="log-timestamp">${time}</span><span class="log-entry-text">${msg}</span></div>`;
+// --- CORE LÓGICO (MOTOR ALFA) ---
+
+function analyzeAlfa(ranking) {
+    if (currentTrade || isClosingTrade) return;
+
+    // Trava de Saldo Mínimo ($10 USDT)
+    if (activeSlots[1].monitoring && currentBalance < 10) {
+        if (Date.now() % 60000 < 1000) { // Log a cada ~1 min para não poluir
+            addLog(`⚠️ LOW BALANCE: $${currentBalance.toFixed(2)}. Deposit USDT (Min $10) to continue.`, 'system');
+        }
+        return;
     }
-    monitor.innerHTML = html + monitor.innerHTML;
+
+    // Motor Alfa v4.3: Scan estrito #2 a #30 (Indices 1 a 29)
+    // Busca a moeda com a MAIOR VOLATILIDADE (Aceleração/Delta)
+    const scanBlock = ranking.slice(1, 30); // Posições #2 a #30
+    
+    const candidates = scanBlock
+        .filter(c => !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && !recentSymbols.includes(c.symbol))
+        .sort((a, b) => {
+            // Critério Principal: Maior Aceleração (Delta)
+            if (Math.abs(b.delta - a.delta) > 0.001) {
+                return b.delta - a.delta;
+            }
+            // Critério de desempate: Maior Volatilidade 24h (Vol) para garantir "a mais volátil"
+            return b.vol - a.vol;
+        });
+
+    // Para evitar "preguiça" do motor se os deltas estiverem travados em 0
+    // Escolhemos o vencedor absoluto do bloco de alta performance
+    const target = candidates.length > 0 ? candidates[0] : null;
+
+    if (target) {
+        // Encontra o rank original para o log
+        const rank = ranking.findIndex(r => r.symbol === target.symbol) + 1;
+        const deltaLabel = target.delta > 0 ? `+${target.delta.toFixed(2)}` : target.delta.toFixed(2);
+        
+        addLog(`[ACCELERATION ENGINE] Detected: #${rank} ${target.symbol.replace('USDT', '')} (Delta: ${deltaLabel}%)`, 'system');
+        executeTrade(target);
+    }
 }
 
-function updateTradeUI(active) {
-    document.getElementById('active-trade-container').classList.toggle('hidden', !active);
-    document.getElementById('no-trade-msg').classList.toggle('hidden', active);
-    const pill = document.getElementById('system-status-pill');
-    pill.textContent = active ? 'MONITORANDO TRADE' : (globalSystemPower ? 'BUSCANDO ALVO' : 'OFFLINE');
-    pill.style.borderColor = active ? 'var(--accent-green)' : 'var(--card-border)';
-    if (active) {
-        document.getElementById('monitoring-symbol').textContent = currentTrade.symbol;
-        document.getElementById('monitoring-buy-price').textContent = `$${currentTrade.buyPrice.toFixed(4)}`;
-        document.getElementById('monitoring-target-price').textContent = `$${currentTrade.targetPrice.toFixed(4)}`;
+// --- CRONOMETRIA & UI ---
+
+function updateChronometry() {
+    // 1. Ciclo de Sincronia (10s)
+    if (!currentTrade && !isClosingTrade && activeSlots[1].monitoring) {
+        syncCountdown--;
+        if (syncCountdown < 0) {
+            syncCountdown = 10;
+            fetchRanking(); 
+        }
+    } else {
+        syncCountdown = 10; 
     }
+
+    // 2. Círculo de Sincronia
+    const syncCircle = document.getElementById('sync-circle');
+    const syncVal = document.getElementById('sync-timer-val');
+    if (syncCircle) {
+        const offset = 283 - (syncCountdown / 10) * 283;
+        syncCircle.style.strokeDashoffset = offset;
+        syncVal.innerText = `${syncCountdown}s`;
+    }
+
+    // 3. Tempo de Operação
+    const tradeCircle = document.getElementById('trade-circle');
+    const tradeVal = document.getElementById('trade-timer-val');
+    
+    if (currentTrade && tradeStartTime && tradeVal) {
+        const elapsed = Math.floor((Date.now() - tradeStartTime) / 1000);
+        const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+        const secs = (elapsed % 60).toString().padStart(2, '0');
+        tradeVal.innerText = `${mins}:${secs}`;
+        
+        const tradeOffset = 283 - ((elapsed % 60) / 60) * 283;
+        tradeCircle.style.strokeDashoffset = tradeOffset;
+    } else if (tradeVal) {
+        tradeVal.innerText = "00:00";
+        tradeCircle.style.strokeDashoffset = 283;
+    }
+}
+
+// --- TRADING OPERACIONAL ---
+
+async function executeTrade(coin) {
+    if (currentTrade || !activeSlots[1].key) return;
+    
+    currentTrade = { ...coin, buyPrice: coin.price };
+    tradeStartTime = Date.now();
+    
+    addLog(`🚀 STARTING OPERATION: ${coin.symbol}`, 'buy');
+    
+    try {
+        const res = await fetch('/executar-ordem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                key: activeSlots[1].key,
+                secret: activeSlots[1].secret,
+                symbol: coin.symbol,
+                side: 'BUY'
+            })
+        });
+        const data = await res.json();
+        
+        if (data.orderId) {
+            currentTrade.buyPrice = parseFloat(data.fills[0].price);
+            currentTrade.executedQty = data.executedQty;
+            document.getElementById('active-trade-container').classList.remove('hidden');
+            document.getElementById('no-trade-msg').classList.add('hidden');
+            document.getElementById('monitoring-symbol').innerText = coin.symbol.replace('USDT', '');
+            document.getElementById('monitoring-buy-price').innerText = `$${currentTrade.buyPrice.toFixed(4)}`;
+            updateMonitoringUI();
+            await pushStateToServer();
+        } else {
+            throw new Error(data.error || "Execution Failed");
+        }
+    } catch (e) {
+        // Se falhar a compra, adicionamos ao histórico para "pular" e evitar loop infinito
+        if (currentTrade && currentTrade.symbol) {
+             recentSymbols.push(currentTrade.symbol);
+             if (recentSymbols.length > 5) recentSymbols.shift();
+             localStorage.setItem('alfa_recent_symbols', JSON.stringify(recentSymbols));
+        }
+        
+        addLog(`Buy Error: ${e.message}`, 'system');
+        currentTrade = null;
+        tradeStartTime = null;
+    }
+}
+
+async function updateMonitoringUI() {
+    if (!currentTrade || isClosingTrade) return;
+
+    try {
+        const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${currentTrade.symbol}`);
+        const data = await res.json();
+        const currentPrice = parseFloat(data.price);
+        
+        const pnl = ((currentPrice - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
+        const targetPrice = currentTrade.buyPrice * (1 + CONFIG.TARGET_PROFIT / 100);
+        
+        document.getElementById('monitoring-current-price').innerText = `$${currentPrice.toFixed(4)}`;
+        document.getElementById('monitoring-target-price').innerText = `$${targetPrice.toFixed(4)}`;
+        
+        const pnlEl = document.getElementById('monitoring-pl');
+        pnlEl.innerText = `${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+        pnlEl.style.color = pnl >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
+
+        const progress = Math.min(100, Math.max(0, (pnl / CONFIG.TARGET_PROFIT) * 100));
+        const fill = document.getElementById('trade-progress-fill');
+        if (fill) fill.style.width = `${progress}%`;
+
+        if (pnl >= CONFIG.TARGET_PROFIT) {
+            closeTrade();
+        }
+    } catch (e) {}
+}
+
+async function closeTrade() {
+    if (isClosingTrade) return;
+    isClosingTrade = true;
+    
+    addLog(`🎯 TARGET REACHED! Liquidating ${currentTrade.symbol}...`, 'buy');
+    
+    try {
+        const res = await fetch('/executar-ordem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                key: activeSlots[1].key,
+                secret: activeSlots[1].secret,
+                symbol: currentTrade.symbol,
+                side: 'SELL'
+            })
+        });
+        
+        document.getElementById('profit-overlay').classList.add('show');
+        setTimeout(() => document.getElementById('profit-overlay').classList.remove('show'), 5000);
+        
+        recentSymbols.push(currentTrade.symbol); 
+        if (recentSymbols.length > 5) recentSymbols.shift();
+        localStorage.setItem('alfa_recent_symbols', JSON.stringify(recentSymbols));
+        
+        // Cálculo de PNL da Sessão (Aproximado pelo alvo de 0.8%)
+        const tradeProfit = (currentBalance * 0.008); 
+        sessionProfitUsdt += tradeProfit;
+        localStorage.setItem('alfa_session_profit', sessionProfitUsdt);
+        
+        cycleCount++;
+        localStorage.setItem('alfa_cycle_count', cycleCount);
+        document.getElementById('cycle-counter').innerText = `${cycleCount} / 10`;
+        
+        lastExecutedSymbol = currentTrade.symbol.replace('USDT', '');
+        
+        await pushStateToServer();
+    } catch (e) {
+        addLog(`Sell Error: ${e.message}`, 'system');
+    } finally {
+        currentTrade = null;
+        tradeStartTime = null;
+        isClosingTrade = false;
+        document.getElementById('active-trade-container').classList.add('hidden');
+        document.getElementById('no-trade-msg').classList.remove('hidden');
+        await pushStateToServer();
+    }
+}
+
+// --- UTILITÁRIOS ---
+
+function addLog(msg, type) {
+    const log = document.getElementById('log-monitor');
+    if (!log) return;
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    entry.innerHTML = `<span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+    log.prepend(entry);
 }
 
 function masterToggle() {
-    globalSystemPower = !globalSystemPower;
+    activeSlots[1].monitoring = !activeSlots[1].monitoring;
     const btn = document.getElementById('master-toggle-btn');
-    btn.textContent = globalSystemPower ? 'DESCONECTAR' : 'CONECTAR MASTER';
-    btn.style.borderColor = globalSystemPower ? 'var(--danger-neon)' : 'var(--primary-neon)';
-    activeSlots[1].monitoring = globalSystemPower;
-    if (globalSystemPower) {
-        syncBalance();
-        setInterval(syncBalance, 10000);
+    const pill = document.getElementById('system-status-pill');
+    
+    if (activeSlots[1].monitoring) {
+        btn.innerText = "DESCONECTAR MASTER";
+        btn.style.borderColor = "var(--danger-neon)";
+        pill.innerText = "BUSCANDO ALVO";
+        pill.className = "status-pill online";
+        
+        addLog("SISTEMA ALFA ATIVADO.", "system");
+        addLog("Initializing Non-Binary Pixel Control...", "system");
+        
+        syncCountdown = 0; // Gatilha fetchRanking no próximo tick
+        syncBalance();     // Gatilha saldo imediatamente
+    } else {
+        btn.innerText = "CONNECT MASTER";
+        btn.style.borderColor = "var(--primary-neon)";
+        pill.innerText = "OFFLINE";
+        pill.className = "status-pill waiting";
+        addLog("SYSTEM PAUSED.", "system");
     }
-    updateTradeUI(false);
+    pushStateToServer();
 }
 
-function resetTrade() { 
-    currentTrade = null; 
-    isClosingTrade = false; 
-    if (tradeSocket) tradeSocket.close(); 
-    localStorage.removeItem('alfa_active_trade_v35');
-    updateTradeUI(false); 
+function updateSessionUI() {
+    const pnlHeader = document.getElementById('header-realtime-pnl');
+    const pnlCabinet = document.getElementById('cabinet-realtime-pnl');
+    
+    const pct = sessionStartBalance > 0 ? (sessionProfitUsdt / sessionStartBalance) * 100 : 0;
+    const sign = sessionProfitUsdt >= 0 ? '+' : '';
+    const color = sessionProfitUsdt >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
+
+    if (pnlHeader) {
+        pnlHeader.innerText = `${sign}$${sessionProfitUsdt.toFixed(2)} (${sign}${pct.toFixed(2)}%)`;
+        pnlHeader.style.color = color;
+        pnlHeader.classList.remove('waiting');
+    }
+
+    if (pnlCabinet) {
+        pnlCabinet.innerHTML = `SESSION: <span style="color:${color}">${sign}$${sessionProfitUsdt.toFixed(2)}</span>`;
+    }
+}
+
+function updateLatencyUI(ms) {
+    const el = document.getElementById('header-latency');
+    if (el) {
+        el.innerText = `${ms} ms`;
+        el.classList.remove('waiting');
+        el.style.color = ms < 300 ? 'var(--accent-green)' : (ms < 1000 ? '#f1c40f' : 'var(--danger-neon)');
+    }
 }
 
 function saveSlot(id) {
-    const s = { name: document.getElementById('slot-1-name').value, key: document.getElementById('slot-1-key').value, secret: document.getElementById('slot-1-secret').value };
-    activeSlots[1] = { ...activeSlots[1], ...s };
-    localStorage.setItem('alfa_slot_1', JSON.stringify(s));
-    addLog(`Configurações de API salvas.`, 'system');
-    syncBalance();
+    activeSlots[id].key = document.getElementById(`slot-${id}-key`).value;
+    activeSlots[id].secret = document.getElementById(`slot-${id}-secret`).value;
+    activeSlots[id].name = document.getElementById(`slot-${id}-name`).value;
+    localStorage.setItem('alfa_slot_1', JSON.stringify(activeSlots[id]));
+    addLog(`Operator ${activeSlots[id].name || 'Master'} authorized!`, 'system');
+    loadSavedState(); // Trigger cloud fetch for new operator
 }
 
-async function syncBalance() {
-    if (!activeSlots[1].key || !globalSystemPower) return;
+async function pushStateToServer() {
+    const username = activeSlots[1].name;
+    if (!username) return;
+
+    const state = {
+        monitoring: activeSlots[1].monitoring,
+        cycleCount,
+        recentSymbols,
+        currentTrade,
+        sessionProfitUsdt,
+        sessionStartBalance,
+        tradeStartTime,
+        lastUpdated: Date.now()
+    };
+
     try {
-        const r = await fetch('/pnl-real', {
+        await fetch('/save-alfa-state', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: activeSlots[1].key, secret: activeSlots[1].secret })
+            body: JSON.stringify({ username, state })
         });
-        const d = await r.json();
-        if (d.totalUsdt) {
-            if (!startOfDayBalance) startOfDayBalance = d.totalUsdt;
-            const pnlVal = d.totalUsdt - startOfDayBalance;
-            const pnlPct = (pnlVal / startOfDayBalance) * 100;
-            
-            const elCabBal = document.getElementById('cabinet-total-balance');
-            if (elCabBal) elCabBal.innerHTML = `$ ${d.totalUsdt.toFixed(2)} <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span>`;
-            
-            const elPnl = document.getElementById('header-realtime-pnl');
-            const elCabPnl = document.getElementById('cabinet-realtime-pnl');
-            if (elPnl) {
-                const txt = `${pnlVal >= 0 ? '+' : ''}$${pnlVal.toFixed(2)} (${pnlPct.toFixed(2)}%)`;
-                elPnl.textContent = txt;
-                elPnl.style.color = pnlVal >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
-                elPnl.classList.remove('waiting');
-                
-                if (elCabPnl) {
-                    elCabPnl.innerHTML = `PNL HOJE: <span style="color:${pnlVal >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)'}">${txt}</span>`;
-                }
-            }
-            saveGlobalState();
-        }
-    } catch(e) {}
+    } catch (e) {
+        console.error("Cloud sync failed:", e);
+    }
 }
 
-function saveGlobalState() { localStorage.setItem('alfa_state_v35', JSON.stringify({ cycleCount, lastExecutedSymbol, startOfDayBalance })); }
-
-function loadSavedState() {
-    const s = JSON.parse(localStorage.getItem('alfa_state_v35') || '{}');
-    cycleCount = s.cycleCount || 0;
-    lastExecutedSymbol = s.lastExecutedSymbol || null;
-    startOfDayBalance = s.startOfDayBalance || null;
-    document.getElementById('cycle-counter').textContent = `${cycleCount} / 24`;
+async function loadSavedState() {
+    // 1. Load Keys (Local First)
+    const sessionUser = localStorage.getItem('alfa_session_user');
+    const slot = JSON.parse(localStorage.getItem('alfa_slot_1') || '{}');
     
-    // Recuperar trade ativo
-    const activeTrade = JSON.parse(localStorage.getItem('alfa_active_trade_v35') || 'null');
-    if (activeTrade) {
-        currentTrade = activeTrade;
-        updateTradeUI(true);
-        initPriceSocket(currentTrade.fullSymbol);
-        addLog(`[SISTEMA] Trade recuperado da memória: ${currentTrade.symbol}`, 'system');
+    if (sessionUser) {
+        activeSlots[1].name = sessionUser;
+        const nameEl = document.getElementById('slot-1-name');
+        if (nameEl) nameEl.value = sessionUser;
     }
 
-    const slot = JSON.parse(localStorage.getItem('alfa_slot_1') || '{}');
     if (slot.key) {
-        document.getElementById('slot-1-name').value = slot.name || '';
+        if (!activeSlots[1].name) activeSlots[1].name = slot.name || '';
+        document.getElementById('slot-1-name').value = activeSlots[1].name;
         document.getElementById('slot-1-key').value = slot.key || '';
         document.getElementById('slot-1-secret').value = slot.secret || '';
         activeSlots[1] = { ...activeSlots[1], ...slot };
     }
-}
+    
+    // 2. Load Operational State (Cloud Priority)
+    if (activeSlots[1].name) {
+        try {
+            const res = await fetch('/get-alfa-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: activeSlots[1].name })
+            });
+            const { state } = await res.json();
+            
+            if (state && state.lastUpdated) {
+                // Restore values
+                cycleCount = state.cycleCount || 0;
+                recentSymbols = state.recentSymbols || [];
+                sessionProfitUsdt = state.sessionProfitUsdt || 0;
+                sessionStartBalance = state.sessionStartBalance || 0;
+                tradeStartTime = state.tradeStartTime || null;
+                
+                // Active Trade UI
+                if (state.currentTrade) {
+                    currentTrade = state.currentTrade;
+                    document.getElementById('active-trade-container').classList.remove('hidden');
+                    document.getElementById('no-trade-msg').classList.add('hidden');
+                    document.getElementById('monitoring-symbol').innerText = currentTrade.symbol.replace('USDT', '');
+                    document.getElementById('monitoring-buy-price').innerText = `$${currentTrade.buyPrice.toFixed(4)}`;
+                }
 
-async function fetchOrderInfo(symbol) { try { const r = await fetch(`/info-par?symbol=${symbol}`); return await r.json(); } catch(e) { return null; } }
+                // Monitoring ON/OFF
+                if (state.monitoring && !activeSlots[1].monitoring) {
+                    masterToggle(); // Auto-reconnect if it was on
+                }
+            }
+        } catch (e) {
+            console.error("Cloud fetch failed, using local fallback");
+            cycleCount = parseInt(localStorage.getItem('alfa_cycle_count') || '0');
+            recentSymbols = JSON.parse(localStorage.getItem('alfa_recent_symbols') || '[]');
+            sessionProfitUsdt = parseFloat(localStorage.getItem('alfa_session_profit') || '0');
+            sessionStartBalance = parseFloat(localStorage.getItem('alfa_session_start') || '0');
+        }
+    }
 
-function showProfitOverlay() {
-    const o = document.getElementById('profit-overlay');
-    o.classList.add('show');
-    setTimeout(() => o.classList.remove('show'), 6000);
+    // UI Refresh
+    const el = document.getElementById('cycle-counter');
+    if (el) el.innerText = `${cycleCount} / 10`; 
+    updateSessionUI();
 }

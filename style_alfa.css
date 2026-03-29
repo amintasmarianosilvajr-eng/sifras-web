@@ -1,4 +1,4 @@
-/* style_alfa.css - Ferrari v3.5 Edition */
+/* style_alfa.css - Alfa Premium Edition */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@700;900&display=swap');
 
 :root {
@@ -12,6 +12,81 @@
     --text-muted: #8b949e;
     --glass-glow: 0 0 30px rgba(0, 245, 255, 0.1);
 }
+
+/* ... (estatutos globais permanecem os mesmos) ... */
+
+.chronometry-card {
+    grid-column: span 1;
+    display: flex;
+    justify-content: space-around;
+    padding: 1.5rem !important;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, rgba(0, 245, 255, 0.05) 0%, rgba(13, 17, 23, 0.8) 100%);
+    border-top: 4px solid var(--primary-neon);
+}
+
+.chrono-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.chrono-circle-wrap {
+    position: relative;
+    width: 100px;
+    height: 100px;
+}
+
+.chrono-circle-wrap svg {
+    transform: rotate(-90deg);
+    width: 100%;
+    height: 100%;
+}
+
+.chrono-circle-wrap circle {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+}
+
+.chrono-circle-wrap circle.bg {
+    stroke: rgba(255, 255, 255, 0.05);
+}
+
+.chrono-circle-wrap circle.progress {
+    stroke: var(--primary-neon);
+    stroke-dasharray: 283; /* 2 * PI * 45 */
+    stroke-dashoffset: 283;
+    transition: stroke-dashoffset 0.3s ease, stroke 0.3s;
+    filter: drop-shadow(0 0 5px var(--primary-neon));
+}
+
+.chrono-circle-wrap circle.progress.trade {
+    stroke: var(--accent-green);
+    filter: drop-shadow(0 0 5px var(--accent-green));
+}
+
+.chrono-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.chrono-label {
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ... (remover referências a Sniper/Ferrari no restante do CSS se houver) ... */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -95,13 +170,39 @@ body {
 .config-card { grid-column: span 2; padding: 1.5rem 2rem; margin-top: 10px; }
 .config-grid { display: grid; grid-template-columns: repeat(3, 1fr) 180px; gap: 20px; align-items: flex-end; }
 .input-group label { display: block; font-size: 0.6rem; font-weight: 800; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; }
-.input-group input { width: 100%; background: #010409; border: 1px solid var(--card-border); color: #fff; padding: 12px 15px; border-radius: 10px; height: 45px; outline: none; transition: 0.3s; }
-.input-group input:focus { border-color: var(--primary-neon); box-shadow: 0 0 10px rgba(0, 245, 255, 0.2); }
+.input-group input { 
+    width: 100%; 
+    background: #010409; 
+    border: 1px solid rgba(144, 194, 58, 0.3); 
+    color: #ffffff !important; 
+    padding: 12px 15px; 
+    border-radius: 10px; 
+    height: 48px; 
+    outline: none; 
+    transition: 0.3s; 
+    font-weight: 700;
+}
+.input-group input:focus { border-color: var(--primary-neon); box-shadow: 0 0 15px rgba(144, 194, 58, 0.4); background: #000; }
 
 .btn-connect { background: transparent; border: 2px solid var(--primary-neon); color: var(--primary-neon); padding: 12px 25px; border-radius: 50px; font-weight: 900; font-size: 0.8rem; cursor: pointer; transition: 0.3s; }
 .btn-connect:hover { background: var(--primary-neon); color: #000; box-shadow: 0 0 30px var(--primary-neon); }
-.btn-save { background: var(--primary-neon); color: #000; font-weight: 900; border: none; height: 45px; width: 100%; border-radius: 10px; cursor: pointer; transition: 0.3s; }
-.btn-save:hover { transform: scale(1.02); }
+.btn-save { 
+    background: var(--primary-neon); 
+    color: #000; 
+    font-weight: 900; 
+    border: none; 
+    height: 48px; 
+    width: 100%; 
+    border-radius: 12px; 
+    cursor: pointer; 
+    transition: 0.3s; 
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.2), 0 0 20px rgba(144, 194, 58, 0.3);
+    border-bottom: 4px solid rgba(0,0,0,0.2);
+}
+.btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(144, 194, 58, 0.5); }
+.btn-save:active { transform: translateY(2px); border-bottom-width: 0; }
 
 /* PROFIT OVERLAY */
 .profit-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; align-items: center; justify-content: center; z-index: 1000; }

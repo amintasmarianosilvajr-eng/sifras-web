@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "backend-architect": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "57b223fbedc969e1c5ea31d1bd77ec9e2ac9ac40efdaa0c313e7a23cf9415524"
+    },
+    "backend-database-specialist": {
+      "source": "qodex-ai/ai-agent-skills",
+      "sourceType": "github",
+      "computedHash": "8c652626da3f6cdb2c3983261ee258100a81ae189ba709320b005c12c715aeea"
+    },
+    "backend-engineer": {
+      "source": "siviter-xyz/dot-agent",
+      "sourceType": "github",
+      "computedHash": "7fb25764272b305f875e879edf17232a4949930d23ad5223de1f54537fe2cece"
+    },
+    "backend-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "6456e45aca107569db0bf67910f58b60af891330864bfdb3fc1c7a9df1ceffbc"
+    },
+    "software-backend": {
+      "source": "vasilyu1983/ai-agents-public",
+      "sourceType": "github",
+      "computedHash": "99dd5826208aaf58cc15db0f899d216f11313a40164ee88d2faa815b193ed0f4"
+    }
+  }
+}

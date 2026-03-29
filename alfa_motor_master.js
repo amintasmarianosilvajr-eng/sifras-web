@@ -1,5 +1,5 @@
 /**
- * SIFRAS ALFA SNIPER ELITE v3.5 - FERRARI CONSOLIDADO 
+ * SIFRAS ALFA v3.5 - PREMIUM CONSOLIDADO 
  */
 
 const CONFIG = {
@@ -35,9 +35,7 @@ async function startOperationalLoop() {
                 const ranking = await fetchRanking();
                 if (ranking && ranking.length >= 1) {
                     renderRanking(ranking);
-                    if (globalSystemPower && !currentTrade && activeSlots[1].monitoring) {
-                        analyzeSniper(ranking);
-                    }
+                        analyzeAlfa(ranking);
                 }
             }
         } catch (e) {}
@@ -89,7 +87,7 @@ function renderRanking(ranking) {
     `).join('');
 }
 
-function analyzeSniper(ranking) {
+function analyzeAlfa(ranking) {
     if (currentTrade || isCooldownActive) return;
     const targetCoin = ranking[staircaseIndex - 1];
     if (targetCoin) executeTrade(targetCoin);

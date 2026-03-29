@@ -3,16 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa - Admin Sniper Network</title>
+    <title>Sifras Alfa - Command Center v4.0</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-deep: #060B19;
             --accent-cyan: #90C23A;
             --accent-emerald: #4D9127;
-            --accent-ruby: #9CA3AF;
+            --accent-ruby: #f85149;
             --glass-bg: #111A2E;
             --glass-border: rgba(144, 194, 58, 0.4);
         }
@@ -21,8 +23,7 @@
             background-color: var(--bg-deep);
             color: #f8fafc;
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-image: 
-                radial-gradient(circle at 50% 0%, rgba(0, 245, 255, 0.03) 0%, transparent 70%);
+            background-image: radial-gradient(circle at 50% 0%, rgba(144, 194, 58, 0.05) 0%, transparent 70%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -72,7 +73,7 @@
             letter-spacing: 0.5px;
         }
 
-        .status-red { background: rgba(255, 42, 109, 0.1); color: var(--accent-ruby); border: 1px solid var(--accent-ruby); }
+        .status-red { background: rgba(248, 81, 73, 0.1); color: var(--accent-ruby); border: 1px solid var(--accent-ruby); }
         .status-green { background: rgba(0, 255, 159, 0.1); color: var(--accent-emerald); border: 1px solid var(--accent-emerald); }
         .status-blue { background: rgba(0, 245, 255, 0.1); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); }
         .status-gray { background: rgba(255, 255, 255, 0.05); color: #64748b; border: 1px solid rgba(255,255,255,0.1); }
@@ -109,10 +110,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 4px 15px rgba(0, 245, 255, 0.2);
         }
-
-        .btn-refresh:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 245, 255, 0.4); }
 
         .btn-stop-all {
             background: var(--accent-ruby);
@@ -125,89 +123,107 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 4px 15px rgba(255, 42, 109, 0.2);
         }
 
         @keyframes pulse { 50% { opacity: 0.4; } }
         .animate-pulse-slow { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        /* Admin Login Overlay */
+        #admin-login-overlay {
+            position: fixed; inset: 0; background: var(--bg-deep); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+        }
     </style>
 </head>
 <body class="p-4 lg:p-10">
 
+<!-- LOGIN ADMIN OVERLAY -->
+<div id="admin-login-overlay">
+    <div class="glass-panel p-10 w-full max-w-md text-center border-accent-cyan/40">
+        <div class="w-16 h-16 bg-accent-cyan/10 rounded-2xl flex items-center justify-center text-accent-cyan mx-auto mb-6">
+            <i data-lucide="lock" class="w-8 h-8"></i>
+        </div>
+        <h2 class="text-2xl font-black uppercase italic text-white mb-2">Acesso Restrito</h2>
+        <p class="text-[0.65rem] text-slate-400 font-bold tracking-widest uppercase mb-8">Digite a Chave Mestre Alfa</p>
+        
+        <input type="password" id="adminPass" placeholder="••••••••" 
+               class="w-full bg-black/60 border border-white/20 rounded-xl px-4 py-3 text-center text-xl tracking-[0.5em] text-white font-black focus:border-accent-cyan outline-none mb-6 shadow-inner">
+        
+        <button onclick="checkAdminPass()" class="w-full bg-accent-cyan text-black font-black uppercase py-4 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(144,194,58,0.3)] border-b-4 border-black/20">
+            ENTRAR NO COMMAND CENTER
+        </button>
+        <p id="adminError" class="text-accent-ruby text-[0.7rem] font-bold mt-4 hidden">Senha incorreta. Acesso negado.</p>
+    </div>
+</div>
+
 <div class="max-w-[1800px] mx-auto space-y-8">
     
     <!-- HEADER -->
-    <header class="glass-panel p-6 flex flex-col lg:flex-row items-center justify-between gap-6">
+    <header class="glass-panel p-6 flex flex-col lg:flex-row items-center justify-between gap-6 mb-8">
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 rounded-xl bg-accent-cyan/10 flex items-center justify-center text-accent-cyan border border-accent-cyan/20">
-                <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                <i data-lucide="shield-check" class="w-6 h-6"></i>
             </div>
             <div>
-                <h1 class="text-xl font-black uppercase italic tracking-tight">Sifras <span class="text-accent-cyan">Network Monitor</span></h1>
-                <p class="text-[0.6rem] text-[#D9DFE3] font-bold tracking-widest uppercase mono">Admin Control Panel v1.2</p>
+                <h1 class="text-xl font-black uppercase italic tracking-tight">Alfa <span class="text-accent-cyan">Command Center</span></h1>
+                <p class="text-[0.6rem] text-[#D9DFE3] font-bold tracking-widest uppercase mono">Gerenciamento de Rede v4.0</p>
             </div>
         </div>
 
-        <nav class="hidden lg:flex items-center gap-4 bg-[#90C23A]/10 p-1 rounded-xl border border-[#90C23A]/30">
-            <a href="/admin"
-                class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20">️
-                Admin Network</a>
-            <a href="/alfabeta"
-                class="px-4 py-2 rounded-lg text-[0.7rem] font-black uppercase hover:bg-[#FF6600]/20 text-[#FF6600] border border-[#FF6600]/20 transition-all">
-                ⚡ AlfaBeta</a>
-        </nav>
-
         <div class="flex items-center gap-4">
-            <span id="lastUpdateTime" class="text-[0.6rem] text-[#D9DFE3] font-bold uppercase mono mr-4">Sinc: --:--:--</span>
-            
+            <button onclick="exportPDF()" class="bg-[#F85149]/20 hover:bg-[#F85149]/40 text-[#F85149] px-3 py-2 rounded-lg font-black text-[0.6rem] flex items-center gap-2">
+                <i data-lucide="file-text" class="w-3 h-3"></i> EXPORT PDF
+            </button>
             <button onclick="exportLeads()" class="bg-[#90C23A]/20 hover:bg-[#90C23A]/40 text-[#90C23A] px-3 py-2 rounded-lg font-black text-[0.6rem] flex items-center gap-2">
                 <i data-lucide="file-spreadsheet" class="w-3 h-3"></i> EXPORT EXCEL
             </button>
-            <button onclick="exportLeadsWord()" class="bg-accent-cyan/20 hover:bg-accent-cyan/40 text-accent-cyan px-3 py-2 rounded-lg font-black text-[0.6rem] flex items-center gap-2">
-                <i data-lucide="file-text" class="w-3 h-3"></i> EXPORT WORD
-            </button>
-
             <button onclick="stopAll()" id="btnStopAll" class="btn-stop-all">
                 <i data-lucide="octagon" class="w-4 h-4"></i> Stop All Network
             </button>
-            <button onclick="resetAllUsers()" class="bg-accent-ruby/20 hover:bg-accent-ruby/40 text-accent-ruby px-3 py-2 rounded-lg font-black text-[0.6rem] flex items-center gap-2">
-                <i data-lucide="trash-2" class="w-3 h-3"></i> RESET GERAL
-            </button>
             <button class="btn-refresh" onclick="updateOverview(true)">
-                <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i> Resync
+                <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i> Sincronia Global
             </button>
         </div>
     </header>
 
+    <!-- PENDING LEADS -->
+    <div id="leadsSection" class="space-y-4 mb-10 hidden">
+        <div class="flex items-center gap-2 mb-4">
+             <i data-lucide="users" class="w-5 h-5 text-accent-cyan"></i>
+             <h2 class="text-lg font-black uppercase italic tracking-tight">Leads Pendentes de Aprovação</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="leadsGrid"></div>
+    </div>
+
     <!-- STATS SUMMARY -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6 text-center">
         <div class="stat-card">
-            <p class="stat-label">Clientes Online</p>
-            <p id="totalClients" class="stat-value text-[#FFFFFF] text-3xl font-black italic">0</p>
+            <p class="stat-label uppercase text-[0.6rem] font-bold text-slate-500 mb-2">Clientes Online</p>
+            <p id="totalClients" class="text-white text-3xl font-black italic">0</p>
         </div>
         <div class="stat-card">
-            <p class="stat-label">Em Operação</p>
-            <p id="tradingCount" class="stat-value text-accent-cyan text-3xl font-black italic">0</p>
+            <p class="stat-label uppercase text-[0.6rem] font-bold text-slate-500 mb-2">Em Operação</p>
+            <p id="tradingCount" class="text-accent-cyan text-3xl font-black italic">0</p>
         </div>
         <div class="stat-card">
-            <p class="stat-label">Capital Sniper</p>
-            <p id="avgProfit" class="stat-value text-[#FFFFFF] text-2xl font-black mono">$ 0.00</p>
+            <p class="stat-label uppercase text-[0.6rem] font-bold text-slate-500 mb-2">Capital Alfa</p>
+            <p id="avgProfit" class="text-white text-2xl font-black mono">$ 0.00</p>
         </div>
-        <div class="stat-card border-b-2 border-accent-emerald">
-            <p class="stat-label">ROI Geral (%)</p>
-            <p id="globalProfitPct" class="stat-value text-accent-emerald text-2xl font-black italic">0.00%</p>
+        <div class="stat-card border-b-2 border-accent-emerald/40">
+            <p class="stat-label uppercase text-[0.6rem] font-bold text-slate-500 mb-2">ROI Geral (%)</p>
+            <p id="globalProfitPct" class="text-accent-emerald text-2xl font-black italic">0.00%</p>
         </div>
-        <div class="stat-card border-b-2 border-accent-cyan">
-            <p class="stat-label">Latência / Uptime</p>
-            <p id="netStatus" class="stat-value text-[#FFFFFF] text-xs font-bold mono mt-2 leading-relaxed">-- ms | 00h 00m</p>
+        <div class="stat-card border-b-2 border-accent-cyan/40">
+            <p class="stat-label uppercase text-[0.6rem] font-bold text-slate-500 mb-2">Uptime Sistema</p>
+            <p id="netStatus" class="text-white text-[0.6rem] font-bold mono mt-2 leading-relaxed">-- ms | 00h 00m</p>
         </div>
         <div class="stat-card">
-            <p class="stat-label">Alvo Escalada (#10)</p>
-            <p id="globalPivot" class="stat-value text-accent-cyan text-xl font-black italic truncate">---</p>
+            <p class="stat-label uppercase text-[0.6rem] font-bold text-slate-500 mb-2">Alvo Radar</p>
+            <p id="globalPivot" class="text-accent-cyan text-lg font-black italic truncate">---</p>
         </div>
-        <div class="stat-card border-b-2 border-accent-emerald">
-            <p class="stat-label">Realizado BRL</p>
-            <p id="totalBRL" class="stat-value text-accent-emerald text-xl font-black mono">R$ 0,00</p>
+        <div class="stat-card border-b-2 border-accent-emerald/40">
+            <p class="stat-label uppercase text-[0.6rem] font-bold text-slate-500 mb-2">Realizado BRL</p>
+            <p id="totalBRL" class="text-accent-emerald text-lg font-black mono">R$ 0,00</p>
         </div>
     </div>
 
@@ -217,24 +233,23 @@
             <table class="w-full table-premium">
                 <thead>
                     <tr>
-                        <th>Identificação Client</th>
-                        <th>Status Máquina</th>
-                        <th>Telemetria / Etapa</th>
-                        <th>Ativo Sniper</th>
-                        <th>E: Compra ($)</th>
-                        <th> Atual ($)</th>
-                        <th> Alvo ($)</th>
-                        <th>Cap ($)</th>
-                        <th>Balanço USDT</th>
-                        <th>P&L Líquido</th>
-                        <th>Status Escalada</th>
-                        <th>Ações Críticas</th>
+                        <th class="px-4">Cliente</th>
+                        <th>Status</th>
+                        <th>Telemetria</th>
+                        <th>Ativo</th>
+                        <th>Entrada</th>
+                        <th>Atual</th>
+                        <th>Alvo</th>
+                        <th>Balanço</th>
+                        <th>P&L</th>
+                        <th>Ciclo</th>
+                        <th>Controle</th>
                     </tr>
                 </thead>
-                <tbody id="adminTableBody" class="mono">
+                <tbody id="adminTableBody" class="mono text-white">
                     <tr>
-                        <td colspan="12" class="text-center py-20 text-[#D9DFE3] uppercase text-[0.6rem] font-black italic tracking-widest">
-                            Estabelecendo conexão com a rede...
+                        <td colspan="11" class="text-center py-20 text-slate-600 uppercase text-[0.6rem] font-black italic tracking-widest">
+                            Iniciando conexão segura...
                         </td>
                     </tr>
                 </tbody>
@@ -247,67 +262,30 @@
     lucide.createIcons();
     const ACCESS_KEY = localStorage.getItem('sifras_token');
 
-    async function resetAllUsers() {
-        if (!confirm('⚠️ ALERTA MÁXIMO: Remover TODOS os usuários e mentorados do sistema? Esta ação é irreversível.')) return;
-        const confirmStr = prompt('Digite RESET para confirmar a limpeza total:');
-        if (confirmStr !== 'RESET') return;
-
-        try {
-            const res = await fetch('/admin/reset-all-users', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
-            });
-            if (res.ok) {
-                alert('Sistema resetado com sucesso.');
-                updateOverview();
-            }
-        } catch (e) { alert('Falha no reset.'); }
+    async function checkAdminPass() {
+        const pass = document.getElementById('adminPass').value;
+        const err = document.getElementById('adminError');
+        if (pass === 'amsj777') {
+            localStorage.setItem('sifras_token', pass);
+            location.reload();
+        } else {
+            err.classList.remove('hidden');
+        }
     }
 
-    async function stopAll() {
-        if (!confirm('️ EMERGÊNCIA: Parar TODOS os robôs da rede?')) return;
-        const btn = document.getElementById('btnStopAll');
-        btn.disabled = true;
+    async function approveUser(targetUser) {
         try {
-            const res = await fetch('/admin/stop-all', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
-            });
-            if (res.ok) alert('Comando executado com sucesso.');
-            updateOverview();
-        } catch (e) { alert('Falha no comando.'); }
-        btn.disabled = false;
-    }
-
-    async function stopUser(targetUser) {
-        if (!confirm(`Parar robô do usuário ${targetUser}?`)) return;
-        try {
-            await fetch('/admin/stop-user', {
+            await fetch('/admin/approve-user', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${ACCESS_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetUser })
             });
             updateOverview();
-        } catch (e) {}
-    }
-
-    async function antiRestartUser(targetUser) {
-        if (!confirm(`Resetar ciclo Sniper para ${targetUser}?`)) return;
-        try {
-            await fetch('/admin/anti-restart', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${ACCESS_KEY}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUser })
-            });
-            updateOverview();
-        } catch (e) {}
+        } catch (e) { alert('Erro na aprovação.'); }
     }
 
     async function deleteUser(targetUser) {
-        if (!confirm(`DELETAR PERMANENTEMENTE o usuário ${targetUser}?`)) return;
-        const confirmStr = prompt('Digite DELETE para confirmar:');
-        if (confirmStr !== 'DELETE') return;
-
+        if (!confirm(`Deletar ${targetUser}?`)) return;
         try {
             await fetch('/admin/delete-user', {
                 method: 'POST',
@@ -318,9 +296,9 @@
         } catch (e) {}
     }
 
-    async function approveUser(targetUser) {
+    async function stopUser(targetUser) {
         try {
-            await fetch('/admin/approve-user', {
+            await fetch('/admin/stop-user', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${ACCESS_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetUser })
@@ -337,12 +315,13 @@
             const res = await fetch(`/admin/overview?t=${Date.now()}`, {
                 headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
             });
-            if (!res.ok) throw new Error('Falha no acesso admin');
+            if (!res.ok) throw new Error('Unauthorized');
             const data = await res.json();
             
             renderStats(data);
-            renderTable(data.users || []);
-            document.getElementById('lastUpdateTime').innerText = `Sinc: ${new Date().toLocaleTimeString()}`;
+            const users = data.users || [];
+            renderLeads(users.filter(u => !u.isApproved));
+            renderTable(users.filter(u => u.isApproved));
         } catch (e) {
             console.error(e);
         } finally {
@@ -353,92 +332,76 @@
     function renderStats(data) {
         const users = data.users || [];
         const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
-
         setVal('totalClients', users.length);
         setVal('tradingCount', users.filter(u => u.status === 'IN_TRADE').length);
-        setVal('globalPivot', data.globalPivot || '---');
-
         const totalYield = users.reduce((sum, u) => sum + (Number(u.totalProfitPct) || 0), 0);
         setVal('globalProfitPct', `${totalYield.toFixed(2)}%`);
-        
-        const totalCapital = users.reduce((sum, u) => sum + (Number(u.buyAmountUSDT) || 0), 0);
-        setVal('avgProfit', `$ ${totalCapital.toFixed(2)}`);
-
-        const totalBRL = users.reduce((sum, u) => sum + (Number(u.realizedProfitBRL) || 0), 0);
-        setVal('totalBRL', `R$ ${totalBRL.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
-
-        const h = Math.floor(data.serverUptime / 3600);
-        const m = Math.floor((data.serverUptime % 3600) / 60);
-        setVal('netStatus', `${data.globalLatency || 0}ms | ${h}h ${m}m | IP: ${data.serverIp || 'N/A'}`);
+        const totalCap = users.reduce((sum, u) => sum + (Number(u.balanceUSDT) || 0), 0);
+        setVal('avgProfit', `$ ${totalCap.toFixed(2)}`);
+        setVal('globalPivot', data.globalPivot || 'AGUARDANDO...');
     }
 
-    function renderTable(users) {
+    function renderLeads(leads) {
+        const section = document.getElementById('leadsSection');
+        const grid = document.getElementById('leadsGrid');
+        if (leads.length > 0) {
+            section.classList.remove('hidden');
+            grid.innerHTML = leads.map(l => `
+                <div class="glass-panel p-5 border-accent-cyan/30 flex flex-col gap-4">
+                    <div class="flex justify-between items-start">
+                         <div>
+                            <h3 class="font-black text-lg text-white">${l.fullName || l.username}</h3>
+                            <p class="text-[0.6rem] text-slate-400 font-bold mono">${l.email}</p>
+                         </div>
+                         <span class="status-pill status-red">Pendente</span>
+                    </div>
+                    <div class="space-y-1">
+                         <div class="flex items-center gap-2 text-[0.7rem] font-bold">
+                             <a href="https://wa.me/${(l.whatsapp || '').replace(/\D/g,'')}" target="_blank" class="text-accent-cyan hover:underline">WhatsApp: ${l.whatsapp}</a>
+                         </div>
+                         <div class="text-[0.6rem] text-slate-500">Registrado em ${new Date(l.registrationDate).toLocaleDateString()}</div>
+                    </div>
+                    <button onclick="approveUser('${l.username}')" class="bg-[#90C23A] text-black font-black uppercase text-[0.8rem] py-4 rounded-xl hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(144,194,58,0.4)] border-b-4 border-black/20">APROVAR OPERADOR</button>
+                    <button onclick="deleteUser('${l.username}')" class="text-[0.6rem] text-slate-500 uppercase font-black hover:text-white">Descartar Lead</button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        } else { section.classList.add('hidden'); }
+    }
+
+    function renderTable(activeUsers) {
         const body = document.getElementById('adminTableBody');
-        if (users.length === 0) {
-            body.innerHTML = '<tr><td colspan="12" class="text-center py-20 text-slate-600 uppercase text-[0.6rem] font-black italic tracking-widest">Nenhum cliente sincronizado</td></tr>';
+        if (activeUsers.length === 0) {
+            body.innerHTML = '<tr><td colspan="11" class="text-center py-20 text-slate-600 uppercase text-[0.6rem] font-black italic tracking-widest">Nenhum cliente operacional</td></tr>';
             return;
         }
 
-        body.innerHTML = users.map(u => {
-            let roi = 0, progress = 0, color = 'var(--accent-ruby)';
+        body.innerHTML = activeUsers.map(u => {
+            let roi = 0, color = 'var(--accent-ruby)';
             if (u.status === 'IN_TRADE' && u.buyPrice > 0) {
                 roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
-                // Escala de -1.0% a +1.0% (Total 2.0)
-                progress = Math.max(0, Math.min(100, ((roi - (-1.0)) / (2.0)) * 100));
-                
-                if (roi >= 0.8) color = 'var(--accent-emerald)'; // Alvo Batido
-                else if (roi >= 0) color = 'var(--accent-cyan)'; // No lucro
-                else color = 'var(--accent-ruby)'; // No prejuízo
+                color = roi >= 0.8 ? 'var(--accent-emerald)' : (roi >= 0 ? 'var(--accent-cyan)' : 'var(--accent-ruby)');
             }
 
             return `
-            <tr>
-                <td class="px-4 py-3">
-                    <div class="font-black italic text-[#FFFFFF] uppercase tracking-tighter">${u.username}</div>
-                    <div class="text-[0.55rem] text-slate-500 font-bold lowercase">${u.email || ''}</div>
-                    <div class="text-[0.55rem] text-accent-cyan font-black uppercase mt-1">${u.experience || 'PERFIL Ñ INF.'}</div>
-                    <a href="https://wa.me/${(u.whatsapp || '').replace(/\D/g,'')}" target="_blank" class="block text-[0.55rem] text-[#90C23A] hover:underline font-bold mt-1">${u.whatsapp || 'SEM WHATS'}</a>
+            <tr class="hover:bg-white/5 transition-colors">
+                <td class="px-4 py-4">
+                    <div class="font-black italic text-white uppercase">${u.username}</div>
+                    <div class="text-[0.55rem] text-slate-500 font-bold">${u.fullName || ''}</div>
                 </td>
+                <td><span class="status-pill status-${u.status === 'IN_TRADE' ? 'green' : (u.status === 'OFFLINE' ? 'gray' : 'blue')}">${u.status}</span></td>
+                <td><div class="text-accent-cyan font-black">${roi.toFixed(2)}%</div></td>
+                <td class="font-black text-white">${u.activeSymbol || '---'}</td>
+                <td class="text-slate-400">$ ${Number(u.buyPrice || 0).toFixed(4)}</td>
+                <td class="text-white font-bold">$ ${Number(u.currentPrice || 0).toFixed(4)}</td>
+                <td class="text-accent-emerald font-bold">$ ${Number(u.targetPrice || 0).toFixed(4)}</td>
+                <td class="font-black">$ ${Number(u.balanceUSDT || 0).toFixed(2)}</td>
+                <td class="${u.liquidPnlPool >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} font-black">$ ${Number(u.liquidPnlPool || 0).toFixed(2)}</td>
+                <td class="font-bold">#${u.staircaseIndex || 10}</td>
                 <td>
-                    ${!u.isApproved ? 
-                        '<span class="status-pill status-red">Pendente</span>' : 
-                        `<span class="status-pill status-${u.status === 'IN_TRADE' ? 'green' : (u.status === 'OFFLINE' ? 'gray' : 'blue')}">${u.status}</span>`
-                    }
-                </td>
-                <td>
-                    <div class="text-[0.6rem] font-black text-[#D9DFE3] uppercase mb-1">${u.currentStep || 'SCAN'}</div>
-                    ${u.status === 'IN_TRADE' ? `
-                        <div class="telemetry-mini-bar relative">
-                            <!-- Marcador de Entrada (0%) no centro da escala -1 a +1 -->
-                            <div class="absolute h-full w-px bg-white/40" style="left:50%"></div>
-                            <div class="h-full" style="width: ${progress}%; background: ${color}; box-shadow: 0 0 10px ${color}"></div>
-                        </div>
-                        <div class="flex justify-between text-[0.5rem] mt-1 font-bold">
-                            <span class="text-slate-600">-1.0%</span>
-                            <span style="color:${color}">${roi.toFixed(2)}%</span>
-                            <span class="text-slate-600">+1.0%</span>
-                        </div>
-                    ` : '<div class="text-slate-700 italic">---</div>'}
-                </td>
-                <td class="font-black text-accent-cyan">${u.activeSymbol || '---'}</td>
-                <td class="text-[#90C23A]">$ ${Number(u.buyPrice || 0).toFixed(6)}</td>
-                <td class="font-bold">$ ${Number(u.currentPrice || 0).toFixed(6)}</td>
-                <td class="text-accent-emerald font-bold">$ ${Number(u.targetPrice || 0).toFixed(6)}</td>
-                <td class="text-[#FFFFFF] font-black">$ ${Number(u.buyAmountUSDT || 0).toFixed(2)}</td>
-                <td class="text-[#FFFFFF] font-black">$ ${Number(u.balanceUSDT || 0).toFixed(2)}</td>
-                <td class="${u.liquidPnlPool >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} font-black italic">
-                    $ ${Number(u.liquidPnlPool || 0).toFixed(2)}
-                </td>
-                <td class="font-bold text-[#D9DFE3]">PASSO #${u.staircaseIndex || 10}</td>
-                <td>
-                    <div class="flex flex-wrap gap-2 text-[#FFFFFF]">
-                        ${!u.isApproved ? `
-                            <button onclick="approveUser('${u.username}')" class="btn-action bg-accent-emerald text-[#D9DFE3]">Aprovar</button>
-                        ` : `
-                            <button onclick="antiRestartUser('${u.username}')" class="btn-action bg-accent-cyan/10 border border-accent-cyan/30 text-accent-cyan">Reset</button>
-                            <button onclick="stopUser('${u.username}')" class="btn-action bg-accent-ruby/10 border border-accent-ruby/30 text-accent-ruby">Stop</button>
-                        `}
-                        <button onclick="deleteUser('${u.username}')" class="btn-action bg-[#90C23A]/10 border border-white/10 text-[#D9DFE3] hover:text-[#FFFFFF]">Del</button>
+                    <div class="flex gap-2">
+                        <button onclick="stopUser('${u.username}')" class="px-4 py-2 bg-[#F85149] text-white font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Stop</button>
+                        <button onclick="deleteUser('${u.username}')" class="px-4 py-2 bg-slate-700 text-slate-200 font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Del</button>
                     </div>
                 </td>
             </tr>`;
@@ -447,33 +410,51 @@
 
     window.onload = () => {
         lucide.createIcons();
-        
-        // Verificação de Acesso
-        if (!localStorage.getItem('sifras_token')) {
-            const pass = prompt("Digite a Chave Mestre para acessar o Monitor Alfa:");
-            if (pass) {
-                localStorage.setItem('sifras_token', pass);
-                location.reload();
-            } else {
-                document.body.innerHTML = "<h1 style='color:white;text-align:center;margin-top:20%'>ACESSO NEGADO</h1>";
-                return;
-            }
+        if (ACCESS_KEY === 'amsj777') {
+            document.getElementById('admin-login-overlay').style.display = 'none';
+            updateOverview();
+            setInterval(updateOverview, 5000);
         }
-
-        updateOverview();
-        setInterval(updateOverview, 5000);
     };
-    function exportLeads() {
-        const token = localStorage.getItem('sifras_token');
-        if (token) {
-            window.open(`/export-leads?password=${token}`, '_blank');
-        }
-    }
-    function exportLeadsWord() {
-        const token = localStorage.getItem('sifras_token');
-        if (token) {
-            window.open(`/export-word?password=${token}`, '_blank');
-        }
+    function exportLeads() { window.open(`/export-leads?password=${ACCESS_KEY}`, '_blank'); }
+
+    async function exportPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        
+        doc.setFontSize(22);
+        doc.setTextColor(77, 145, 39); // Emerald
+        doc.text("ALFA COMMAND CENTER - LEADS REPORT", 14, 20);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Data da Extração: ${new Date().toLocaleString()}`, 14, 28);
+
+        const res = await fetch(`/admin/overview?t=${Date.now()}`, {
+            headers: { 'Authorization': `Bearer ${ACCESS_KEY}` }
+        });
+        const data = await res.json();
+        const users = data.users || [];
+
+        const tableData = users.map(u => [
+            u.fullName || '',
+            u.whatsapp || '',
+            u.username,
+            u.email || '',
+            u.status,
+            `$${Number(u.balanceUSDT || 0).toFixed(2)}`,
+            new Date(u.registrationDate).toLocaleDateString()
+        ]);
+
+        doc.autoTable({
+            startY: 35,
+            head: [['Nome Completo', 'WhatsApp', 'Usuário', 'Email', 'Status', 'Saldo', 'Cadastro']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { fillColor: [77, 145, 39] }
+        });
+
+        doc.save(`leads_alfa_${Date.now()}.pdf`);
     }
 </script>
 </body>

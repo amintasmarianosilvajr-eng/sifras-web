@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sifras Alfa - Dashboard Sniper Master</title>
+    <title>Sifras Alfa - Dashboard Master</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -211,7 +211,7 @@
                 <img src="logo.png" alt="Logo" class="relative z-10 w-full h-full rounded-3xl shadow-2xl">
             </div>
             <h2 class="text-4xl font-black italic uppercase tracking-tighter text-[#FFFFFF]">Target Atingido!</h2>
-            <p class="text-accent-cyan font-bold tracking-[0.3em] uppercase mt-4">Sniper Elite Operando com Sucesso</p>
+            <p class="text-accent-cyan font-bold tracking-[0.3em] uppercase mt-4">Alfa Elite Operando com Sucesso</p>
         </div>
     </div>
 
@@ -224,7 +224,7 @@
                 <div>
                     <h1 class="text-lg font-black uppercase italic tracking-tight">Sifras <span class="text-accent-cyan">Master Pro</span></h1>
                     <div class="flex items-center gap-2 mt-0.5">
-                        <span class="text-[0.6rem] text-[#D9DFE3] font-bold tracking-widest uppercase mono">Algoritmo Sniper v4.2</span>
+                        <span class="text-[0.6rem] text-[#D9DFE3] font-bold tracking-widest uppercase mono">Algoritmo Alfa v4.2</span>
                         <div class="w-1 h-1 rounded-full bg-slate-700"></div>
                         <span class="text-[0.6rem] text-accent-emerald font-bold tracking-widest uppercase mono">Nuvem 24h</span>
                     </div>
@@ -297,7 +297,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <label class="text-[0.6rem] text-[#D9DFE3] uppercase font-black ml-1">Modalidade Snipering</label>
+                        <label class="text-[0.6rem] text-[#D9DFE3] uppercase font-black ml-1">Modalidade Alfa</label>
                         <div class="flex gap-2">
                             <button id="modeAlfaUSDT" class="btn-mode active" onclick="selectMode('ALFA_USDT', this)">ALFA USDT</button>
                             <button id="modeAlfaUSDC" class="btn-mode" onclick="selectMode('ALFA_USDC', this)">ALFA USDC</button>
@@ -306,7 +306,7 @@
 
                     <div class="flex items-center gap-3 p-3 bg-[#90C23A]/10 rounded-xl border border-white/10">
                         <input type="checkbox" id="chkLoop" checked class="w-5 h-5 accent-accent-cyan bg-transparent">
-                        <span class="text-[0.65rem] font-bold uppercase text-slate-300">Fluxo Contínuo Sniper</span>
+                        <span class="text-[0.65rem] font-bold uppercase text-slate-300">Fluxo Contínuo Alfa</span>
                     </div>
 
                     <div class="grid grid-cols-4 gap-2">
@@ -317,7 +317,7 @@
                     </div>
 
                     <button id="btnStart" onclick="startSystem()" class="btn-premium btn-start">
-                        <i data-lucide="zap" class="w-5 h-5"></i> Ativar Sniper Motor
+                        <i data-lucide="zap" class="w-5 h-5"></i> Ativar Motor Alfa
                     </button>
 
                     <button id="btnPanic" onclick="panicSell()" class="btn-premium btn-panic">
@@ -341,13 +341,13 @@
                 <!-- TOP STATS -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div class="stat-card">
-                        <p class="text-[0.6rem] text-[#D9DFE3] uppercase font-black tracking-widest mb-2">Fator Sniper</p>
+                        <p class="text-[0.6rem] text-[#D9DFE3] uppercase font-black tracking-widest mb-2">Fator Alfa</p>
                         <p id="valPivot" class="text-xl font-black text-[#FFFFFF] italic truncate">---</p>
                         <p id="valDistances" class="text-[0.6rem] text-[#90C23A] font-bold mono mt-2">D2: 0% | D6: 0%</p>
                     </div>
                     <div class="stat-card">
                         <p class="text-[0.6rem] text-[#D9DFE3] uppercase font-black tracking-widest mb-2">Ciclo de Vendas</p>
-                        <p id="valOpsCount" class="text-xl font-black text-[#FFFFFF] italic">0 / 5</p>
+                        <p id="valOpsCount" class="text-xl font-black text-[#FFFFFF] italic">0 / 10</p>
                         <p id="valCooldown" class="text-[0.6rem] text-[#90C23A] font-bold mono mt-2 text-accent-emerald">Aguardando Filtro</p>
                     </div>
                     <div class="stat-card" style="border-bottom: 2px solid var(--accent-cyan)">
@@ -369,7 +369,7 @@
                             <h3 class="text-xs font-black uppercase tracking-[0.3em] text-accent-cyan mb-2">Trade em Monitoramento</h3>
                             <div class="flex items-center gap-4">
                                 <span id="telemetrySymbol" class="text-4xl font-black italic text-[#FFFFFF] tracking-tighter">---</span>
-                                <div class="px-2 py-1 rounded bg-accent-cyan/10 text-accent-cyan text-[0.6rem] font-black uppercase">Live Sniper</div>
+                                <div class="px-2 py-1 rounded bg-accent-cyan/10 text-accent-cyan text-[0.6rem] font-black uppercase">Live Alfa</div>
                             </div>
                             <div id="valTradeTarget" class="mt-4 space-y-1 text-[0.65rem] mono font-bold text-[#D9DFE3]">
                                 <p> ENTRADA: <span class="text-[#FFFFFF]">$---</span></p>
@@ -457,7 +457,7 @@
                                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://wa.me/5531997004567" alt="QR" class="w-20 h-20">
                             </div>
                             <div>
-                                <h4 class="text-xs font-black uppercase text-accent-cyan mb-2">Suporte Sniper VIP</h4>
+                                <h4 class="text-xs font-black uppercase text-accent-cyan mb-2">Suporte Alfa VIP</h4>
                                 <p class="text-[0.65rem] text-[#90C23A] font-bold mb-4">Acesso direto ao arquiteto do algoritmo via WhatsApp.</p>
                                 <a href="https://wa.me/5531997004567" target="_blank" class="text-[0.6rem] font-black uppercase py-2 px-4 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-[#FFFFFF] transition-all inline-flex items-center gap-2">
                                     <i data-lucide="message-circle" class="w-3 h-3"></i> Abrir Chat VIP

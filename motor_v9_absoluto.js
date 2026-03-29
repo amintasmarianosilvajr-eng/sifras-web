@@ -1,5 +1,5 @@
 /**
- * SIFRAS ALFA SNIPER ELITE v3.5 - V9 ABSOLUTO 
+ * SIFRAS ALFA v3.5 - V9 ABSOLUTO 
  * SEM PAUSAS - SEM DELAYS - SEM CACHE
  */
 
@@ -86,7 +86,7 @@ function renderRanking(ranking) {
     `).join('');
 }
 
-function analyzeSniper(ranking) {
+function analyzeAlfa(ranking) {
     if (currentTrade) return;
     const targetCoin = ranking[staircaseIndex - 1];
     if (targetCoin && !instantBlacklist.includes(targetCoin.symbol)) {

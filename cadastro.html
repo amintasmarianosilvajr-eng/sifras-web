@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sifras Alfa | Registro de Operador</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-neon: #90C23A;
+            --accent-green: #90C23A;
+            --danger-neon: #f85149;
+            --bg-deep: #060B19;
+            --bg-card: #0D1117;
+            --text-main: #f0f3f5;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { 
+            background: var(--bg-deep); 
+            color: var(--text-main); 
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image: radial-gradient(circle at 50% 50%, rgba(144, 194, 58, 0.05) 0%, transparent 70%);
+        }
+
+        .auth-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(144, 194, 58, 0.2);
+            padding: 2.5rem;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        .logo { width: 80px; margin-bottom: 1.5rem; }
+        h2 { font-family: 'Outfit'; font-size: 2rem; color: #fff; margin-bottom: 0.5rem; letter-spacing: -1px; }
+        p { font-size: 0.8rem; color: #8b949e; margin-bottom: 2rem; }
+
+        .form-group { margin-bottom: 1.2rem; text-align: left; }
+        label { font-size: 0.65rem; font-weight: 800; color: var(--primary-neon); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 1px; }
+        input {
+            width: 100%;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 14px 18px;
+            border-radius: 12px;
+            color: #ffffff !important;
+            font-family: inherit;
+            font-weight: 700;
+            transition: 0.3s;
+        }
+        input:focus { border-color: var(--primary-neon); outline: none; background: rgba(0,0,0,0.5); }
+
+        .btn-register {
+            width: 100%;
+            background: var(--primary-neon);
+            color: #000;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 900;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: 0.3s;
+            box-shadow: 0 0 20px rgba(144, 194, 58, 0.4);
+            border-bottom: 4px solid rgba(0,0,0,0.3);
+            letter-spacing: 1px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .btn-register:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(144, 194, 58, 0.5); }
+        .btn-register:active { transform: translateY(2px); border-bottom-width: 0; }
+
+        .login-link { margin-top: 1.5rem; font-size: 0.8rem; color: #8b949e; }
+        .login-link a { color: var(--primary-neon); text-decoration: none; font-weight: 700; }
+
+        .success-msg { color: var(--accent-green); font-weight: 800; margin-top: 1rem; display: none; }
+        .error-msg { color: var(--danger-neon); font-size: 0.75rem; margin-top: 0.5rem; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="auth-card">
+        <img src="logo.png" alt="Sifras" class="logo">
+        <h2>REDE ALFA</h2>
+        <p>Cadastre-se para solicitar acesso ao motor operacional.</p>
+
+        <form id="registerForm">
+            <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" id="fullName" placeholder="Ex: Mariano Jr" required>
+            </div>
+            <div class="form-group">
+                <label>WhatsApp</label>
+                <input type="text" id="whatsapp" placeholder="Ex: 5511999999999" required>
+            </div>
+            <div class="form-group">
+                <label>E-mail Principal</label>
+                <input type="email" id="email" placeholder="nome@email.com" required>
+            </div>
+            <div class="form-group">
+                <label>Usuário de Acesso</label>
+                <input type="text" id="username" placeholder="Seu nome de usuário" required>
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="password" placeholder="Mínimo 6 caracteres" required>
+            </div>
+
+            <button type="submit" class="btn-register">SOLICITAR ACESSO</button>
+            <div id="errorBox" class="error-msg"></div>
+            <div id="successBox" class="success-msg">Pendente de aprovação.</div>
+        </form>
+
+        <div class="login-link">
+            Já tem conta? <a href="login.html">Fazer Login</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const err = document.getElementById('errorBox');
+            const success = document.getElementById('successBox');
+            err.style.display = 'none';
+
+            const data = {
+                fullName: document.getElementById('fullName').value,
+                whatsapp: document.getElementById('whatsapp').value,
+                email: document.getElementById('email').value,
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+
+            try {
+                const res = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    document.getElementById('registerForm').style.display = 'none';
+                    success.style.display = 'block';
+                    success.innerText = result.msg;
+                } else {
+                    err.innerText = result.error || result.msg;
+                    err.style.display = 'block';
+                }
+            } catch (e) {
+                err.innerText = "Falha na conexão com o servidor.";
+                err.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

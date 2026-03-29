@@ -25,6 +25,7 @@ let sessionStartBalance = 0;
 let isClosingTrade = false;
 let tradeStartTime = null;
 let previousRanking = null; // Memória para cálculo de aceleração
+let globalCurrentPrice = 0; // Armazena preço do ticker para o painel admin
 
 // Timers
 let syncCountdown = 10;
@@ -289,6 +290,7 @@ async function updateMonitoringUI() {
         const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${currentTrade.symbol}`);
         const data = await res.json();
         const currentPrice = parseFloat(data.price);
+        globalCurrentPrice = currentPrice; // Para envio ao Admin
         
         const pnl = ((currentPrice - currentTrade.buyPrice) / currentTrade.buyPrice) * 100;
         const targetPrice = currentTrade.buyPrice * (1 + CONFIG.TARGET_PROFIT / 100);
@@ -439,6 +441,8 @@ async function pushStateToServer() {
         cycleCount,
         recentSymbols,
         currentTrade,
+        currentPrice: globalCurrentPrice,
+        currentBalance: currentBalance,
         sessionProfitUsdt,
         sessionStartBalance,
         tradeStartTime,

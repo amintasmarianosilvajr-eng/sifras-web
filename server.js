@@ -120,7 +120,22 @@ app.post('/save-alfa-state', async (req, res, next) => {
     try {
         const { username, state } = req.body;
         if (!username) throw new Error("Missing username");
-        await storage.updateUser(username, { alfaState: state });
+        
+        let status = 'OFFLINE';
+        if (state.monitoring) {
+             status = state.currentTrade ? 'IN_TRADE' : 'SEARCHING';
+        }
+        
+        await storage.updateUser(username, { 
+            alfaState: state,
+            status: status,
+            activeSymbol: state.currentTrade ? state.currentTrade.symbol : '---',
+            balanceUSDT: state.currentBalance || 0,
+            buyPrice: state.currentTrade ? state.currentTrade.buyPrice : 0,
+            currentPrice: state.currentPrice || 0,
+            liquidPnlPool: state.sessionProfitUsdt || 0,
+            staircaseIndex: state.cycleCount || 0
+        });
         res.json({ success: true });
     } catch (e) { next(e); }
 });

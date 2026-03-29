@@ -230,7 +230,7 @@ app.get('/export-word', authMiddleware, (req, res) => {
     res.attachment('leads_sifras.txt').send(txt);
 });
 
-app.get('/ping', (req, res) => res.json({ version: '4.4.0-STABLE-ALPHA', status: 'online' }));
+app.get('/ping', (req, res) => res.json({ version: '4.5.0-STABLE-OFFICIAL', status: 'online' }));
 
 // --- PAGE ROUTES ---
 app.get(['/', '/operacional'], (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));

@@ -143,11 +143,8 @@ function analyzeAlfa(ranking) {
     
     const candidates = scanBlock
         .filter(c => !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && !recentSymbols.includes(c.symbol))
-        .sort(() => Math.random() - 0.5) // EMBARALHAMENTO: Elimina o vício de posição (#2, #3, etc)
-        .sort((a, b) => b.delta - a.delta); // SELEÇÃO: Foca estritamente na maior aceleração real detectada
+        .sort((a, b) => b.delta - a.delta); // Busca a MAIOR aceleração absoluta
 
-    // Para evitar "preguiça" do motor se os deltas estiverem travados em 0
-    // Escolhemos o vencedor absoluto do bloco de alta performance
     const target = candidates.length > 0 ? candidates[0] : null;
 
     if (target) {
@@ -227,6 +224,12 @@ async function executeTrade(coin) {
         if (data.orderId) {
             currentTrade.buyPrice = parseFloat(data.fills[0].price);
             currentTrade.executedQty = data.executedQty;
+            
+            // REGRA v4.5: Adicionar ao Cooldown de 3 moedas para evitar re-compra imediata
+            recentSymbols.push(currentTrade.symbol);
+            if (recentSymbols.length > 3) recentSymbols.shift(); // 3 operações de bloqueio
+            localStorage.setItem('alfa_recent_symbols', JSON.stringify(recentSymbols));
+
             document.getElementById('active-trade-container').classList.remove('hidden');
             document.getElementById('no-trade-msg').classList.add('hidden');
             document.getElementById('monitoring-symbol').innerText = coin.symbol.replace('USDT', '');
@@ -237,10 +240,10 @@ async function executeTrade(coin) {
             throw new Error(data.error || "Execution Failed");
         }
     } catch (e) {
-        // Se falhar a compra, adicionamos ao histórico para "pular" e evitar loop infinito
+        // Se falhar a compra, também adicionamos ao histórico para "pular" e evitar loop
         if (currentTrade && currentTrade.symbol) {
              recentSymbols.push(currentTrade.symbol);
-             if (recentSymbols.length > 5) recentSymbols.shift();
+             if (recentSymbols.length > 3) recentSymbols.shift();
              localStorage.setItem('alfa_recent_symbols', JSON.stringify(recentSymbols));
         }
         

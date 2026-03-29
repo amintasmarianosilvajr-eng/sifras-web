@@ -310,6 +310,7 @@
     async function updateOverview(isManual = false) {
         const icon = document.getElementById('refreshIcon');
         if (isManual) icon.classList.add('animate-spin');
+        const t0 = performance.now();
 
         try {
             const res = await fetch(`/admin/overview?t=${Date.now()}`, {
@@ -317,8 +318,9 @@
             });
             if (!res.ok) throw new Error('Unauthorized');
             const data = await res.json();
+            const latency = Math.round(performance.now() - t0);
             
-            renderStats(data);
+            renderStats(data, latency);
             const users = data.users || [];
             renderLeads(users.filter(u => !u.isApproved));
             renderTable(users.filter(u => u.isApproved));
@@ -329,16 +331,42 @@
         }
     }
 
-    function renderStats(data) {
+    function renderStats(data, pingMs = 42) {
         const users = data.users || [];
         const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+        
         setVal('totalClients', users.length);
-        setVal('tradingCount', users.filter(u => u.status === 'IN_TRADE').length);
-        const totalYield = users.reduce((sum, u) => sum + (Number(u.totalProfitPct) || 0), 0);
-        setVal('globalProfitPct', `${totalYield.toFixed(2)}%`);
+        
+        const activeUsers = users.filter(u => u.status === 'IN_TRADE');
+        setVal('tradingCount', activeUsers.length);
+        
         const totalCap = users.reduce((sum, u) => sum + (Number(u.balanceUSDT) || 0), 0);
         setVal('avgProfit', `$ ${totalCap.toFixed(2)}`);
-        setVal('globalPivot', data.globalPivot || 'AGUARDANDO...');
+
+        // Realizado USDT -> BRL (Conversão Direta Est. ~5.09)
+        const totalProfitUSDT = users.reduce((sum, u) => sum + (Number(u.liquidPnlPool) || 0), 0);
+        setVal('totalBRL', `R$ ${(totalProfitUSDT * 5.09).toFixed(2).replace('.', ',')}`);
+
+        // ROI Geral
+        let roiGeral = 0;
+        if (totalCap > 0 && totalProfitUSDT > 0) {
+            roiGeral = (totalProfitUSDT / totalCap) * 100;
+        }
+        setVal('globalProfitPct', `${roiGeral.toFixed(2)}%`);
+
+        // Alvo Radar (Moeda de Maior Tração)
+        let pivot = 'AGUARDANDO...';
+        if (activeUsers.length > 0) {
+            const topTrader = activeUsers.sort((a,b) => b.currentPrice - a.currentPrice)[0];
+            pivot = topTrader.activeSymbol;
+        }
+        setVal('globalPivot', pivot);
+
+        // Uptime Sistema & Telemetria
+        const up = data.serverUptime || 0;
+        const h = Math.floor(up / 3600);
+        const m = Math.floor((up % 3600) / 60);
+        setVal('netStatus', `${pingMs} ms | ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m`);
     }
 
     function renderLeads(leads) {

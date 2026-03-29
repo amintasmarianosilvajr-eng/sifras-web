@@ -7,6 +7,22 @@ class BinanceService {
     constructor() {
         this.globalMarket = { top30: [] };
         this.ws = null;
+        this.dynamicBlacklist = [];
+    }
+
+    async initBlacklist() {
+        try {
+            console.log("[BINANCE-REST] Mapeando moedas de risco sob aviso de Deslistagem (Tags)...");
+            const res = await axios.get('https://api.binance.com/api/v3/exchangeInfo');
+            if (res.data && Array.isArray(res.data.symbols)) {
+                this.dynamicBlacklist = res.data.symbols
+                    .filter(s => s.status !== 'TRADING' || (s.tags && s.tags.includes('Monitoring')))
+                    .map(s => s.symbol.replace('USDT', ''));
+                console.log(`[BINANCE-REST] Motor Alfa blindou ${this.dynamicBlacklist.length} tokens tóxicos ou em deslistagem.`);
+            }
+        } catch (e) {
+            console.error("[BINANCE-REST] Falha ao construir blacklist:", e.message);
+        }
     }
 
     async syncRanking() {
@@ -17,7 +33,11 @@ class BinanceService {
 
             if (!Array.isArray(tickers)) throw new Error("Resposta inválida da API REST");
 
-            const filtered = tickers.filter(t => t.symbol.endsWith("USDT") && parseFloat(t.quoteVolume) > config.SCAN_MIN_VOL);
+            const filtered = tickers.filter(t => 
+                t.symbol.endsWith("USDT") && 
+                parseFloat(t.quoteVolume) > config.SCAN_MIN_VOL &&
+                !this.dynamicBlacklist.includes(t.symbol.replace('USDT', ''))
+            );
             
             this.globalMarket.top30 = filtered
                 .map(t => ({
@@ -35,8 +55,9 @@ class BinanceService {
         }
     }
 
-    startGlobalWS() {
-        // Garantir ranking inicial via REST
+    async startGlobalWS() {
+        // Garantir ranking inicial via REST com a blindagem ativada
+        await this.initBlacklist();
         this.syncRanking();
         // Agendar atualização via REST a cada 2 minutos para manter a estrutura do ranking sólida
         setInterval(() => this.syncRanking(), 120000);

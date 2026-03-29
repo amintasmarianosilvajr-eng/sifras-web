@@ -143,14 +143,8 @@ function analyzeAlfa(ranking) {
     
     const candidates = scanBlock
         .filter(c => !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && !recentSymbols.includes(c.symbol))
-        .sort((a, b) => {
-            // Critério Principal: Maior Aceleração (Delta)
-            if (Math.abs(b.delta - a.delta) > 0.001) {
-                return b.delta - a.delta;
-            }
-            // Critério de desempate: Maior Volatilidade 24h (Vol) para garantir "a mais volátil"
-            return b.vol - a.vol;
-        });
+        .sort(() => Math.random() - 0.5) // EMBARALHAMENTO: Elimina o vício de posição (#2, #3, etc)
+        .sort((a, b) => b.delta - a.delta); // SELEÇÃO: Foca estritamente na maior aceleração real detectada
 
     // Para evitar "preguiça" do motor se os deltas estiverem travados em 0
     // Escolhemos o vencedor absoluto do bloco de alta performance

@@ -241,6 +241,14 @@ app.post('/admin/delete-user', authMiddleware, async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+app.post('/admin/set-password', authMiddleware, async (req, res, next) => {
+    try {
+        const { targetUser, newPassword } = req.body;
+        await storage.updateUser(targetUser, { password: newPassword });
+        res.json({ success: true });
+    } catch (e) { next(e); }
+});
+
 app.post('/admin/reset-all-users', authMiddleware, async (req, res, next) => {
     try {
         await storage.resetUsers();

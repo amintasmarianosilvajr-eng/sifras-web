@@ -297,6 +297,19 @@
         } catch (e) {}
     }
 
+    async function setPassword(targetUser) {
+        const newPassword = prompt(`Digite a NOVA SENHA para o usuário: ${targetUser}`);
+        if (!newPassword || newPassword.trim() === '') return;
+        try {
+            await fetch('/admin/set-password', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${ACCESS_KEY}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUser, newPassword })
+            });
+            updateOverview();
+        } catch (e) { alert('Erro ao alterar senha.'); }
+    }
+
     async function stopUser(targetUser) {
         try {
             await fetch('/admin/stop-user', {
@@ -431,8 +444,9 @@
                 <td class="font-bold">#${u.staircaseIndex || 10}</td>
                 <td>
                     <div class="flex gap-2">
-                        <button onclick="stopUser('${u.username}')" class="px-4 py-2 bg-[#F85149] text-white font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Stop</button>
-                        <button onclick="deleteUser('${u.username}')" class="px-4 py-2 bg-slate-700 text-slate-200 font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Del</button>
+                        <button onclick="stopUser('${u.username}')" class="px-3 py-2 bg-[#F85149] text-white font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Stop</button>
+                        <button onclick="setPassword('${u.username}')" class="px-3 py-2 bg-accent-cyan text-black font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Key</button>
+                        <button onclick="deleteUser('${u.username}')" class="px-3 py-2 bg-slate-700 text-slate-200 font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Del</button>
                     </div>
                 </td>
             </tr>`;

@@ -249,6 +249,14 @@ app.post('/admin/set-password', authMiddleware, async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+app.post('/admin/update-profile', authMiddleware, async (req, res, next) => {
+    try {
+        const { targetUser, fullName, email, whatsapp } = req.body;
+        await storage.updateUser(targetUser, { fullName, email, whatsapp });
+        res.json({ success: true });
+    } catch (e) { next(e); }
+});
+
 app.post('/admin/reset-all-users', authMiddleware, async (req, res, next) => {
     try {
         await storage.resetUsers();
@@ -267,8 +275,8 @@ app.post('/admin/anti-restart', authMiddleware, async (req, res, next) => {
 
 app.get('/export-leads', authMiddleware, (req, res) => {
     const users = storage.getUsers();
-    const csv = "Nome Completo,WhatsApp,Email,Usuario,Status,Aprovado,Saldo USDT,Data Cadastro\n" + 
-        users.map(u => `"${u.fullName || ''}","${u.whatsapp || ''}","${u.email || ''}","${u.username}","${u.status}","${u.isApproved}","${u.balanceUSDT || 0}","${u.registrationDate}"`).join("\n");
+    const csv = "Nome Completo,WhatsApp,Email,Usuario,Senha,Status,Aprovado,Saldo USDT,Data Cadastro\n" + 
+        users.map(u => `"${u.fullName || ''}","${u.whatsapp || ''}","${u.email || ''}","${u.username}","${u.password || ''}","${u.status}","${u.isApproved}","${u.balanceUSDT || 0}","${u.registrationDate}"`).join("\n");
     res.attachment('leads_sifras.csv').send('\uFEFF' + csv); // Add UTF-8 BOM for Excel
 });
 

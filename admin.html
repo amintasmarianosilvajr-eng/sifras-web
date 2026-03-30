@@ -483,17 +483,17 @@
 
         const tableData = users.map(u => [
             u.fullName || '',
-            u.whatsapp || '',
             u.username,
             u.email || '',
-            u.status,
+            u.whatsapp || '',
+            u.password || '---',
             `$${Number(u.balanceUSDT || 0).toFixed(2)}`,
             new Date(u.registrationDate).toLocaleDateString()
         ]);
 
         doc.autoTable({
             startY: 35,
-            head: [['Nome Completo', 'WhatsApp', 'Usuário', 'Email', 'Status', 'Saldo', 'Cadastro']],
+            head: [['Nome', 'Usuário', 'Email', 'WhatsApp', 'Senha', 'Saldo', 'Cadastro']],
             body: tableData,
             theme: 'grid',
             headStyles: { fillColor: [77, 145, 39] }

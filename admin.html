@@ -156,6 +156,14 @@
     </div>
 </div>
 
+<!-- AVISO DE PERSISTENCIA -->
+<div class="max-w-[1800px] mx-auto mt-4 px-4">
+    <div class="bg-accent-ruby/10 border border-accent-ruby/30 p-3 rounded-xl flex items-center gap-3 text-[0.6rem] font-bold uppercase tracking-widest text-[#f85149]">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        <span>Atenção: Dados locais (Senhas/Leads) são resetados em cada atualização de sistema. Salve o PDF regularmente.</span>
+    </div>
+</div>
+
 <div class="max-w-[1800px] mx-auto space-y-8">
     
     <!-- HEADER -->
@@ -234,6 +242,7 @@
                 <thead>
                     <tr>
                         <th class="px-4">Cliente</th>
+                        <th>WhatsApp</th>
                         <th>Status</th>
                         <th>Telemetria</th>
                         <th>Ativo</th>
@@ -453,8 +462,9 @@
             <tr class="hover:bg-white/5 transition-colors">
                 <td class="px-4 py-4">
                     <div class="font-black italic text-white uppercase">${u.username}</div>
-                    <div class="text-[0.55rem] text-slate-500 font-bold">${u.fullName || ''}</div>
+                    <div class="text-[0.55rem] text-slate-500 font-bold">${u.fullName || '---'}</div>
                 </td>
+                <td class="text-[0.7rem] text-accent-cyan font-bold">${u.whatsapp || '---'}</td>
                 <td><span class="status-pill status-${u.status === 'IN_TRADE' ? 'green' : (u.status === 'OFFLINE' ? 'gray' : 'blue')}">${u.status}</span></td>
                 <td><div class="text-accent-cyan font-black">${roi.toFixed(2)}%</div></td>
                 <td class="font-black text-white">${u.activeSymbol || '---'}</td>
@@ -468,7 +478,7 @@
                 <td>
                     <div class="flex gap-2">
                         <button onclick="stopUser('${u.username}')" class="px-3 py-2 bg-[#F85149] text-white font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Stop</button>
-                        <button onclick="editUser('${u.username}')" class="px-3 py-2 bg-accent-cyan text-black font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Perfil</button>
+                        <button onclick="editUser('${u.username}')" class="px-3 py-2 bg-accent-cyan text-black font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">KEY</button>
                         <button onclick="deleteUser('${u.username}')" class="px-3 py-2 bg-slate-700 text-slate-200 font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Del</button>
                     </div>
                 </td>

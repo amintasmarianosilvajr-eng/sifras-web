@@ -297,17 +297,39 @@
         } catch (e) {}
     }
 
-    async function setPassword(targetUser) {
-        const newPassword = prompt(`Digite a NOVA SENHA para o usuário: ${targetUser}`);
-        if (!newPassword || newPassword.trim() === '') return;
+    async function editUser(targetUser) {
+        const u = window.users_data.find(x => x.username === targetUser) || {};
+        const name = prompt("Nome Completo:", u.fullName || "");
+        if (name === null) return;
+        const email = prompt("Email:", u.email || "");
+        if (email === null) return;
+        const tel = prompt("WhatsApp:", u.whatsapp || "");
+        if (tel === null) return;
+        const pass = prompt("Nova Senha (deixe em branco para não alterar):", u.password || "");
+        if (pass === null) return;
+
         try {
-            await fetch('/admin/set-password', {
+            await fetch('/admin/update-profile', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${ACCESS_KEY}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUser, newPassword })
+                body: JSON.stringify({ 
+                    targetUser, 
+                    fullName: name, 
+                    email: email, 
+                    whatsapp: tel 
+                })
             });
-            updateOverview();
-        } catch (e) { alert('Erro ao alterar senha.'); }
+
+            if (pass.trim() !== "") {
+                await fetch('/admin/set-password', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${ACCESS_KEY}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetUser, newPassword: pass })
+                });
+            }
+
+            updateOverview(true);
+        } catch (e) { alert('Erro ao atualizar perfil.'); }
     }
 
     async function stopUser(targetUser) {
@@ -334,6 +356,7 @@
             const data = await res.json();
             const latency = Math.round(performance.now() - t0);
             
+            window.users_data = data.users || [];
             renderStats(data, latency);
             const users = data.users || [];
             renderLeads(users.filter(u => !u.isApproved));
@@ -445,7 +468,7 @@
                 <td>
                     <div class="flex gap-2">
                         <button onclick="stopUser('${u.username}')" class="px-3 py-2 bg-[#F85149] text-white font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Stop</button>
-                        <button onclick="setPassword('${u.username}')" class="px-3 py-2 bg-accent-cyan text-black font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Key</button>
+                        <button onclick="editUser('${u.username}')" class="px-3 py-2 bg-accent-cyan text-black font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Perfil</button>
                         <button onclick="deleteUser('${u.username}')" class="px-3 py-2 bg-slate-700 text-slate-200 font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Del</button>
                     </div>
                 </td>

@@ -240,6 +240,7 @@
                         <th>Entrada</th>
                         <th>Atual</th>
                         <th>Alvo</th>
+                        <th>Senha</th>
                         <th>Balanço</th>
                         <th>P&L</th>
                         <th>Ciclo</th>
@@ -380,6 +381,7 @@
                          <div>
                             <h3 class="font-black text-lg text-white">${l.fullName || l.username}</h3>
                             <p class="text-[0.6rem] text-slate-400 font-bold mono">${l.email}</p>
+                            <p class="text-[0.6rem] text-accent-cyan font-bold mono mt-1 py-1 px-2 bg-black/40 rounded border border-accent-cyan/20 inline-block">Senha: ${l.password || '---'}</p>
                          </div>
                          <span class="status-pill status-red">Pendente</span>
                     </div>
@@ -423,6 +425,7 @@
                 <td class="text-slate-400">$ ${Number(u.buyPrice || 0).toFixed(4)}</td>
                 <td class="text-white font-bold">$ ${Number(u.currentPrice || 0).toFixed(4)}</td>
                 <td class="text-accent-emerald font-bold">$ ${Number(u.targetPrice || 0).toFixed(4)}</td>
+                <td><span class="text-accent-cyan font-bold text-[0.6rem] tracking-widest bg-black/40 px-2 py-1 border border-accent-cyan/20 rounded">${u.password || '---'}</span></td>
                 <td class="font-black">$ ${Number(u.balanceUSDT || 0).toFixed(2)}</td>
                 <td class="${u.liquidPnlPool >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} font-black">$ ${Number(u.liquidPnlPool || 0).toFixed(2)}</td>
                 <td class="font-bold">#${u.staircaseIndex || 10}</td>

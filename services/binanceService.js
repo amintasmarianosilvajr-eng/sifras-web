@@ -149,7 +149,10 @@ class BinanceService {
             params.quantity = (Math.floor(calculatedQty / step) * step).toFixed(8).replace(/\.?0+$/, "");
         } else {
             if (qty) {
-                params.quantity = qty;
+                const iRes = await this.getExchangeInfo(symbol);
+                const lot = iRes.symbols[0].filters.find(f => f.filterType === 'LOT_SIZE');
+                const step = parseFloat(lot.stepSize);
+                params.quantity = (Math.floor(qty / step) * step).toFixed(8).replace(/\.?0+$/, "");
             } else {
                 const asset = symbol.replace('USDT', '');
                 const timestamp = Date.now();

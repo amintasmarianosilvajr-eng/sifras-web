@@ -34,6 +34,7 @@ const adminLimiter = rateLimit({
 
 // Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, './')));
+app.use('/app', express.static(path.join(__dirname, 'Sifras_App_Mobile')));
 
 // --- BOT SYNC ROUTES ---
 

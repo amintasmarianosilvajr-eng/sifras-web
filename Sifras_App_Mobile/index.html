@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0d0d0d">
+    <title>Sifras Alfa Mobile</title>
+
+    <!-- Google Fonts: Sincronizando com o design atual e luxuoso -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome (Ícones) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="style_app.css">
+</head>
+<body>
+
+    <!-- Splash Screen (Simulação) -->
+    <div id="splash-screen" class="active">
+        <div class="logo-container">
+            <i class="fa-solid fa-infinity gold-glow-icon"></i>
+            <h1>Sifras <span>Alfa</span></h1>
+            <p>COMMAND CENTER</p>
+        </div>
+        <div class="loader-line"></div>
+    </div>
+
+    <!-- Interface Principal -->
+    <div id="main-app" class="hidden">
+        
+        <!-- Cabeçalho (Header) -->
+        <header class="app-header">
+            <div class="user-info">
+                <p class="greeting">Bem-vindo de volta,</p>
+                <h2 class="username">Operador <i class="fa-solid fa-crown gold-text"></i></h2>
+            </div>
+            <div class="status-indicator">
+                <span id="motor-status-dot" class="dot offline"></span>
+                <span id="motor-status-text">Motor Offline</span>
+            </div>
+        </header>
+
+        <!-- Corpo Principal -->
+        <main class="app-content">
+            
+            <!-- Cartão Black de Saldo (Glassmorphism) -->
+            <section class="glass-card balance-card">
+                <div class="card-header">
+                    <span>Capital Operacional (USDT)</span>
+                    <i class="fa-brands fa-bitcoin gold-text"></i>
+                </div>
+                <div class="card-body">
+                    <h1 id="total-balance">$ 0.00</h1>
+                    <div class="profit-indicator positive">
+                        <i class="fa-solid fa-trend-up"></i>
+                        <span id="session-profit">+$0.00 (Hoje)</span>
+                    </div>
+                </div>
+                <div class="card-glow"></div>
+            </section>
+
+            <!-- Ações Principais -->
+            <section class="action-grid">
+                <button id="toggle-motor-btn" class="action-btn gold-border">
+                    <i class="fa-solid fa-power-off"></i>
+                    <span>Ligar Motor</span>
+                </button>
+                <button id="panic-btn" class="action-btn red-border">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <span>Panic Button</span>
+                </button>
+            </section>
+
+            <!-- Status do Trade Atual -->
+            <section class="trade-monitor">
+                <h3 class="section-title">Monitoramento ao Vivo</h3>
+                
+                <div id="no-trade-area" class="monitor-empty">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                    <p>Radar analisando volatilidade...</p>
+                </div>
+
+                <div id="active-trade-area" class="monitor-active hidden glass-card">
+                    <div class="trade-header">
+                        <span id="trade-symbol" class="symbol">---/USDT</span>
+                        <span id="trade-pl" class="pl-badge">+0.00%</span>
+                    </div>
+                    <div class="trade-details">
+                        <div class="detail-item">
+                            <span class="label">Entrada</span>
+                            <span id="trade-entry" class="value">$0.00</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Alvo</span>
+                            <span id="trade-target" class="value gold-text">$0.00</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div id="trade-progress" class="progress-bar-fill gold-gradient"></div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Botton Navigation Bar (Estilos iOS/Android puro) -->
+        <nav class="bottom-nav">
+            <button class="nav-item active">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Painel</span>
+            </button>
+            <button class="nav-item">
+                <i class="fa-solid fa-list-check"></i>
+                <span>Radar</span>
+            </button>
+            <button class="nav-item">
+                <i class="fa-solid fa-gear"></i>
+                <span>Config</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <!-- Lógica do App PWA -->
+    <script src="app_logic.js"></script>
+</body>
+</html>

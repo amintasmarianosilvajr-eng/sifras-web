@@ -17,6 +17,7 @@ const CONFIG = {
 let activeSlots = { 1: { key: '', secret: '', name: '', monitoring: false } };
 let currentTrade = null;
 let cycleCount = 0;
+let cooldownUntil = parseInt(localStorage.getItem('alfa_cooldown_until') || '0');
 let lastExecutedSymbol = null;
 let recentSymbols = []; 
 let currentBalance = 0; 
@@ -160,7 +161,7 @@ function renderRanking(list) {
 // --- CORE LÓGICO (MOTOR ALFA) ---
 
 function analyzeAlfa(ranking) {
-    if (currentTrade || isClosingTrade) return;
+    if (currentTrade || isClosingTrade || Date.now() < cooldownUntil) return;
 
     // Trava de Saldo Mínimo ($10 USDT)
     if (activeSlots[1].monitoring && currentBalance < 10) {
@@ -193,6 +194,18 @@ function analyzeAlfa(ranking) {
 // --- CRONOMETRIA & UI ---
 
 function updateChronometry() {
+    if (Date.now() < cooldownUntil) {
+        const remainingTicks = Math.ceil((cooldownUntil - Date.now()) / 60000);
+        const el = document.getElementById('cycle-counter');
+        if (el) el.innerText = `PAUSA: ${remainingTicks}m`;
+    } else if (Date.now() >= cooldownUntil && cooldownUntil > 0) {
+        cooldownUntil = 0;
+        localStorage.setItem('alfa_cooldown_until', '0');
+        addLog(`✅ PAUSA FINALIZADA: O radar voltou a analisar alvos.`, 'system');
+        const el = document.getElementById('cycle-counter');
+        if (el) el.innerText = `${cycleCount} / 10`;
+    }
+
     // 1. Ciclo de Sincronia (10s)
     if (activeSlots[1].monitoring) {
         if (!isClosingTrade && !isOpeningTrade) {
@@ -352,8 +365,23 @@ async function closeTrade() {
         }
         
         cycleCount++;
-        localStorage.setItem('alfa_cycle_count', cycleCount);
-        document.getElementById('cycle-counter').innerText = `${cycleCount} / 10`;
+        
+        if (cycleCount >= 10) {
+            cooldownUntil = Date.now() + (30 * 60 * 1000);
+            localStorage.setItem('alfa_cooldown_until', cooldownUntil.toString());
+            cycleCount = 0;
+            localStorage.setItem('alfa_cycle_count', cycleCount.toString());
+            
+            addLog(`🛑 SEGURANÇA: 10 Ciclos atingidos. Pausa obrigatória de 30 minutos ativada.`, 'system');
+            document.getElementById('cycle-counter').innerText = `PAUSA: 30m`;
+            
+            if (sessionProfitUsdt > 10) {
+                autoWithdrawToBRL(sessionProfitUsdt);
+            }
+        } else {
+            localStorage.setItem('alfa_cycle_count', cycleCount.toString());
+            document.getElementById('cycle-counter').innerText = `${cycleCount} / 10`;
+        }
         
         lastExecutedSymbol = currentTrade.symbol.replace('USDT', '');
         
@@ -367,6 +395,40 @@ async function closeTrade() {
         document.getElementById('active-trade-container').classList.add('hidden');
         document.getElementById('no-trade-msg').classList.remove('hidden');
         await pushStateToServer();
+    }
+}
+
+async function autoWithdrawToBRL(amount) {
+    try {
+        addLog(`💰 PROTEÇÃO: Transferindo ${amount.toFixed(2)} USDT de lucro para BRL...`, 'system');
+        const res = await fetch('/executar-ordem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                key: activeSlots[1].key,
+                secret: activeSlots[1].secret,
+                symbol: 'USDTBRL',
+                side: 'SELL',
+                qty: amount
+            })
+        });
+        const data = await res.json();
+        if (data.orderId) {
+            addLog(`✅ SUCESSO! Lucro protegido e convertido para REAL (BRL).`, 'buy');
+            
+            sessionStartBalance -= amount;
+            localStorage.setItem('alfa_session_start', sessionStartBalance.toString());
+            
+            if (currentBalance >= amount) currentBalance -= amount; 
+            sessionProfitUsdt -= amount; 
+            localStorage.setItem('alfa_session_profit', sessionProfitUsdt.toString());
+            
+            updateSessionUI();
+        } else {
+            addLog(`⚠️ FALHA NA COMPRA BRL: ${data.error || 'Erro da Corretora.'}`, 'error');
+        }
+    } catch (e) {
+        addLog(`⚠️ ERRO AO CONVERTER LUCRO: ${e.message}`, 'error');
     }
 }
 
@@ -541,6 +603,13 @@ async function loadSavedState() {
 
     // UI Refresh
     const el = document.getElementById('cycle-counter');
-    if (el) el.innerText = `${cycleCount} / 10`; 
+    if (el) {
+        if (Date.now() < cooldownUntil) {
+            const remainingTicks = Math.ceil((cooldownUntil - Date.now()) / 60000);
+            el.innerText = `PAUSA: ${remainingTicks}m`;
+        } else {
+            el.innerText = `${cycleCount} / 10`; 
+        }
+    }
     updateSessionUI();
 }

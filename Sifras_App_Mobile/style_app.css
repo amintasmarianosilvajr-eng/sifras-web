@@ -1,0 +1,429 @@
+/* ==========================================================
+   SIFRAS ALFA MOBILE - VIP GOLD THEME
+   ========================================================== */
+
+:root {
+    /* Palette: Escuro Profundo com detalhes Reais */
+    --bg-dark: #0d0d0d;
+    --card-bg: rgba(30, 30, 35, 0.4); /* Fundo com leve transparência para vidro */
+    --border-color: rgba(255, 215, 0, 0.15); /* Dourado suave */
+    
+    --gold-primary: #D4AF37; /* Dourado Realeza */
+    --gold-bright: #F9E596;
+    --gold-glow: rgba(212, 175, 55, 0.3);
+    
+    --accent-green: #00E676; /* Lucro / Sucesso */
+    --accent-red: #FF3B30; /* Panic / Stop */
+    --text-pure: #ffffff;
+    --text-muted: #8e8e93;
+
+    --font-main: 'Inter', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-pure);
+    font-family: var(--font-main);
+    overflow: hidden; /* App feel, no scroll na base */
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Utilitários Typography e Cores */
+.gold-text { color: var(--gold-primary); text-shadow: 0 0 10px var(--gold-glow); }
+.green-text { color: var(--accent-green); }
+.red-text { color: var(--accent-red); }
+.hidden { display: none !important; }
+
+/* =========================================
+   SPLASH SCREEN
+   ========================================= */
+#splash-screen {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: var(--bg-dark);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.8s ease-out;
+}
+
+.logo-container {
+    text-align: center;
+    animation: fadeIn 1.5s ease-out;
+}
+
+.gold-glow-icon {
+    font-size: 5rem;
+    color: var(--gold-primary);
+    filter: drop-shadow(0 0 20px var(--gold-primary));
+    margin-bottom: 20px;
+}
+
+.logo-container h1 {
+    font-size: 2.5rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+    margin-bottom: 5px;
+}
+
+.logo-container h1 span {
+    color: var(--gold-primary);
+}
+
+.logo-container p {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    letter-spacing: 4px;
+    opacity: 0.8;
+}
+
+.loader-line {
+    width: 60%;
+    height: 2px;
+    background: rgba(255,255,255,0.1);
+    margin-top: 40px;
+    position: relative;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.loader-line::after {
+    content: '';
+    position: absolute;
+    left: -50%;
+    height: 100%;
+    width: 50%;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    animation: slideLine 2s infinite ease-in-out;
+}
+
+/* =========================================
+   MAIN APP STRUCTURE
+   ========================================= */
+#main-app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 20px 80px 20px; /* Padding bottom for nav */
+    overflow-y: auto;
+}
+
+/* Header */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.greeting {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.username {
+    font-size: 1.4rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.05);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot.offline { background-color: var(--text-muted); }
+.dot.online { 
+    background-color: var(--accent-green); 
+    box-shadow: 0 0 10px var(--accent-green);
+    animation: pulse 2s infinite;
+}
+
+/* Glassmorphism Classes */
+.glass-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Balance Card Black */
+.balance-card {
+    padding: 24px;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, rgba(30,30,35,0.8) 0%, rgba(10,10,12,0.9) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.3); /* Dourado */
+}
+
+.card-glow {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+    top: -50px;
+    right: -50px;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.card-body h1 {
+    font-size: 2.8rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+    margin-bottom: 10px;
+}
+
+.profit-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.profit-indicator.positive {
+    background: rgba(0, 230, 118, 0.1);
+    color: var(--accent-green);
+}
+
+/* Botões de Ação */
+.action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.action-btn {
+    appearance: none;
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 20px;
+    color: var(--text-pure);
+    font-family: var(--font-main);
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    transition: transform 0.1s, background 0.2s;
+}
+
+.action-btn:active {
+    transform: scale(0.96);
+}
+
+.action-btn i {
+    font-size: 1.5rem;
+}
+
+.gold-border { border-color: rgba(212, 175, 55, 0.3); }
+.gold-border i { color: var(--gold-primary); }
+.gold-border.active { 
+    background: rgba(212, 175, 55, 0.15);
+    box-shadow: inset 0 0 20px rgba(212, 175, 55, 0.2);
+}
+
+.red-border { border-color: rgba(255, 59, 48, 0.3); }
+.red-border i { color: var(--accent-red); }
+
+/* Monitor de Trade */
+.trade-monitor {
+    flex-grow: 1;
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.monitor-empty {
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px;
+    border: 1px dashed rgba(255,255,255,0.1);
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.monitor-empty i {
+    font-size: 2rem;
+    opacity: 0.5;
+    animation: pulse 2s infinite;
+}
+
+/* Active Trade Card */
+.monitor-active {
+    padding: 20px;
+}
+
+.trade-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.symbol {
+    font-size: 1.5rem;
+    font-weight: 900;
+}
+
+.pl-badge {
+    background: rgba(0, 230, 118, 0.15);
+    color: var(--accent-green);
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 1.1rem;
+}
+
+.trade-details {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-item .label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.detail-item .value {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.progress-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.gold-gradient {
+    background: linear-gradient(90deg, #D4AF37, #F9E596);
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+/* Bottom Nav */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 70px;
+    background: rgba(15, 15, 18, 0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-family: var(--font-main);
+    font-weight: 600;
+    transition: color 0.3s;
+}
+
+.nav-item i {
+    font-size: 1.3rem;
+}
+
+.nav-item.active {
+    color: var(--gold-primary);
+}
+
+.nav-item.active i {
+    text-shadow: 0 0 10px var(--gold-glow);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideLine {
+    0% { left: -50%; }
+    100% { left: 100%; }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}

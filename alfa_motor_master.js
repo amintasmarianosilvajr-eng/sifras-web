@@ -6,18 +6,26 @@ const CONFIG = {
     UPDATE_INTERVAL: 2000, 
     LOG_INTERVAL: 5000,   
     TARGET_PROFIT: 0.7,
-    STAIRCASE_START: 10,
+    VOLATILITY_WINDOW: 10000,
+    MIN_VOLATILITY_TRIGGER: 0.2,
+    MAX_CYCLES: 10,
+    COOLDOWN_TIME: 1800000,
     BLACKLIST: ['SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV']
 };
 
 let activeSlots = { 1: { key: '', secret: '', name: 'OPERADOR MASTER', monitoring: false } };
 let currentTrade = null;
-let staircaseIndex = 10;
 let globalSystemPower = false;
 let isCooldownActive = false;
 let tradeSocket = null;
 let lastRankingHash = "";
 let lastLogMsg = "";
+let completedCycles = 0;
+
+// Sniper Analyzer Variables
+let isAnalyzingVolatility = false;
+let analysisStartTime = 0;
+let volatilityBuffer = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     loadSavedState();
@@ -69,28 +77,72 @@ function renderRanking(ranking) {
     const grid = document.getElementById('dynamic-targets-grid');
     if (!grid) return;
     
-    const currentHash = ranking.slice(0, 10).map(c => c.symbol).join('|');
+    const currentHash = ranking.slice(0, 20).map(c => c.symbol).join('|');
     if (currentHash === lastRankingHash) {
-        ranking.slice(0, 10).forEach((c, i) => {
+        ranking.slice(0, 20).forEach((c, i) => {
             const els = document.querySelectorAll('.coin-vol');
             if (els[i]) els[i].textContent = `${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%`;
         });
         return;
     }
     lastRankingHash = currentHash;
-    grid.innerHTML = ranking.slice(0, 10).map((c, i) => `
-        <div class="log-card" style="margin-bottom:8px; padding:10px; display:flex; justify-content:space-between; ${i === staircaseIndex - 1 ? 'border:1px solid var(--primary-neon); background:rgba(0,245,255,0.05);' : ''}">
+    grid.innerHTML = ranking.slice(0, 20).map((c, i) => {
+        let isTracked = isAnalyzingVolatility && volatilityBuffer[c.symbol];
+        let hl = isTracked ? 'border:1px solid var(--primary-neon); background:rgba(0,245,255,0.05);' : '';
+        return `
+        <div class="log-card" style="margin-bottom:8px; padding:10px; display:flex; justify-content:space-between; ${hl}">
             <span style="font-weight:900; color:var(--text-muted);">#${i + 1}</span>
             <span style="font-weight:800; color:#fff;">${c.symbol.replace('USDT', '')}</span>
             <span class="coin-vol" style="font-weight:900; color:var(--accent-green);">${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%</span>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function analyzeAlfa(ranking) {
     if (currentTrade || isCooldownActive) return;
-    const targetCoin = ranking[staircaseIndex - 1];
-    if (targetCoin) executeTrade(targetCoin);
+
+    // Filtra ranking das posições #2 a #20 (índices 1 a 19)
+    const candidates = ranking.slice(1, 20).filter(c => !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && !instantBlacklist.includes(c.symbol));
+    
+    if (!isAnalyzingVolatility) {
+        volatilityBuffer = {};
+        candidates.forEach(c => { volatilityBuffer[c.symbol] = { initialPrice: c.price, data: c }; });
+        analysisStartTime = Date.now();
+        isAnalyzingVolatility = true;
+        
+        let elCycle = document.getElementById('cycle-counter');
+        if (elCycle) elCycle.textContent = `RASTREANDO 10S...`;
+        return;
+    }
+
+    // Checa se os 10 segundos passaram
+    if (Date.now() - analysisStartTime >= CONFIG.VOLATILITY_WINDOW) {
+        let bestCoin = null;
+        let highestDelta = -Infinity;
+
+        candidates.forEach(c => {
+            const buf = volatilityBuffer[c.symbol];
+            if (buf) {
+                const delta = ((c.price - buf.initialPrice) / buf.initialPrice) * 100;
+                if (delta > highestDelta) {
+                    highestDelta = delta;
+                    bestCoin = c;
+                }
+            }
+        });
+
+        if (bestCoin && highestDelta >= CONFIG.MIN_VOLATILITY_TRIGGER) {
+            addLog(`⚡ EXPLOSÃO DETECTADA: ${bestCoin.symbol} subiu +${highestDelta.toFixed(2)}% em 10s!`, 'buy');
+            executeTrade(bestCoin);
+        } else {
+            let limit = CONFIG.MIN_VOLATILITY_TRIGGER;
+            let maxReport = bestCoin ? `Máximo: ${bestCoin.symbol} (+${highestDelta.toFixed(2)}%)` : 'Nenhum alvo válido.';
+            addLog(`⏱️ Abaixo de ${limit}% em 10s. ${maxReport} Reiniciando rastreamento...`, 'system');
+            
+            // Reinicia ciclo
+            isAnalyzingVolatility = false;
+        }
+    }
 }
 
 let instantBlacklist = [];
@@ -135,11 +187,8 @@ async function executeTrade(coin) {
 
         resetTrade();
         
-        // PULA PARA A PRÓXIMA MOEDA IMEDIATAMENTE (SEM PAUSA)
-        staircaseIndex--;
-        if (staircaseIndex < 1) staircaseIndex = 10; // Reinicia o ciclo se chegar no fim
-        const elCycle = document.getElementById('cycle-counter');
-        if (elCycle) elCycle.textContent = `PASSO #${staircaseIndex}`;
+        // REINICIA O RASTREAMENTO IMEDIATAMENTE APÓS PULAR
+        isAnalyzingVolatility = false;
     }
 }
 
@@ -303,8 +352,21 @@ async function executeSell() {
         if (d.orderId) {
             addLog(`🚀 ALVO ATINGIDO! VENDA EXECUTADA EM ${currentTrade.symbol}`, 'sell');
             resetTrade();
-            staircaseIndex--;
-            if (staircaseIndex < 1) staircaseIndex = 10;
+            isAnalyzingVolatility = false;
+            
+            completedCycles++;
+            if (completedCycles >= CONFIG.MAX_CYCLES) {
+                completedCycles = 0;
+                isCooldownActive = true;
+                addLog(`🛑 SEGURANÇA: 10 Operações Concluídas. Descanso de 30 minutos ativado.`, 'system');
+                let elCycle = document.getElementById('cycle-counter');
+                if (elCycle) elCycle.textContent = `PAUSA OBRIGATÓRIA: 30M`;
+                
+                setTimeout(() => {
+                    isCooldownActive = false;
+                    addLog(`✅ DESCANSO FINALIZADO: Retomando radar de volatilidade!`, 'system');
+                }, CONFIG.COOLDOWN_TIME);
+            }
         } else {
             throw new Error(d.error || "Rejeição na venda");
         }

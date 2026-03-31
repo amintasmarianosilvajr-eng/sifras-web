@@ -66,6 +66,12 @@ async function updateHeartbeatUI() {
         await triggerDataSync(); // Dispara Ranking e Saldo
     }
 
+    // 1.5 Safety Reset para LENS (Anti-Travamento)
+    if (isAnalyzingVolatility && (Date.now() - analysisStartTime > CONFIG.VOLATILITY_WINDOW + 5000)) {
+        isAnalyzingVolatility = false;
+        console.warn("[ALFA] LENS Reset de Segurança acionado.");
+    }
+
     // 2. Atualiza Círculos e Contadores
     updateChronometryActive();
     
@@ -95,10 +101,10 @@ function updateChronometryActive() {
     let elCycle = document.getElementById('cycle-counter');
     if (elCycle) {
         if (isCooldownActive) {
-            elCycle.textContent = `PAUSA: 30M`;
+            elCycle.textContent = `PAUSA: 30M (${completedCycles}/10)`;
         } else if (isAnalyzingVolatility) {
             const elapsed = Math.floor((Date.now() - analysisStartTime) / 1000);
-            elCycle.textContent = `LENS: ${elapsed}s / 10s`;
+            elCycle.textContent = `${completedCycles} / 10 (SCAN: ${elapsed}s)`;
         } else {
             elCycle.textContent = `${completedCycles} / 10`;
         }

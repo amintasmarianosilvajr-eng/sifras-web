@@ -43,10 +43,11 @@ async function startOperationalLoop() {
     while (true) {
         try {
             if (!isCooldownActive) {
-                const ranking = await fetchRanking();
-                if (ranking && ranking.length >= 1) {
+                const data = await fetchRanking();
+                if (data && data.ranking && data.ranking.length >= 1) {
+                    const ranking = data.ranking;
                     renderRanking(ranking);
-                        analyzeAlfa(ranking);
+                    analyzeAlfa(ranking);
                 }
             }
         } catch (e) {}

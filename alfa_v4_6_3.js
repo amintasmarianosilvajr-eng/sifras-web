@@ -34,6 +34,7 @@ let isAnalyzingVolatility = false;
 let analysisStartTime = 0;
 let volatilityBuffer = {};
 let instantBlacklist = [];
+let tradeHistory = []; // Memória das últimas 5 moedas operadas
 
 // --- BOOTSTRAP ---
 
@@ -215,8 +216,12 @@ function updateSessionStats() {
 function analyzeAlfa(ranking) {
     if (currentTrade || isCooldownActive) return;
 
-    // DEFINIÇÃO: SCAN TOP 15 (Inclui a #1)
-    const candidates = ranking.slice(0, 15).filter(c => !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && !instantBlacklist.includes(c.symbol));
+    // SCAN TOP 15 + FILTRO DE RECORRÊNCIA (NÃO REPETIR ÚLTIMAS 5)
+    const candidates = ranking.slice(0, 15).filter(c => 
+        !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && 
+        !instantBlacklist.includes(c.symbol) &&
+        !tradeHistory.includes(c.symbol) // TRAVA: Ignora se foi uma das últimas 5 operadas
+    );
     
     if (!isAnalyzingVolatility) {
         volatilityBuffer = {};
@@ -324,6 +329,11 @@ async function executeSell() {
         const d = await r.json();
         if (d.orderId) {
             addLog(`🚀 VENDA CONCLUÍDA! Lucro Garantido em ${currentTrade.symbol}.`, 'sell');
+            
+            // ADICIONA À MEMÓRIA PARA NÃO REPETIR (LIMITE 5)
+            tradeHistory.push(currentTrade.fullSymbol);
+            if (tradeHistory.length > 5) tradeHistory.shift();
+            
             resetTrade();
             isAnalyzingVolatility = false;
             completedCycles++;

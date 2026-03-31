@@ -251,6 +251,7 @@ async function syncBalance() {
             }
             const el = document.getElementById('cabinet-total-balance');
             if (el) el.textContent = `$ ${d.totalUsdt.toFixed(2)}`;
+            updateSessionStats();
         }
     } catch(e) {}
 }
@@ -421,11 +422,44 @@ async function executeAutoWithdraw(amount) {
         const d = await r.json();
         if (d.orderId) {
             addLog(`✅ SUCESSO: R$ Convertido. Capital base preservado em $${sessionStartBalance.toFixed(2)} USDT.`, 'buy');
-            // Nota técnica: Não subtraímos do sessionStartBalance para evitar o loop infinito!
-            // O window.currentBalance será atualizado no próximo syncBalance.
+            updateSessionStats();
         }
     } catch (e) {
         addLog(`⚠️ FALHA NO SAQUE BRL: ${e.message}`, 'error');
     }
 }
+
+function updateSessionStats() {
+    const pnlHeader = document.getElementById('header-realtime-pnl');
+    const pnlCabinet = document.getElementById('cabinet-realtime-pnl');
+    
+    if (window.currentBalance && sessionStartBalance > 0) {
+        const profit = window.currentBalance - sessionStartBalance;
+        const pct = (profit / sessionStartBalance) * 100;
+        const color = profit >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
+        const sign = profit >= 0 ? '+' : '';
+
+        if (pnlHeader) {
+            pnlHeader.textContent = `${sign}$${profit.toFixed(2)} (${sign}${pct.toFixed(2)}%)`;
+            pnlHeader.style.color = color;
+        }
+        if (pnlCabinet) {
+            pnlCabinet.innerHTML = `SESSION: <span style="color:${color}">${sign}$${profit.toFixed(2)}</span>`;
+        }
+    }
+}
+
+function recalibrateCapital() {
+    if (window.currentBalance) {
+        sessionStartBalance = window.currentBalance;
+        localStorage.setItem('alfa_session_start', sessionStartBalance);
+        addLog(`🔄 CAPITAL RECALIBRADO: Novo valor base de $${sessionStartBalance.toFixed(2)}`, 'system');
+        updateSessionStats();
+    } else {
+        addLog(`⚠️ FALHA: Sincronize o saldo antes de recalibrar.`, 'error');
+    }
+}
+
+// Expor para o HTML
+window.recalibrateCapital = recalibrateCapital;
 

@@ -146,6 +146,7 @@
                         <div id="cabinet-realtime-pnl" style="font-family:'Inter'; font-weight:800; font-size:1.1rem; color:var(--text-muted); margin-top: 5px;">
                             SESSION: <span class="val-pnl" style="color:var(--text-muted);">---</span>
                         </div>
+                        <button onclick="recalibrateCapital()" class="btn-connect" style="margin-top:15px; width:100%; font-size:0.65rem; border-color:var(--primary-neon); color:var(--primary-neon); background:rgba(0,245,255,0.02);">RECALIBRAR CAPITAL INICIAL</button>
                     </div>
                 </section>
 
@@ -187,7 +188,7 @@
         </main>
     </div>
 
-    <script src="script_alfa.js?v=4.5.8"></script>
+    <script src="alfa_motor_master.js?v=4.6.0"></script>
     <script>
         function panicStop() {
             if(confirm("STOP GERAL: Deseja interromper todas as operações e vender a mercado?")) {

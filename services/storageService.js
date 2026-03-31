@@ -58,7 +58,7 @@ class StorageService {
         for (const [key, value] of Object.entries(data)) {
             if (value !== undefined && value !== null && value !== '') {
                 this.users[username][key] = value;
-            } else if (['status', 'activeSymbol', 'balanceUSDT', 'remoteCommand', 'isApproved'].includes(key)) {
+            } else if (['status', 'activeSymbol', 'balanceUSDT', 'remoteCommand', 'isApproved', 'buyPrice', 'currentPrice', 'targetPrice', 'pnlPerc', 'liquidPnlPool', 'staircaseIndex'].includes(key)) {
                 // Campos técnicos podem ser atualizados mesmo se zero/vazio
                 this.users[username][key] = value;
             }

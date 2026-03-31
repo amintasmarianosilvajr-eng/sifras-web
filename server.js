@@ -47,6 +47,12 @@ app.post('/heartbeat', async (req, res, next) => {
             status: state.status || 'OFFLINE',
             activeSymbol: state.activeSymbol || '---',
             balanceUSDT: state.balanceUSDT || 0,
+            buyPrice: state.buyPrice || 0,
+            targetPrice: state.targetPrice || 0,
+            currentPrice: state.currentPrice || 0,
+            pnlPerc: state.pnlPerc || 0,
+            liquidPnlPool: state.liquidPnlPool || 0,
+            staircaseIndex: state.staircaseIndex || 10,
             keys: keys || undefined
         });
 

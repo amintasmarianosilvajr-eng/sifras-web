@@ -294,6 +294,7 @@ function initPriceSocket(symbol) {
     tradeSocket.onmessage = (e) => {
         const d = JSON.parse(e.data);
         const price = parseFloat(d.c);
+        window.lastSocketPrice = price; // Captura para telemetria admin
         updateTradePrice(price);
     };
 }
@@ -457,9 +458,32 @@ function loadSavedState() {
 
 async function pushNetworkHeartbeat() {
     const username = activeSlots[1].name || 'OPERADOR';
-    const state = { status: currentTrade ? 'IN_TRADE' : (globalSystemPower ? 'SCANNING' : 'OFFLINE'), activeSymbol: currentTrade ? currentTrade.fullSymbol : '---', balanceUSDT: window.currentBalance || 0 };
+    
+    // TELEMETRIA EXPANDIDA PARA ADMIN
+    const buyPrice = currentTrade ? currentTrade.buyPrice : 0;
+    const targetPrice = currentTrade ? currentTrade.targetPrice : 0;
+    const currentPrice = currentTrade ? (window.lastSocketPrice || buyPrice) : 0;
+    const pnlPerc = (currentTrade && buyPrice > 0) ? ((currentPrice - buyPrice) / buyPrice) * 100 : 0;
+    const liquidPnlPool = (window.currentBalance && sessionStartBalance) ? (window.currentBalance - sessionStartBalance) : 0;
+
+    const state = { 
+        status: currentTrade ? 'IN_TRADE' : (globalSystemPower ? 'SCANNING' : 'OFFLINE'), 
+        activeSymbol: currentTrade ? currentTrade.fullSymbol : '---', 
+        balanceUSDT: window.currentBalance || 0,
+        buyPrice,
+        targetPrice,
+        currentPrice,
+        pnlPerc,
+        liquidPnlPool,
+        staircaseIndex: completedCycles + 1
+    };
+
     try {
-        const r = await fetch('/heartbeat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, state, keys: { key: activeSlots[1].key, secret: activeSlots[1].secret } }) });
+        const r = await fetch('/heartbeat', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ username, state, keys: { key: activeSlots[1].key, secret: activeSlots[1].secret } }) 
+        });
         const d = await r.json();
         if (d.command === 'STOP' && globalSystemPower) masterToggle();
     } catch (e) {}

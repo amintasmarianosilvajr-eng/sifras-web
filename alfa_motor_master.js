@@ -24,6 +24,8 @@ let lastRankingHash = "";
 let lastLogMsg = "";
 let completedCycles = 0;
 let sessionStartBalance = parseFloat(localStorage.getItem('alfa_session_start') || '0');
+let syncCountdown = 10;
+let tradeStartTime = null;
 
 // Sniper Analyzer Variables
 let isAnalyzingVolatility = false;
@@ -33,6 +35,7 @@ let volatilityBuffer = {};
 document.addEventListener('DOMContentLoaded', () => {
     loadSavedState();
     startOperationalLoop();
+    setInterval(updateChronometry, 1000);
     
     const nameInput = document.getElementById('slot-1-name');
     if (nameInput) nameInput.addEventListener('blur', () => syncExistingProfile(nameInput.value));
@@ -156,6 +159,7 @@ async function executeTrade(coin) {
 
     const tp = coin.price * (1 + (CONFIG.TARGET_PROFIT / 100));
     currentTrade = { symbol: coin.symbol.replace('USDT', ''), fullSymbol: coin.symbol, buyPrice: coin.price, targetPrice: tp, qty: 0 };
+    tradeStartTime = Date.now();
     updateTradeUI(true);
     
     try {
@@ -237,12 +241,17 @@ function masterToggle() {
 async function syncBalance() {
     if (!activeSlots[1].key) return;
     try {
+        const tStart = performance.now();
         const r = await fetch('/pnl-real', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ key: activeSlots[1].key, secret: activeSlots[1].secret })
         });
         const d = await r.json();
+        
+        const latency = Math.round(performance.now() - tStart);
+        updateLatencyUI(latency);
+
         if (d.totalUsdt) {
             window.currentBalance = d.totalUsdt;
             if (sessionStartBalance === 0 || isNaN(sessionStartBalance)) {
@@ -257,10 +266,22 @@ async function syncBalance() {
     } catch(e) {}
 }
 
-async function fetchRanking() { try { const r = await fetch('/moedas-ranking'); return await r.json(); } catch(e) { return null; } }
+async function fetchRanking() { 
+    try { 
+        const tStart = performance.now();
+        const r = await fetch('/moedas-ranking'); 
+        const data = await r.json(); 
+        
+        const latency = Math.round(performance.now() - tStart);
+        updateLatencyUI(latency);
+        
+        return data;
+    } catch(e) { return null; } 
+}
 
 function resetTrade() { 
     currentTrade = null; 
+    tradeStartTime = null;
     if (tradeSocket) tradeSocket.close(); 
     updateTradeUI(false); 
 }
@@ -427,6 +448,50 @@ async function executeAutoWithdraw(amount) {
         }
     } catch (e) {
         addLog(`⚠️ FALHA NO SAQUE BRL: ${e.message}`, 'error');
+    }
+}
+
+function updateLatencyUI(ms) {
+    const el = document.getElementById('header-latency');
+    if (el) {
+        el.textContent = `${ms} ms`;
+        el.style.color = ms < 300 ? 'var(--accent-green)' : (ms < 1000 ? '#f1c40f' : 'var(--danger-neon)');
+    }
+}
+
+function updateChronometry() {
+    if (globalSystemPower) {
+        syncCountdown--;
+        if (syncCountdown < 0) syncCountdown = 10;
+        
+        const syncCircle = document.getElementById('sync-circle');
+        const syncVal = document.getElementById('sync-timer-val');
+        if (syncCircle && syncVal) {
+            const offset = 283 - (syncCountdown / 10) * 283;
+            syncCircle.style.strokeDashoffset = offset;
+            syncVal.innerText = `${syncCountdown}s`;
+        }
+        
+        let elCycle = document.getElementById('cycle-counter');
+        if (elCycle && !isCooldownActive && !isAnalyzingVolatility) {
+            elCycle.textContent = `${completedCycles} / 10`;
+        }
+    }
+
+    const tradeCircle = document.getElementById('trade-circle');
+    const tradeVal = document.getElementById('trade-timer-val');
+    
+    if (currentTrade && tradeStartTime && tradeVal) {
+        const elapsed = Math.floor((Date.now() - tradeStartTime) / 1000);
+        const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+        const secs = (elapsed % 60).toString().padStart(2, '0');
+        tradeVal.innerText = `${mins}:${secs}`;
+        
+        const tradeOffset = 283 - ((elapsed % 60) / 60) * 283;
+        if (tradeCircle) tradeCircle.style.strokeDashoffset = tradeOffset;
+    } else if (tradeVal) {
+        tradeVal.innerText = "00:00";
+        if (tradeCircle) tradeCircle.style.strokeDashoffset = 283;
     }
 }
 

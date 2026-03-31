@@ -5,12 +5,14 @@
 const CONFIG = {
     UPDATE_INTERVAL: 2000, 
     LOG_INTERVAL: 5000,   
-    TARGET_PROFIT: 0.7,
+    TARGET_PROFIT: 0.8,
     VOLATILITY_WINDOW: 10000,
-    MIN_VOLATILITY_TRIGGER: 0.2,
+    MIN_VOLATILITY_TRIGGER: 0.001,
     MAX_CYCLES: 10,
     COOLDOWN_TIME: 1800000,
-    BLACKLIST: ['SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV']
+    BLACKLIST: ['SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV'],
+    WITHDRAW_THRESHOLD: 15,
+    WITHDRAW_ENABLED: true
 };
 
 let activeSlots = { 1: { key: '', secret: '', name: 'OPERADOR MASTER', monitoring: false } };
@@ -21,6 +23,7 @@ let tradeSocket = null;
 let lastRankingHash = "";
 let lastLogMsg = "";
 let completedCycles = 0;
+let sessionStartBalance = parseFloat(localStorage.getItem('alfa_session_start') || '0');
 
 // Sniper Analyzer Variables
 let isAnalyzingVolatility = false;
@@ -77,16 +80,16 @@ function renderRanking(ranking) {
     const grid = document.getElementById('dynamic-targets-grid');
     if (!grid) return;
     
-    const currentHash = ranking.slice(0, 20).map(c => c.symbol).join('|');
+    const currentHash = ranking.slice(0, 30).map(c => c.symbol).join('|');
     if (currentHash === lastRankingHash) {
-        ranking.slice(0, 20).forEach((c, i) => {
+        ranking.slice(0, 30).forEach((c, i) => {
             const els = document.querySelectorAll('.coin-vol');
             if (els[i]) els[i].textContent = `${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%`;
         });
         return;
     }
     lastRankingHash = currentHash;
-    grid.innerHTML = ranking.slice(0, 20).map((c, i) => {
+    grid.innerHTML = ranking.slice(0, 30).map((c, i) => {
         let isTracked = isAnalyzingVolatility && volatilityBuffer[c.symbol];
         let hl = isTracked ? 'border:1px solid var(--primary-neon); background:rgba(0,245,255,0.05);' : '';
         return `
@@ -101,8 +104,8 @@ function renderRanking(ranking) {
 function analyzeAlfa(ranking) {
     if (currentTrade || isCooldownActive) return;
 
-    // Filtra ranking das posições #2 a #20 (índices 1 a 19)
-    const candidates = ranking.slice(1, 20).filter(c => !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && !instantBlacklist.includes(c.symbol));
+    // Filtra ranking das posições #2 a #30 (índices 1 a 29)
+    const candidates = ranking.slice(1, 30).filter(c => !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && !instantBlacklist.includes(c.symbol));
     
     if (!isAnalyzingVolatility) {
         volatilityBuffer = {};
@@ -241,6 +244,11 @@ async function syncBalance() {
         const d = await r.json();
         if (d.totalUsdt) {
             window.currentBalance = d.totalUsdt;
+            if (sessionStartBalance === 0 || isNaN(sessionStartBalance)) {
+                sessionStartBalance = d.totalUsdt;
+                localStorage.setItem('alfa_session_start', sessionStartBalance);
+                addLog(`🎯 CAPITAL INICIAL FIXADO EM $${sessionStartBalance.toFixed(2)}`, 'system');
+            }
             const el = document.getElementById('cabinet-total-balance');
             if (el) el.textContent = `$ ${d.totalUsdt.toFixed(2)}`;
         }
@@ -367,6 +375,14 @@ async function executeSell() {
                     addLog(`✅ DESCANSO FINALIZADO: Retomando radar de volatilidade!`, 'system');
                 }, CONFIG.COOLDOWN_TIME);
             }
+
+            // --- NOVO: SAQUE SEGURO DE LUCRO FIXO ($15) ---
+            if (CONFIG.WITHDRAW_ENABLED) {
+                const profit = window.currentBalance - sessionStartBalance;
+                if (profit >= CONFIG.WITHDRAW_THRESHOLD) {
+                    executeAutoWithdraw(CONFIG.WITHDRAW_THRESHOLD);
+                }
+            }
         } else {
             throw new Error(d.error || "Rejeição na venda");
         }
@@ -387,3 +403,29 @@ async function executeSell() {
 }
 
 async function fetchOrderInfo(symbol) { try { const r = await fetch(`/info-par?symbol=${symbol}`); return await r.json(); } catch(e) { return null; } }
+
+async function executeAutoWithdraw(amount) {
+    try {
+        addLog(`💰 PROTEÇÃO: Convertendo lucro fixo de $${amount.toFixed(2)} para BRL...`, 'system');
+        const r = await fetch('/executar-ordem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                key: activeSlots[1].key, 
+                secret: activeSlots[1].secret, 
+                symbol: 'USDTBRL', 
+                side: 'SELL',
+                qty: amount
+            })
+        });
+        const d = await r.json();
+        if (d.orderId) {
+            addLog(`✅ SUCESSO: R$ Convertido. Capital base preservado em $${sessionStartBalance.toFixed(2)} USDT.`, 'buy');
+            // Nota técnica: Não subtraímos do sessionStartBalance para evitar o loop infinito!
+            // O window.currentBalance será atualizado no próximo syncBalance.
+        }
+    } catch (e) {
+        addLog(`⚠️ FALHA NO SAQUE BRL: ${e.message}`, 'error');
+    }
+}
+

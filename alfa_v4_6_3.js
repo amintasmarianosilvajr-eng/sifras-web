@@ -8,7 +8,7 @@ const CONFIG = {
     LOG_INTERVAL: 5000,   
     TARGET_PROFIT: 0.8,
     VOLATILITY_WINDOW: 10000,
-    MIN_VOLATILITY_TRIGGER: 0.001,
+    MIN_VOLATILITY_TRIGGER: 0.15, // 0.15% em 10 segundos
     MAX_CYCLES: 10,
     COOLDOWN_TIME: 1800000,
     BLACKLIST: ['SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV'],
@@ -215,13 +215,15 @@ function updateSessionStats() {
 function analyzeAlfa(ranking) {
     if (currentTrade || isCooldownActive) return;
 
-    const candidates = ranking.slice(1, 40).filter(c => !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && !instantBlacklist.includes(c.symbol));
+    // DEFINIÇÃO: SCAN TOP 15 (Inclui a #1)
+    const candidates = ranking.slice(0, 15).filter(c => !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && !instantBlacklist.includes(c.symbol));
     
     if (!isAnalyzingVolatility) {
         volatilityBuffer = {};
         candidates.forEach(c => { volatilityBuffer[c.symbol] = { initialPrice: c.price, data: c }; });
         analysisStartTime = Date.now();
         isAnalyzingVolatility = true;
+        addLog(`🧪 SCAN ATIVADO: Top 15 (Alvo: +${CONFIG.MIN_VOLATILITY_TRIGGER}%)`, 'system');
         return;
     }
 
@@ -242,8 +244,13 @@ function analyzeAlfa(ranking) {
         if (bestCoin && highestDelta >= CONFIG.MIN_VOLATILITY_TRIGGER) {
             addLog(`🚀 GATILHO COMPRA EM ${bestCoin.symbol} (+${highestDelta.toFixed(2)}%)`, 'buy');
             executeTrade(bestCoin);
-        } else {
             isAnalyzingVolatility = false;
+        } else {
+            // Reinicia o buffer para o próximo ciclo de 10s contínuo
+            volatilityBuffer = {};
+            candidates.forEach(c => { volatilityBuffer[c.symbol] = { initialPrice: c.price, data: c }; });
+            analysisStartTime = Date.now();
+            isAnalyzingVolatility = true;
         }
     }
 }

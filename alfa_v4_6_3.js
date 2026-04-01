@@ -256,9 +256,15 @@ function updateTradeUI(active) {
 
 function renderRanking(ranking) {
     const grid = document.getElementById('dynamic-targets-grid');
-    if (!grid || !ranking || ranking.length === 0) return;
+    if (!grid) return;
+    
+    if (!ranking || ranking.length === 0) {
+        grid.innerHTML = `<div class="empty-msg" style="height: 50px; font-size:0.6rem; color:var(--text-muted); opacity:0.5;">Aguardando Sincronia da Binance API...</div>`;
+        return;
+    }
+
     grid.innerHTML = ranking.slice(0, 30).map((c, i) => `
-        <div class="log-card" style="margin-bottom:8px; padding:10px; display:flex; justify-content:space-between;">
+        <div class="log-card" style="margin-bottom:8px; padding:10px; display:flex; justify-content:space-between; ${c.symbol === 'BTCUSDT' && ranking[0].vol === 0 ? 'opacity:0.6;' : ''}">
             <span style="font-weight:900; opacity:0.5;">#${i + 1}</span>
             <span style="font-weight:800;">${c.symbol.replace('USDT', '')}</span>
             <span style="font-weight:900; color:var(--accent-green);">${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%</span>

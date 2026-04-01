@@ -34,18 +34,20 @@ let isAnalyzingVolatility = false;
 let analysisStartTime = 0;
 let volatilityBuffer = {};
 let instantBlacklist = [];
-let tradeHistory = []; // Memória das últimas 5 moedas operadas
+let tradeHistory = []; // Memória das últimas 10 moedas operadas (objetos)
 
 // --- BOOTSTRAP ---
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("[ALFA v4.6.3] Inicializando Instrumentos...");
-    loadSavedState();
-    
-    // Unificar cronometria em 1 único intervalo de 1s
+    // Inicialização Imediata + Loop Contínuo
+    setTimeout(() => {
+        loadSavedState();
+        syncBalance();
+        pushNetworkHeartbeat();
+    }, 500);
+
     setInterval(updateHeartbeatUI, 1000);
-    
-    // Heartbeat de rede a cada 5s
     setInterval(pushNetworkHeartbeat, 5000);
     
     const nameInput = document.getElementById('slot-1-name');
@@ -64,7 +66,8 @@ async function updateHeartbeatUI() {
     syncCountdown--;
     if (syncCountdown <= 0) {
         syncCountdown = 10;
-        await triggerDataSync(); // Dispara Ranking e Saldo
+        await loadSavedState(); // Busca estado REAL do servidor
+        await syncBalance();    // Atualiza saldo
     }
 
     // 1.5 Safety Reset para LENS (Anti-Travamento)
@@ -76,7 +79,7 @@ async function updateHeartbeatUI() {
     // 2. Atualiza Círculos e Contadores
     updateChronometryActive();
     
-    // 3. Atualiza PNL se necessário
+    // 3. Atualiza PNL e Status Financeiro
     updateSessionStats();
 }
 
@@ -130,17 +133,14 @@ function updateChronometryActive() {
 // --- DATA SYNC (TRIGERRED EVERY 10s) ---
 
 async function triggerDataSync() {
-    if (isCooldownActive) return;
-    
     // 1. Fetch Ranking
     const rankingData = await fetchRanking(); 
     if (rankingData && rankingData.ranking) {
+        window.lastRankingData = rankingData.ranking; 
         renderRanking(rankingData.ranking);
-        analyzeAlfa(rankingData.ranking);
+        renderOpportunityHub(rankingData.ranking);
+        // analyzeAlfa removido daqui - agora é processado no servidor 24/7
     }
-    
-    // 2. Fetch Balance/PNL
-    await syncBalance();
 }
 
 async function fetchRanking() { 
@@ -214,56 +214,20 @@ function updateSessionStats() {
 // --- ENGINE LOGIC (SNIPER 10S) ---
 
 function analyzeAlfa(ranking) {
-    if (currentTrade || isCooldownActive) return;
-
-    // SCAN TOP 15 + FILTRO DE RECORRÊNCIA (NÃO REPETIR ÚLTIMAS 5)
-    const candidates = ranking.slice(0, 15).filter(c => 
-        !CONFIG.BLACKLIST.includes(c.symbol.replace('USDT', '')) && 
-        !instantBlacklist.includes(c.symbol) &&
-        !tradeHistory.includes(c.symbol) // TRAVA: Ignora se foi uma das últimas 5 operadas
-    );
-    
-    if (!isAnalyzingVolatility) {
-        volatilityBuffer = {};
-        candidates.forEach(c => { volatilityBuffer[c.symbol] = { initialPrice: c.price, data: c }; });
-        analysisStartTime = Date.now();
-        isAnalyzingVolatility = true;
-        addLog(`🧪 SCAN ATIVADO: Top 15 (Alvo: +${CONFIG.MIN_VOLATILITY_TRIGGER}%)`, 'system');
-        return;
-    }
-
-    if (Date.now() - analysisStartTime >= CONFIG.VOLATILITY_WINDOW) {
-        let bestCoin = null;
-        let highestDelta = -Infinity;
-        candidates.forEach(c => {
-            const buf = volatilityBuffer[c.symbol];
-            if (buf) {
-                const delta = ((c.price - buf.initialPrice) / buf.initialPrice) * 100;
-                if (delta > highestDelta) {
-                    highestDelta = delta;
-                    bestCoin = c;
-                }
-            }
-        });
-
-        if (bestCoin && highestDelta >= CONFIG.MIN_VOLATILITY_TRIGGER) {
-            addLog(`🚀 GATILHO COMPRA EM ${bestCoin.symbol} (+${highestDelta.toFixed(2)}%)`, 'buy');
-            executeTrade(bestCoin);
-            isAnalyzingVolatility = false;
-        } else {
-            // Reinicia o buffer para o próximo ciclo de 10s contínuo
-            volatilityBuffer = {};
-            candidates.forEach(c => { volatilityBuffer[c.symbol] = { initialPrice: c.price, data: c }; });
-            analysisStartTime = Date.now();
-            isAnalyzingVolatility = true;
-        }
-    }
+    // Lógica movida para TradingService.js (Backend) para autonomia 24/7.
+    // O Frontend apenas exibe o status de Rastreamento.
 }
 
 async function executeTrade(coin) {
     if (instantBlacklist.includes(coin.symbol)) return;
-    const tp = coin.price * (1 + (CONFIG.TARGET_PROFIT / 100));
-    currentTrade = { symbol: coin.symbol.replace('USDT', ''), fullSymbol: coin.symbol, buyPrice: coin.price, targetPrice: tp, qty: 0 };
+    const tp = coin.price * 1.008; // 0.8% Fixed Target
+    currentTrade = { 
+        symbol: coin.symbol.replace('USDT', ''), 
+        fullSymbol: coin.symbol, 
+        buyPrice: coin.price, 
+        targetPrice: tp, 
+        qty: 0 
+    };
     tradeStartTime = Date.now();
     updateTradeUI(true);
     
@@ -285,6 +249,8 @@ async function executeTrade(coin) {
         setTimeout(() => { instantBlacklist = instantBlacklist.filter(s => s !== currentTrade.fullSymbol); }, 600000);
         resetTrade();
         isAnalyzingVolatility = false;
+    } finally {
+        pushStateToServer();
     }
 }
 
@@ -308,7 +274,7 @@ function updateTradePrice(price) {
     plEl.style.color = pl >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
     const progress = Math.min((pl / CONFIG.TARGET_PROFIT) * 100, 100);
     document.getElementById('trade-progress-fill').style.width = `${Math.max(progress, 0)}%`;
-    if (pl >= CONFIG.TARGET_PROFIT) executeSell();
+    // A venda agora é disparada via Backend no TradingService.js
 }
 
 async function executeSell() {
@@ -331,15 +297,23 @@ async function executeSell() {
         if (d.orderId) {
             addLog(`🚀 VENDA CONCLUÍDA! Lucro Garantido em ${currentTrade.symbol}.`, 'sell');
             
-            // ADICIONA À MEMÓRIA PARA NÃO REPETIR (LIMITE 5)
-            tradeHistory.push(currentTrade.fullSymbol);
-            if (tradeHistory.length > 5) tradeHistory.shift();
+            // ADICIONA À MEMÓRIA PARA NÃO REPETIR (LIMITE 10)
+            const historyEntry = {
+                symbol: currentTrade.symbol,
+                fullSymbol: currentTrade.fullSymbol,
+                sellPrice: d.price || window.lastSocketPrice || currentTrade.targetPrice,
+                time: Date.now()
+            };
+            tradeHistory.unshift(historyEntry);
+            if (tradeHistory.length > 10) tradeHistory.pop();
             
             resetTrade();
             isAnalyzingVolatility = false;
             completedCycles++;
             if (completedCycles >= CONFIG.MAX_CYCLES) triggerCooldown();
             if (CONFIG.WITHDRAW_ENABLED) checkAndWithdrawProfit();
+            pushStateToServer();
+            renderOpportunityHub(window.lastRankingData || []);
         } else throw new Error(d.error || "Sell Rejected");
     } catch (e) { addLog(`❌ ERRO NA VENDA: ${e.message}`, 'error'); }
 }
@@ -348,7 +322,12 @@ function triggerCooldown() {
     completedCycles = 0;
     isCooldownActive = true;
     addLog(`🛑 SEGURANÇA: 10 Ciclos. Pausa de 30 minutos (Proteção Anti-Retomada).`, 'system');
-    setTimeout(() => { isCooldownActive = false; addLog(`✅ RETOMANDO: Radar ativado!`, 'system'); }, CONFIG.COOLDOWN_TIME);
+    pushStateToServer();
+    setTimeout(() => { 
+        isCooldownActive = false; 
+        addLog(`✅ RETOMANDO: Radar ativado!`, 'system'); 
+        pushStateToServer();
+    }, CONFIG.COOLDOWN_TIME);
 }
 
 async function checkAndWithdrawProfit() {
@@ -398,10 +377,18 @@ function addLog(msg, type = 'system') {
 function updateTradeUI(active) {
     document.getElementById('active-trade-container').classList.toggle('hidden', !active);
     document.getElementById('no-trade-msg').classList.toggle('hidden', active);
-    if (active) {
+    if (active && currentTrade) {
         document.getElementById('monitoring-symbol').textContent = currentTrade.symbol;
-        document.getElementById('monitoring-buy-price').textContent = `$${currentTrade.buyPrice.toFixed(4)}`;
-        document.getElementById('monitoring-target-price').textContent = `$${currentTrade.targetPrice.toFixed(4)}`;
+        
+        // Ajuste de precisão dinâmico para moedas de baixo valor
+        const precision = currentTrade.buyPrice < 0.1 ? 6 : 4;
+        
+        document.getElementById('monitoring-buy-price').textContent = `$${currentTrade.buyPrice.toFixed(precision)}`;
+        
+        // CORREÇÃO: Alvo sempre calculado sobre o preço de compra (0.8% FIXO)
+        const displayTarget = currentTrade.buyPrice * 1.008;
+        document.getElementById('monitoring-target-price').textContent = `$${displayTarget.toFixed(precision)}`;
+        
         document.getElementById('system-status-pill').textContent = 'TRADE ATIVO';
         document.getElementById('system-status-pill').style.color = 'var(--accent-green)';
     } else {
@@ -417,14 +404,15 @@ function masterToggle() {
     btn.classList.toggle('active', globalSystemPower);
     activeSlots[1].monitoring = globalSystemPower;
     if (globalSystemPower) {
-        addLog("✅ MOTOR MASTER LIGADO.", "system");
+        addLog("✅ MOTOR MASTER LIGADO NO SERVIDOR (24/7).", "system");
         syncBalance();
-        syncCountdown = 1; // Trigger imediato
+        syncCountdown = 1; 
     } else {
-        addLog("🛑 MOTOR MASTER DESLIGADO.", "system");
+        addLog("🛑 COMANDO ENVIADO: PARAR MOTOR MASTER.", "system");
         updateChronometryStatic();
     }
-    updateTradeUI(false);
+    updateTradeUI(currentTrade ? true : false);
+    pushStateToServer(); // Notifica o servidor imediatamente da mudança de ON/OFF
 }
 
 function recalibrateCapital() {
@@ -433,6 +421,7 @@ function recalibrateCapital() {
         localStorage.setItem('alfa_session_start', sessionStartBalance);
         addLog(`🔄 CALIBRADO: $${sessionStartBalance.toFixed(2)} definido como ponto zero.`, 'system');
         updateSessionStats();
+        pushStateToServer();
     } else addLog(`⚠️ ERRO: Aguarde o carregamento do saldo.`, 'error');
 }
 
@@ -444,7 +433,7 @@ function saveSlot() {
     syncBalance();
 }
 
-function loadSavedState() {
+async function loadSavedState() {
     const slot = JSON.parse(localStorage.getItem('alfa_slot_1') || '{}');
     if (slot.name) {
         document.getElementById('slot-1-name').value = slot.name;
@@ -453,7 +442,100 @@ function loadSavedState() {
         activeSlots[1] = { ...activeSlots[1], ...slot };
     }
     const sessionUser = localStorage.getItem('alfa_session_user');
-    if (sessionUser && !slot.name) document.getElementById('slot-1-name').value = sessionUser;
+    if (sessionUser && !slot.name) {
+        document.getElementById('slot-1-name').value = sessionUser;
+        activeSlots[1].name = sessionUser;
+    }
+
+    // RESTAURAÇÃO VIA NUVEM (CLOUD PERSISTENCE)
+    const currentName = document.getElementById('slot-1-name').value;
+    if (currentName && currentName !== 'OPERADOR MASTER') {
+        try {
+            const res = await fetch('/get-alfa-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentName })
+            });
+            const { state } = await res.json();
+            
+            if (state && state.lastUpdated) {
+                console.log("[ALFA] Restaurando estado da nuvem...", state);
+                completedCycles = state.cycleCount || 0;
+                sessionStartBalance = state.sessionStartBalance || 0;
+                window.currentBalance = state.currentBalance || 0;
+                tradeHistory = state.tradeHistory || [];
+                
+                // Migração de formato: se for o histórico antigo (apenas strings), reseta para o novo padrão
+                if (tradeHistory.length > 0 && typeof tradeHistory[0] === 'string') {
+                    tradeHistory = [];
+                }
+
+                isCooldownActive = state.isCooldownActive || false;
+
+                if (state.currentTrade) {
+                    currentTrade = state.currentTrade;
+                    tradeStartTime = state.tradeStartTime;
+                    updateTradeUI(true);
+                    initPriceSocket(currentTrade.fullSymbol);
+                }
+
+                if (state.monitoring && !globalSystemPower) {
+                    console.log("[ALFA] Sincronizando com motor de autonomia da nuvem...");
+                    globalSystemPower = true;
+                    activeSlots[1].monitoring = true;
+                    
+                    const btn = document.getElementById('master-toggle-btn');
+                    if (btn) {
+                        btn.textContent = 'DESCONECTAR MASTER';
+                        btn.classList.add('active');
+                    }
+                    updateTradeUI(currentTrade ? true : false);
+                }
+            }
+        } catch (e) {
+            console.error("[ALFA] Erro ao restaurar estado da nuvem:", e);
+        }
+    }
+
+    // Refresh UI instantâneo
+    updateSessionStats();
+    updateTradeUI(currentTrade ? true : false);
+}
+
+async function pushStateToServer() {
+    const username = activeSlots[1].name;
+    if (!username || username === 'OPERADOR MASTER') return;
+
+    const state = {
+        monitoring: globalSystemPower,
+        cycleCount: completedCycles,
+        currentTrade,
+        tradeStartTime,
+        sessionStartBalance,
+        currentBalance: window.currentBalance || 0,
+        currentPrice: currentTrade ? (window.lastSocketPrice || currentTrade.buyPrice) : 0,
+        sessionProfitUsdt: (window.currentBalance && sessionStartBalance) ? (window.currentBalance - sessionStartBalance) : 0,
+        isCooldownActive,
+        tradeHistory,
+        lastUpdated: Date.now()
+    };
+
+    try {
+        await fetch('/save-alfa-state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                username, 
+                state,
+                keys: {
+                    key: activeSlots[1].key || '',
+                    secret: activeSlots[1].secret || ''
+                }
+            })
+        });
+    } catch (e) {
+        console.error("[ALFA] Erro ao salvar estado:", e);
+    }
 }
 
 async function pushNetworkHeartbeat() {
@@ -486,7 +568,48 @@ async function pushNetworkHeartbeat() {
         });
         const d = await r.json();
         if (d.command === 'STOP' && globalSystemPower) masterToggle();
-    } catch (e) {}
+         
+         // SINCRONIA BLINDADA: Realidade da Nuvem -> Interface do Usuário
+         if (d.serverState && (d.serverState.lastUpdated || d.serverState.monitoring)) {
+             const s = d.serverState;
+             
+             // Se o servidor está monitorando mas o navegador não, force a sincronia
+             if (s.monitoring && !globalSystemPower) {
+                 globalSystemPower = true;
+                 activeSlots[1].monitoring = true;
+                 const btn = document.getElementById('master-toggle-btn');
+                 if (btn) {
+                     btn.textContent = 'DESCONECTAR MASTER';
+                     btn.classList.add('active');
+                 }
+                 console.log("[SYNC] Robô Master Reconectado via Nuvem.");
+             }
+
+             // Sincroniza Ciclos, Saldo e PNL
+             if (s.cycleCount !== undefined) completedCycles = s.cycleCount;
+             if (s.sessionStartBalance > 0) sessionStartBalance = s.sessionStartBalance;
+             if (s.currentBalance > 0) window.currentBalance = s.currentBalance;
+             if (s.tradeHistory) tradeHistory = s.tradeHistory;
+             isCooldownActive = s.isCooldownActive || false;
+
+             // Sincroniza Trade Ativo (A Fonte da Verdade é o Servidor)
+             if (s.currentTrade) {
+                 if (!currentTrade || currentTrade.fullSymbol !== s.currentTrade.fullSymbol) {
+                    addLog(`📡 MEMÓRIA RECUPERADA: ${s.currentTrade.symbol} ativo na nuvem.`, 'system');
+                    currentTrade = s.currentTrade;
+                    tradeStartTime = s.tradeStartTime;
+                    updateTradeUI(true);
+                    initPriceSocket(currentTrade.fullSymbol);
+                 }
+             } else if (currentTrade) {
+                 // Servidor diz que não há trade, mas navegador acha que sim (venda já ocorreu)
+                 addLog(`⛳ SINCRONIA: Venda realizada na nuvem. Resetando monitor.`, 'system');
+                 resetTrade();
+             }
+         }
+    } catch (e) {
+         console.warn("[ALFA-SYNC] Pulso de rede instável.");
+    }
 }
 
 async function syncExistingProfile(name) {
@@ -510,6 +633,92 @@ function resetTrade() {
     currentTrade = null; tradeStartTime = null; updateTradeUI(false); 
 }
 
+async function aproveitarOportunidade(fullSymbol) {
+    if (!globalSystemPower) {
+        alert("Ative o Master primeiro!");
+        return;
+    }
+    if(!confirm(`🚀 SNIPER SWITCH: Deseja abandonar o trade atual e entrar em ${fullSymbol} IMEDIATAMENTE?`)) return;
+    
+    addLog(`🎯 SNIPER: Re-entrando em ${fullSymbol.replace('USDT','')}. Aguarde liquidação...`, 'system');
+
+    // 1. Se estiver em trade, vende agora
+    if (currentTrade) {
+        try {
+            await executeSell(); 
+        } catch(e) {
+            addLog(`⚠️ Falha na liquidação prévia: ${e.message}`, 'error');
+        }
+    }
+
+    // 2. Busca dados da moeda no ranking salvo
+    const coin = (window.lastRankingData || []).find(c => c.symbol === fullSymbol);
+    if (coin) {
+        executeTrade(coin);
+    } else {
+        addLog(`❌ Dados de ${fullSymbol} não encontrados no radar atual.`, 'error');
+    }
+}
+
+function renderOpportunityHub(rankingData) {
+    const grid = document.getElementById('opportunity-grid');
+    if (!grid || !tradeHistory.length) return;
+
+    grid.innerHTML = tradeHistory.map(hist => {
+        const live = rankingData.find(r => r.symbol === hist.fullSymbol);
+        const currentPrice = live ? live.price : hist.sellPrice;
+        const diff = ((currentPrice - hist.sellPrice) / hist.sellPrice) * 100;
+        const color = diff >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
+        const statusClass = diff >= 0 ? 'recovering' : 'falling';
+
+        return `
+            <div class="opt-card ${statusClass}">
+                <div class="opt-header">
+                    <span class="opt-symbol">${hist.symbol}</span>
+                    <span class="badge-real" style="font-size:0.5rem; opacity:0.6;">Vendido: $${hist.sellPrice.toFixed(4)}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <div class="opt-pnl-group">
+                        <span class="opt-pnl-label">Market Gap</span>
+                        <div class="opt-pnl-val" style="color:${color}">${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%</div>
+                    </div>
+                    <button onclick="aproveitarOportunidade('${hist.fullSymbol}')" class="btn-opt-buy">COMPRAR AGORA</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function agentForceSell() {
+    if (!currentTrade) return;
+    if (!confirm("⚠️ AGENTE ALFA: Forçar venda a mercado AGORA?")) return;
+    try {
+        await executeSell();
+        addLog("⚡ AGENTE: Venda forçada disparada.", "sell");
+    } catch (e) {
+        addLog(`❌ Falha no Resgate: ${e.message}`, "error");
+    }
+}
+
+async function agentClearGhost() {
+    const user = document.getElementById('slot-1-name').value;
+    if (!confirm("⚠️ AGENTE ALFA: Limpar trade fantasma e resetar monitor LOCALMENTE e na NUVEM?")) return;
+    try {
+        await fetch('/agent/clear-ghost', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ username: user }) 
+        });
+        resetTrade();
+        addLog("👻 AGENTE: Estado fantasma limpo com sucesso.", "system");
+    } catch (e) {
+        addLog(`❌ Falha na Limpeza: ${e.message}`, "error");
+    }
+}
+
+window.agentForceSell = agentForceSell;
+window.agentClearGhost = agentClearGhost;
+window.aproveitarOportunidade = aproveitarOportunidade;
 window.recalibrateCapital = recalibrateCapital;
 window.saveSlot = saveSlot;
 window.masterToggle = masterToggle;

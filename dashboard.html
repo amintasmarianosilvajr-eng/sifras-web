@@ -374,23 +374,23 @@
                             <div id="valTradeTarget" class="mt-4 space-y-1 text-[0.65rem] mono font-bold text-[#D9DFE3]">
                                 <p> ENTRADA: <span class="text-[#FFFFFF]">$---</span></p>
                                 <p> ATUAL: <span class="text-[#FFFFFF]">$---</span></p>
-                                <p> ALVO: <span class="text-accent-emerald uppercase tracking-widest">+0.40% TAKE</span></p>
+                                <p> ALVO: <span class="text-accent-emerald uppercase tracking-widest">+0.80% TAKE</span></p>
                             </div>
                         </div>
 
                         <div class="flex-1 w-full max-w-xl">
                             <div class="flex justify-between items-end mb-4">
                                 <div class="text-center">
-                                    <span class="text-[0.5rem] text-[#D9DFE3] uppercase font-black block mb-1">Pixel Loss</span>
-                                    <span class="text-xs font-bold mono text-[#90C23A]">-6.00%</span>
+                                    <span class="text-[0.5rem] text-[#D9DFE3] uppercase font-black block mb-1">Ponto de Partida</span>
+                                    <span class="text-xs font-bold mono text-[#90C23A]">0.00%</span>
                                 </div>
                                 <div class="text-center">
                                     <span class="text-[0.6rem] text-accent-cyan uppercase font-black block mb-2">Variação Real</span>
                                     <span id="telemetryPct" class="text-5xl font-black italic text-[#FFFFFF] drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">+0.00%</span>
                                 </div>
                                 <div class="text-center">
-                                    <span class="text-[0.5rem] text-[#D9DFE3] uppercase font-black block mb-1">Sniper Meta</span>
-                                    <span class="text-xs font-bold mono text-accent-emerald">+0.40%</span>
+                                    <span class="text-[0.5rem] text-[#D9DFE3] uppercase font-black block mb-1">Meta Sniper</span>
+                                    <span class="text-xs font-bold mono text-accent-emerald">+0.80%</span>
                                 </div>
                             </div>
                             <div class="telemetry-progress">
@@ -595,9 +595,17 @@
                     <p> ALVO: <span class="text-accent-emerald uppercase tracking-widest">$${tgtP.toFixed(8)} (+0.40%)</span></p>
                 `;
 
-                const minR = -6.0, maxR = 0.4;
-                let barW = ((curPnl - minR) / (maxR - minR)) * 100;
-                document.getElementById('telemetryBar').style.width = `${Math.min(100, Math.max(0, barW))}%`;
+                const target = 0.8;
+                let barW = (curPnl / target) * 100;
+                const barEl = document.getElementById('telemetryBar');
+                barEl.style.width = `${Math.min(100, Math.max(0, barW))}%`;
+                
+                // Feedback visual: Se estiver negativo, muda a cor para rubi/neutro
+                if (curPnl < 0) {
+                    barEl.style.background = 'var(--accent-ruby)';
+                } else {
+                    barEl.style.background = 'linear-gradient(90deg, var(--accent-ruby) 0%, var(--accent-cyan) 100%)';
+                }
             } else {
                 telemetry.classList.add('opacity-0');
                 setTimeout(() => telemetry.classList.add('hidden'), 500);

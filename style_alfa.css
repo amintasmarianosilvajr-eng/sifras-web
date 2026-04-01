@@ -219,5 +219,85 @@ body {
 .log-neon-scan { color: var(--primary-neon); font-weight: 600; font-size: 0.8rem; }
 .log-timestamp { font-size: 0.65rem; color: var(--text-muted); margin-right: 10px; }
 
+.opportunity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
+    padding: 10px 0;
+}
+
+.opt-card {
+    background: rgba(13, 17, 23, 0.6);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.opt-card:hover {
+    border-color: var(--primary-neon);
+    transform: translateY(-3px);
+    background: rgba(0, 245, 255, 0.05);
+}
+
+.opt-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 4px; height: 100%;
+    background: var(--text-muted);
+}
+
+.opt-card.recovering::before { background: var(--accent-green); }
+.opt-card.falling::before { background: var(--danger-neon); }
+
+.opt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.opt-symbol {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 900;
+    font-size: 1.1rem;
+    color: #fff;
+}
+
+.opt-pnl-label {
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.opt-pnl-val {
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.btn-opt-buy {
+    background: var(--primary-neon);
+    color: #000;
+    font-weight: 900;
+    font-size: 0.65rem;
+    border: none;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: 0.2s;
+    margin-top: 5px;
+}
+
+.btn-opt-buy:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 15px var(--primary-neon);
+}
+
 .hidden { display: none !important; }
 .empty-msg { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-style: italic; }

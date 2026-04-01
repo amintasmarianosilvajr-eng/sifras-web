@@ -56,10 +56,8 @@ class BinanceService {
     }
 
     async startGlobalWS() {
-        // Garantir ranking inicial via REST com a blindagem ativada
         await this.initBlacklist();
         this.syncRanking();
-        // Agendar atualização via REST a cada 2 minutos para manter a estrutura do ranking sólida
         setInterval(() => this.syncRanking(), 120000);
 
         console.log(`[BINANCE-WS] Iniciando pulso de volatilidade: ${config.BINANCE_WS_URL}`);
@@ -73,11 +71,8 @@ class BinanceService {
             try {
                 const payload = JSON.parse(data.toString());
                 const updates = payload.data || payload; 
-                
                 if (!Array.isArray(updates)) return;
 
-                // O WebSocket agora apenas ATUALIZA a volatilidade e preço do cache existente
-                // Isso evita que o radar "pisque" ou fique vazio se o WS falhar momentaneamente
                 updates.forEach(u => {
                     const match = this.globalMarket.top30.find(m => m.symbol === u.s);
                     if (match) {
@@ -86,10 +81,7 @@ class BinanceService {
                         match.quoteVol = parseFloat(u.q);
                     }
                 });
-
-                // Re-ordenar por volatilidade (Gainers) em tempo real
                 this.globalMarket.top30.sort((a, b) => b.vol - a.vol);
-
             } catch (e) {
                 console.error("[BINANCE-WS] Erro no processamento de pulso:", e.message);
             }
@@ -177,6 +169,16 @@ class BinanceService {
             headers: { 'X-MBX-APIKEY': key }
         });
         return res.data;
+    }
+
+    async getTickerPrice(symbol) {
+        try {
+            const res = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+            return parseFloat(res.data.price);
+        } catch (e) {
+            console.error(`[BINANCE-REST] Erro ao buscar preço para ${symbol}:`, e.message);
+            return null;
+        }
     }
 }
 

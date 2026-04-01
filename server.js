@@ -10,6 +10,7 @@ const storage = require('./services/storageService');
 const binance = require('./services/binanceService');
 const authMiddleware = require('./middleware/authMiddleware');
 const errorMiddleware = require('./middleware/errorMiddleware');
+const tradingService = require('./services/tradingService');
 
 const app = express();
 
@@ -30,6 +31,7 @@ const adminLimiter = rateLimit({
 (async () => {
     await storage.init();
     binance.startGlobalWS();
+    tradingService.init(); // Inicia o Motor de Autonomia 24/7
 })();
 
 // Servir arquivos estáticos
@@ -43,16 +45,20 @@ app.post('/heartbeat', async (req, res, next) => {
         const { username, state, keys } = req.body;
         if (!username) throw new Error("Username missing");
 
+        // BLINDAGEM DE MEMÓRIA: Prioridade Total para o Estado da Nuvem
+        const existingUser = storage.getUser(username);
+        const serverAlfaState = existingUser?.alfaState || {};
+
+        // Sincroniza campos técnicos baseado na VERDADE DO SERVIDOR
         const user = await storage.updateUser(username, {
-            status: state.status || 'OFFLINE',
-            activeSymbol: state.activeSymbol || '---',
+            status: serverAlfaState.monitoring ? (serverAlfaState.currentTrade ? 'IN_TRADE' : 'SCANNING') : (state.status || 'OFFLINE'),
+            activeSymbol: serverAlfaState.currentTrade ? serverAlfaState.currentTrade.fullSymbol : (state.activeSymbol || '---'),
             balanceUSDT: state.balanceUSDT || 0,
-            buyPrice: state.buyPrice || 0,
-            targetPrice: state.targetPrice || 0,
-            currentPrice: state.currentPrice || 0,
+            buyPrice: serverAlfaState.currentTrade ? serverAlfaState.currentTrade.buyPrice : 0,
+            targetPrice: serverAlfaState.currentTrade ? (serverAlfaState.currentTrade.buyPrice * 1.008) : 0,
             pnlPerc: state.pnlPerc || 0,
-            liquidPnlPool: state.liquidPnlPool || 0,
-            staircaseIndex: state.staircaseIndex || 10,
+            liquidPnlPool: serverAlfaState.sessionProfitUsdt || 0,
+            staircaseIndex: (serverAlfaState.cycleCount || 0) + 1,
             keys: keys || undefined
         });
 
@@ -62,7 +68,13 @@ app.post('/heartbeat', async (req, res, next) => {
             await storage.saveUsers();
         }
 
-        res.json({ command, isApproved: user.isApproved });
+        // Responte com o estado COMPLETO para o navegador se auto-corrigir
+        res.json({ 
+            command, 
+            isApproved: user.isApproved,
+            serverState: user.alfaState || {},
+            serverTime: Date.now()
+        });
     } catch (e) { next(e); }
 });
 
@@ -133,16 +145,29 @@ app.post('/save-alfa-state', async (req, res, next) => {
              status = state.currentTrade ? 'IN_TRADE' : 'SEARCHING';
         }
         
+        // PROTEÇÃO BACKEND-FIRST: Se o robô estiver processando no servidor,
+        // o frontend não deve sobrescrever campos críticos como currentTrade ou cycleCount
+        const existing = storage.getUser(username);
+        const serverState = existing?.alfaState || {};
+        
+        const finalState = { ...state };
+        if (serverState.monitoring) {
+            // Se o servidor está "mandando", o frontend apenas envia logs ou configurações visuais
+            finalState.currentTrade = serverState.currentTrade;
+            finalState.cycleCount = serverState.cycleCount;
+            finalState.tradeHistory = serverState.tradeHistory;
+        }
+
         await storage.updateUser(username, { 
-            alfaState: state,
+            alfaState: finalState,
             status: status,
-            activeSymbol: state.currentTrade ? state.currentTrade.symbol : '---',
-            balanceUSDT: state.currentBalance || 0,
-            buyPrice: state.currentTrade ? state.currentTrade.buyPrice : 0,
-            currentPrice: state.currentPrice || 0,
-            targetPrice: state.currentTrade ? state.currentTrade.buyPrice * (1 + 0.008) : 0,
-            liquidPnlPool: state.sessionProfitUsdt || 0,
-            staircaseIndex: state.cycleCount || 0,
+            activeSymbol: finalState.currentTrade ? finalState.currentTrade.symbol : '---',
+            balanceUSDT: finalState.currentBalance || 0,
+            buyPrice: finalState.currentTrade ? finalState.currentTrade.buyPrice : 0,
+            currentPrice: finalState.currentPrice || 0,
+            targetPrice: finalState.currentTrade ? (finalState.currentTrade.buyPrice * 1.008) : 0,
+            liquidPnlPool: finalState.sessionProfitUsdt || 0,
+            staircaseIndex: finalState.cycleCount || 0,
             keys: req.body.keys || undefined
         });
         res.json({ success: true });
@@ -188,6 +213,22 @@ app.post('/panic', async (req, res, next) => {
             }
         }
         res.json({ msg: "PANIC STOP! Ativos Liquidados e Robô Pausado." });
+    } catch (e) { next(e); }
+});
+
+app.post('/agent/clear-ghost', async (req, res, next) => {
+    try {
+        const { username } = req.body;
+        if (!username) throw new Error("Missing username");
+        
+        const user = storage.getUser(username);
+        if (user && user.alfaState) {
+            user.alfaState.currentTrade = null;
+            user.alfaState.tradeStartTime = null;
+            user.alfaState.monitoring = false;
+            await storage.updateUser(username, { alfaState: user.alfaState });
+        }
+        res.json({ success: true, msg: "Fantasma Removido pelo Agente." });
     } catch (e) { next(e); }
 });
 
@@ -292,7 +333,7 @@ app.get('/export-word', authMiddleware, (req, res) => {
     res.attachment('leads_sifras.txt').send(txt);
 });
 
-app.get('/ping', (req, res) => res.json({ version: '4.5.0-STABLE-OFFICIAL', status: 'online' }));
+app.get('/ping', (req, res) => res.json({ version: '4.6.3-SNIPER-CLOUD', status: 'online' }));
 
 // --- PAGE ROUTES ---
 app.get(['/', '/operacional'], (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));

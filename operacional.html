@@ -114,8 +114,13 @@
                         </div>
                         <div class="m-item">
                             <span class="m-label">ALVO ALFA</span>
-                            <span id="monitoring-target-price" class="m-value target">$0.0000</span>
+                            <span id="monitoring-target-price" class="m-value target">$0.000000</span>
                         </div>
+                    </div>
+
+                    <div id="agent-rescue-zone" style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button onclick="agentForceSell()" class="btn-connect" style="flex: 1; border-color: #00f3ff; color: #00f3ff; background: rgba(0, 243, 255, 0.05); font-size: 0.65rem; font-weight: 900;">⚡ AGENTE: FORÇAR VENDA</button>
+                        <button onclick="agentClearGhost()" class="btn-connect" style="flex: 1; border-color: #ffaa00; color: #ffaa00; background: rgba(255, 170, 0, 0.05); font-size: 0.65rem; font-weight: 900;">👻 AGENTE: LIMPAR FANTASMA</button>
                     </div>
 
                     <div class="progress-section" style="margin-top:auto;">
@@ -131,6 +136,20 @@
 
                 <div id="no-trade-msg" class="empty-msg">
                     <p style="font-family:'Outfit'; font-size:1.2rem; letter-spacing:1px; text-transform:uppercase;">Scanning for Optimal Pixel (Top 2-30)...</p>
+                </div>
+            </section>
+
+            <!-- SNIPER OPPORTUNITY HUB (10 CARDS) -->
+            <section class="card opportunity-hub" style="grid-column: span 1;">
+                <div class="card-header" style="margin-bottom: 20px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <h3 style="font-size:0.8rem; text-transform:uppercase; font-weight:800; color:var(--primary-neon);">Sniper Opportunity Hub</h3>
+                        <span class="badge-real" style="font-size:0.5rem;">RECUPERAÇÃO REAL-TIME</span>
+                    </div>
+                </div>
+                <div id="opportunity-grid" class="opportunity-grid">
+                    <!-- Cards serão injetados pelo JS -->
+                    <div class="empty-msg" style="height: 100px;">Aguardando conclusões de ciclos para mapear oportunidades...</div>
                 </div>
             </section>
 

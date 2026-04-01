@@ -73,6 +73,7 @@ app.post('/heartbeat', async (req, res, next) => {
             command, 
             isApproved: user.isApproved,
             serverState: user.alfaState || {},
+            marketRanking: binance.globalMarket.top30 || [], // OMEGA INJECTION
             serverTime: Date.now()
         });
     } catch (e) { next(e); }

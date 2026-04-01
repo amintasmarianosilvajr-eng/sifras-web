@@ -1,376 +1,135 @@
 const express = require('express');
-const cors = require('cors');
+const bodyParser = require('body-parser');
 const path = require('path');
-const helmet = require('helmet');
-const compression = require('compression');
-const rateLimit = require('express-rate-limit');
-
 const config = require('./config');
 const storage = require('./services/storageService');
 const binance = require('./services/binanceService');
-const authMiddleware = require('./middleware/authMiddleware');
-const errorMiddleware = require('./middleware/errorMiddleware');
 const tradingService = require('./services/tradingService');
 
 const app = express();
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname)));
 
-// --- SEGURANÇA & PERFORMANCE ---
-app.use(helmet({ contentSecurityPolicy: false })); // CSP off for simplicity with CDN scripts
-app.use(compression());
-app.use(express.json());
-app.use(cors());
-
-// Limitador de requisições para rotas sensíveis
-const adminLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100, // 100 requisições por IP a cada 15 min
-    message: { error: "Muitas tentativas. Tente novamente em 15 minutos." }
+// --- MIDDLEWARES ---
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
 });
 
-// --- INICIALIZAÇÃO ---
-(async () => {
-    await storage.init();
-    binance.startGlobalWS();
-    tradingService.init(); // Inicia o Motor de Autonomia 24/7
-})();
+// --- ROUTES ---
 
-// Servir arquivos estáticos
-app.use(express.static(path.join(__dirname, './')));
-app.use('/app', express.static(path.join(__dirname, 'Sifras_App_Mobile')));
+// RETORNO DE ESTADO MASTER (AUTO-HEALING)
+app.post('/get-alfa-state', async (req, res) => {
+    try {
+        const { username } = req.body;
+        if(!username) return res.json({ found: false });
+        
+        const user = storage.getUser(username);
+        if(user) {
+            console.log(`[ALFA-STATE] Recuperando estado MASTER para: ${username}`);
+            // Retornamos tudo: Estado, Chaves (para auto-preenchimento) e Rankings
+            res.json({ 
+                found: true, 
+                state: user.alfaState || {}, 
+                keys: user.keys || {},
+                marketRanking: binance.globalMarket.top30 || []
+            });
+        } else {
+            res.json({ found: false });
+        }
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
-// --- BOT SYNC ROUTES ---
+app.post('/save-alfa-state', async (req, res) => {
+    try {
+        const { username, state, keys } = req.body;
+        await storage.updateUser(username, { alfaState: state, keys: keys || undefined });
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
+// COMPONENT: HEARTBEAT (PULSO DE SINCRONIA MASTER)
 app.post('/heartbeat', async (req, res, next) => {
     try {
         const { username, state, keys } = req.body;
-        if (!username) throw new Error("Username missing");
-
-        // BLINDAGEM DE MEMÓRIA: Prioridade Total para o Estado da Nuvem
-        const existingUser = storage.getUser(username);
-        const serverAlfaState = existingUser?.alfaState || {};
-
-        // Sincroniza campos técnicos baseado na VERDADE DO SERVIDOR
-        const user = await storage.updateUser(username, {
-            status: serverAlfaState.monitoring ? (serverAlfaState.currentTrade ? 'IN_TRADE' : 'SCANNING') : (state.status || 'OFFLINE'),
-            activeSymbol: serverAlfaState.currentTrade ? serverAlfaState.currentTrade.fullSymbol : (state.activeSymbol || '---'),
-            balanceUSDT: state.balanceUSDT || 0,
-            buyPrice: serverAlfaState.currentTrade ? serverAlfaState.currentTrade.buyPrice : 0,
-            targetPrice: serverAlfaState.currentTrade ? (serverAlfaState.currentTrade.buyPrice * 1.008) : 0,
-            pnlPerc: state.pnlPerc || 0,
-            liquidPnlPool: serverAlfaState.sessionProfitUsdt || 0,
-            staircaseIndex: (serverAlfaState.cycleCount || 0) + 1,
-            keys: keys || undefined
-        });
-
-        const command = user.remoteCommand || 'KEEP_ALIVE';
-        if (user.remoteCommand) {
-            user.remoteCommand = null;
-            await storage.saveUsers();
-        }
-
-        // Responte com o estado COMPLETO para o navegador se auto-corrigir
-        res.json({ 
-            command, 
-            isApproved: user.isApproved,
-            serverState: user.alfaState || {},
-            marketRanking: binance.globalMarket.top30 || [], // OMEGA INJECTION
-            serverTime: Date.now()
-        });
-    } catch (e) { next(e); }
-});
-
-// --- AUTH & REGISTRATION ROUTES ---
-
-app.post('/register', async (req, res, next) => {
-    try {
-        const { fullName, email, whatsapp, username, password } = req.body;
-        if (!username || !password) throw new Error("Usuário e Senha são obrigatórios");
-        
-        const existing = storage.getUser(username);
-        if (existing) throw new Error("Usuário já cadastrado");
-
-        await storage.updateUser(username, {
-            fullName,
-            email,
-            whatsapp,
-            password,
-            isApproved: false // Sempre pendente no início
-        });
-
-        res.json({ success: true, msg: "Cadastro realizado com sucesso! Aguarde a aprovação do administrador." });
-    } catch (e) { next(e); }
-});
-
-app.post('/login', async (req, res, next) => {
-    try {
-        const { username, password } = req.body;
-        const user = storage.getUser(username);
-
-        if (!user || user.password !== password) {
-            throw new Error("Usuário ou Senha incorretos");
-        }
-
-        if (!user.isApproved) {
-            return res.json({ success: false, pending: true, msg: "Sua conta aguarda aprovação do administrador." });
-        }
-
-        res.json({ success: true, user: { username: user.username, keys: user.keys || null } });
-    } catch (e) { next(e); }
-});
-
-app.post('/sync-profile', (req, res) => {
-    const user = storage.getUser(req.body.username);
-    if (user) {
-        res.json({ found: true, isApproved: user.isApproved, keys: user.keys || { key: '', secret: '' } });
-    } else res.json({ found: false });
-});
-
-// --- ALFA STATE SYNC (CLOUD PERSISTENCE) ---
-
-app.post('/get-alfa-state', (req, res) => {
-    const user = storage.getUser(req.body.username);
-    if (user) {
-        res.json({ state: user.alfaState || {} });
-    } else {
-        res.json({ state: {} });
-    }
-});
-
-app.post('/save-alfa-state', async (req, res, next) => {
-    try {
-        const { username, state } = req.body;
         if (!username) throw new Error("Missing username");
         
-        let status = 'OFFLINE';
-        if (state.monitoring) {
-             status = state.currentTrade ? 'IN_TRADE' : 'SEARCHING';
-        }
-        
-        // PROTEÇÃO BACKEND-FIRST: Se o robô estiver processando no servidor,
-        // o frontend não deve sobrescrever campos críticos como currentTrade ou cycleCount
         const existing = storage.getUser(username);
-        const serverState = existing?.alfaState || {};
+        const serverState = (existing && existing.alfaState) ? existing.alfaState : {};
         
-        const finalState = { ...state };
-        if (serverState.monitoring) {
-            // Se o servidor está "mandando", o frontend apenas envia logs ou configurações visuais
-            finalState.currentTrade = serverState.currentTrade;
-            finalState.cycleCount = serverState.cycleCount;
-            finalState.tradeHistory = serverState.tradeHistory;
+        // AUTORIDADE DO SERVIDOR: Se o servidor tiver um trade e o client não, o servidor ganha.
+        let finalTrade = state.currentTrade;
+        if(!finalTrade && serverState.currentTrade && serverState.currentTrade.symbol) {
+             finalTrade = serverState.currentTrade;
+             console.log(`[OMEGA-3] Restabelecendo trade authoritative: ${finalTrade.symbol}`);
         }
 
-        await storage.updateUser(username, { 
-            alfaState: finalState,
-            status: status,
-            activeSymbol: finalState.currentTrade ? finalState.currentTrade.symbol : '---',
-            balanceUSDT: finalState.currentBalance || 0,
-            buyPrice: finalState.currentTrade ? finalState.currentTrade.buyPrice : 0,
-            currentPrice: finalState.currentPrice || 0,
-            targetPrice: finalState.currentTrade ? (finalState.currentTrade.buyPrice * 1.008) : 0,
-            liquidPnlPool: finalState.sessionProfitUsdt || 0,
-            staircaseIndex: finalState.cycleCount || 0,
-            keys: req.body.keys || undefined
+        // SALVAMENTO DE ESTADO AGRESSIVO
+        const user = await storage.updateUser(username, { 
+            alfaState: { ...state, currentTrade: finalTrade },
+            keys: keys && keys.key ? keys : (existing ? existing.keys : undefined),
+            status: finalTrade ? 'IN_TRADE' : (state.monitoring ? 'SCANNING' : 'OFFLINE'),
+            activeSymbol: finalTrade ? finalTrade.symbol : '---',
+            balanceUSDT: state.currentBalance || (existing ? existing.balanceUSDT : 0),
+            lastUpdated: Date.now()
         });
-        res.json({ success: true });
+
+        // RESPOSTA COM TELEMETRIA DE MERCADO E ESTADO AUTORITATIVO
+        res.json({ 
+            success: true, 
+            serverState: user.alfaState, 
+            keys: user.keys, // Auto-healing de chaves no frontend
+            marketRanking: binance.globalMarket.top30 || [],
+            command: (user.panicPending) ? 'STOP' : 'OK'
+        });
+        
+        if(user.panicPending) {
+             await storage.updateUser(username, { panicPending: false });
+        }
     } catch (e) { next(e); }
 });
 
 app.post('/pnl-real', async (req, res, next) => {
     try {
-        const { key, secret, activeSymbol } = req.body;
-        const totalUsdt = await binance.getBalance(key, secret);
-        
-        let activeAssetQty = 0;
-        if (activeSymbol) {
-             const baseAsset = activeSymbol.replace('USDT', '');
-             activeAssetQty = await binance.getAssetBalance(key, secret, baseAsset);
-        }
-        
-        res.json({ totalUsdt, activeAssetQty });
-    } catch (e) { next(e); }
+        const { key, secret } = req.body;
+        const totalUsdt = await binance.getAssetBalance(key, secret, 'USDT');
+        res.json({ totalUsdt });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- TRADING ROUTES ---
+app.get('/moedas-ranking', (req, res) => {
+    res.json({ ranking: binance.globalMarket.top30 || [] });
+});
 
-app.post('/executar-ordem', async (req, res, next) => {
+app.post('/executar-ordem', async (req, res) => {
     try {
         const { key, secret, symbol, side, qty } = req.body;
         const result = await binance.executeOrder(key, secret, symbol, side, qty);
         res.json(result);
-    } catch (e) { 
-        res.status(500).json({ error: e.response?.data?.msg || e.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/panic', async (req, res, next) => {
+app.post('/panic', async (req, res) => {
     try {
         const { key, secret, symbol, username } = req.body;
-        let targetSymbol = symbol;
-
-        // Se o frontend não mandou o símbolo, busca na autoridade do servidor
-        if (!targetSymbol) {
-            const users = storage.getUsers();
-            const userMatch = users.find(u => (u.keys?.key === key) || (u.username === username));
-            if (userMatch && userMatch.alfaState && userMatch.alfaState.currentTrade) {
-                targetSymbol = userMatch.alfaState.currentTrade.fullSymbol;
-            }
+        const result = await binance.executeOrder(key, secret, symbol, 'SELL');
+        if(username) {
+             const u = storage.getUser(username);
+             if(u && u.alfaState) {
+                  u.alfaState.currentTrade = null;
+                  u.alfaState.monitoring = false;
+                  await storage.updateUser(username, { alfaState: u.alfaState });
+             }
         }
-
-        if (targetSymbol) {
-            console.log(`[PANIC] Executando venda de emergência para: ${targetSymbol}`);
-            await binance.executeOrder(key, secret, targetSymbol, 'SELL');
-        }
-
-        // SEMPRE limpa o estado na nuvem no Panic para destravar o robô
-        if (username) {
-            const user = storage.getUser(username);
-            if (user && user.alfaState) {
-                user.alfaState.currentTrade = null;
-                user.alfaState.monitoring = false;
-                await storage.updateUser(username, { alfaState: user.alfaState });
-            }
-        }
-
-        res.json({ success: true, msg: "PANIC STOP! Ativos Liquidados e Robô Pausado." });
-    } catch (e) { 
-        console.error("[PANIC] Erro na liquidação:", e.message);
-        next(e); 
-    }
+        res.json({ success: true, msg: "Panic stop executado via Binance." });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/agent/clear-ghost', async (req, res, next) => {
-    try {
-        const { username } = req.body;
-        if (!username) throw new Error("Missing username");
-        
-        const user = storage.getUser(username);
-        if (user && user.alfaState) {
-            user.alfaState.currentTrade = null;
-            user.alfaState.tradeStartTime = null;
-            user.alfaState.monitoring = false;
-            await storage.updateUser(username, { alfaState: user.alfaState });
-        }
-        res.json({ success: true, msg: "Fantasma Removido pelo Agente." });
-    } catch (e) { next(e); }
+// START
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`[MASTER SERVER] SIFRAS ALFA v5.2.0 rodando na porta ${PORT}`);
+    binance.startGlobalWS();
+    tradingService.start(); // Motor das Sombras (Auto-Sell 3s)
 });
-
-app.get('/moedas-ranking', (req, res) => {
-    const r = binance.globalMarket.top30 || [];
-    console.log(`[API] Ranking solicitado. Itens: ${r.length} | ServerTime: ${new Date().toLocaleTimeString()}`);
-    res.json({
-        ranking: r,
-        serverTime: Date.now()
-    });
-});
-
-app.get('/info-par', async (req, res, next) => {
-    try {
-        const info = await binance.getExchangeInfo(req.query.symbol);
-        res.json(info);
-    } catch (e) { next(e); }
-});
-
-// --- ADMIN ROUTES ---
-
-app.get('/admin/overview', adminLimiter, authMiddleware, (req, res) => {
-    res.json({
-        users: storage.getUsers(),
-        serverUptime: process.uptime(),
-        serverIp: 'Local Dynamic'
-    });
-});
-
-app.post('/admin/approve-user', authMiddleware, async (req, res, next) => {
-    try {
-        await storage.updateUser(req.body.targetUser, { isApproved: true });
-        res.json({ success: true });
-    } catch (e) { next(e); }
-});
-
-app.post('/admin/stop-user', authMiddleware, async (req, res, next) => {
-    try {
-        await storage.updateUser(req.body.targetUser, { remoteCommand: 'STOP' });
-        res.json({ success: true });
-    } catch (e) { next(e); }
-});
-
-app.post('/admin/stop-all', authMiddleware, async (req, res, next) => {
-    try {
-        const users = storage.getUsers();
-        for (const u of users) {
-            await storage.updateUser(u.username, { remoteCommand: 'STOP' });
-        }
-        res.json({ success: true });
-    } catch (e) { next(e); }
-});
-
-app.post('/admin/delete-user', authMiddleware, async (req, res, next) => {
-    try {
-        await storage.deleteUser(req.body.targetUser);
-        res.json({ success: true });
-    } catch (e) { next(e); }
-});
-
-app.post('/admin/set-password', authMiddleware, async (req, res, next) => {
-    try {
-        const { targetUser, newPassword } = req.body;
-        await storage.updateUser(targetUser, { password: newPassword });
-        res.json({ success: true });
-    } catch (e) { next(e); }
-});
-
-app.post('/admin/update-profile', authMiddleware, async (req, res, next) => {
-    try {
-        const { targetUser, fullName, email, whatsapp } = req.body;
-        await storage.updateUser(targetUser, { fullName, email, whatsapp });
-        res.json({ success: true });
-    } catch (e) { next(e); }
-});
-
-app.post('/admin/reset-all-users', authMiddleware, async (req, res, next) => {
-    try {
-        await storage.resetUsers();
-        res.json({ success: true });
-    } catch (e) { next(e); }
-});
-
-app.post('/admin/anti-restart', authMiddleware, async (req, res, next) => {
-    try {
-        await storage.updateUser(req.body.targetUser, { staircaseIndex: 10 });
-        res.json({ success: true });
-    } catch (e) { next(e); }
-});
-
-// --- EXPORT ROUTES ---
-
-app.get('/export-leads', authMiddleware, (req, res) => {
-    const users = storage.getUsers();
-    const csv = "Nome Completo,WhatsApp,Email,Usuario,Senha,Status,Aprovado,Saldo USDT,Data Cadastro\n" + 
-        users.map(u => `"${u.fullName || ''}","${u.whatsapp || ''}","${u.email || ''}","${u.username}","${u.password || ''}","${u.status}","${u.isApproved}","${u.balanceUSDT || 0}","${u.registrationDate}"`).join("\n");
-    res.attachment('leads_sifras.csv').send('\uFEFF' + csv); // Add UTF-8 BOM for Excel
-});
-
-app.get('/export-word', authMiddleware, (req, res) => {
-    const users = storage.getUsers();
-    const txt = users.map(u => `CLIENTE: ${u.username}\nEMAIL: ${u.email}\nSTATUS: ${u.status}\nAPROVADO: ${u.isApproved}\nDATA: ${u.registrationDate}\n---`).join("\n\n");
-    res.attachment('leads_sifras.txt').send(txt);
-});
-
-app.get('/ping', (req, res) => res.json({ version: '4.6.3-SNIPER-CLOUD', status: 'online' }));
-
-// --- PAGE ROUTES ---
-app.get(['/', '/operacional'], (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
-app.get('/cadastro', (req, res) => res.sendFile(path.join(__dirname, 'cadastro.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
-app.get('/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads.html')));
-app.get('/alfabeta', (req, res) => res.sendFile(path.join(__dirname, 'alfabeta.html')));
-
-// --- ERROR HANDLER ---
-app.use(errorMiddleware);
-
-app.listen(config.PORT, '0.0.0.0', () => {
-    console.log(`[ALFA SYSTEM] Motor Ligado na porta ${config.PORT}`);
-});
-
-

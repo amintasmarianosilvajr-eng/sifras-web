@@ -1,7 +1,6 @@
 /**
- * SIFRAS ALFA v5.2.0 - OMEGA-3 SUPREME SYNC
- * Sistema de Sincronia de Cronometria, Latência e PNL.
- * Blindagem total de Quantidade e Preço de Entrada.
+ * SIFRAS ALFA v6.1.0 - X-RAY REDEMPTION
+ * Sistema de Sincronia Master com Auto-Healing de Chaves e Blindagem de Preços.
  */
 
 const CONFIG = {
@@ -23,55 +22,44 @@ let currentTrade = null;
 let globalSystemPower = false;
 let isCooldownActive = false;
 let tradeSocket = null;
-let lastRankingHash = "";
 let completedCycles = 0;
 let sessionStartBalance = parseFloat(localStorage.getItem('alfa_session_start') || '0');
 let syncCountdown = 10;
 let tradeStartTime = null;
-
-let isAnalyzingVolatility = false;
-let analysisStartTime = 0;
-let volatilityBuffer = {};
 let tradeHistory = [];
 
 // --- BOOTSTRAP ---
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("[ALFA v5.2.0] Inicializando Blindagem Omega-3...");
+    console.log("[ALFA v6.1.0] Iniciando Sistema X-RAY...");
+    const savedUser = localStorage.getItem('alfa_session_user') || 'OPERADOR';
+    document.getElementById('slot-1-name').value = savedUser;
+    
     setTimeout(() => {
-        loadSavedState();
+        loadSavedState(); 
         syncBalance();
         pushNetworkHeartbeat();
     }, 500);
 
     setInterval(updateHeartbeatUI, 1000);
     setInterval(pushNetworkHeartbeat, 5000);
-    
-    const nameInput = document.getElementById('slot-1-name');
-    if (nameInput) nameInput.addEventListener('blur', () => syncExistingProfile(nameInput.value));
 });
-
-// --- UI UPDATE LOOPS ---
 
 async function updateHeartbeatUI() {
     if (!globalSystemPower) {
         updateChronometryStatic();
-        return;
+    } else {
+        updateChronometryActive();
     }
-
+    
     syncCountdown--;
     if (syncCountdown <= 0) {
         syncCountdown = 10;
-        await syncBalance();
+        syncBalance(); 
     }
 
-    updateChronometryActive();
     updateSessionStats();
-    
-    // LIVE UPDATE DE PNL SE HOUVER TRADE
-    if (currentTrade) {
-        updateTradePriceLive();
-    }
+    if (currentTrade) updateTradePriceLive();
 }
 
 function updateChronometryStatic() {
@@ -79,7 +67,6 @@ function updateChronometryStatic() {
     if (syncVal) syncVal.innerText = "OFF";
     const elCycle = document.getElementById('cycle-counter');
     if (elCycle) elCycle.textContent = "OFFLINE";
-    updateLatencyUI(0);
 }
 
 function updateChronometryActive() {
@@ -96,24 +83,22 @@ function updateChronometryActive() {
         elCycle.textContent = isCooldownActive ? `PAUSA (${completedCycles}/10)` : `${completedCycles} / 10`;
     }
 
-    const tradeCircle = document.getElementById('trade-circle');
     const tradeVal = document.getElementById('trade-timer-val');
+    const tradeCircle = document.getElementById('trade-circle');
     if (currentTrade && tradeStartTime && tradeVal) {
         const elapsed = Math.floor((Date.now() - tradeStartTime) / 1000);
         const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
         const secs = (elapsed % 60).toString().padStart(2, '0');
         tradeVal.innerText = `${mins}:${secs}`;
-        const tradeOffset = 283 - ((elapsed % 60) / 60) * 283;
-        if (tradeCircle) tradeCircle.style.strokeDashoffset = tradeOffset;
-    } else if (tradeVal) {
-        tradeVal.innerText = "00:00";
-        if (tradeCircle) tradeCircle.style.strokeDashoffset = 283;
+        if (tradeCircle) tradeCircle.style.strokeDashoffset = 283 - ((elapsed % 60) / 60) * 283;
     }
 }
 
 function updateTradePriceLive() {
     if (!currentTrade) return;
-    const price = window.lastSocketPrice || currentTrade.buyPrice;
+    
+    // BLINDAGEM X-RAY: Fallback para preço de compra se o socket estiver atrasado
+    const price = (window.lastSocketPrice && window.lastSocketPrice > 0) ? window.lastSocketPrice : currentTrade.buyPrice;
     
     const elPrice = document.getElementById('monitoring-current-price');
     if (elPrice) elPrice.textContent = `$${price.toFixed(price < 0.1 ? 6 : 4)}`;
@@ -180,7 +165,10 @@ function updateSessionStats() {
 
 async function pushNetworkHeartbeat() {
     const username = document.getElementById('slot-1-name').value || 'OPERADOR';
-    const keys = { key: document.getElementById('slot-1-key').value, secret: document.getElementById('slot-1-secret').value };
+    const keys = { 
+        key: document.getElementById('slot-1-key').value, 
+        secret: document.getElementById('slot-1-secret').value 
+    };
 
     const state = { 
         monitoring: globalSystemPower, 
@@ -192,6 +180,7 @@ async function pushNetworkHeartbeat() {
     };
 
     try {
+        const tStart = performance.now();
         const r = await fetch('/heartbeat', { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
@@ -199,34 +188,51 @@ async function pushNetworkHeartbeat() {
         });
         const d = await r.json();
         
-        // Sincronia de Ranking (Radar)
+        // GLOBAL LATENCY UI
+        updateLatencyUI(Math.round(performance.now() - tStart));
+
+        // X-RAY AUTO-HEALING: Se o servidor tiver as chaves e o client não, recupera agora.
+        if (d.keys && d.keys.key && !keys.key) {
+             console.log("[AUTO-HEALING] Recuperando credenciais MASTER da nuvem...");
+             document.getElementById('slot-1-key').value = d.keys.key;
+             document.getElementById('slot-1-secret').value = d.keys.secret;
+             activeSlots[1].key = d.keys.key;
+             activeSlots[1].secret = d.keys.secret;
+        }
+
         if (d.marketRanking) {
             window.lastRankingData = d.marketRanking;
             renderRanking(d.marketRanking);
             renderOpportunityHub(d.marketRanking);
         }
 
-        // Sincronia de Estado (Master Authority Recovery)
         if (d.serverState) {
             const s = d.serverState;
             completedCycles = s.cycleCount || 0;
             
+            if (s.monitoring && !globalSystemPower) {
+                globalSystemPower = true;
+                const btn = document.getElementById('master-toggle-btn');
+                if (btn) { btn.textContent = 'DESCONECTAR'; btn.classList.add('active'); }
+            }
+
             if (s.currentTrade) {
                 if (!currentTrade || currentTrade.fullSymbol !== s.currentTrade.fullSymbol) {
                     currentTrade = s.currentTrade;
                     tradeStartTime = s.tradeStartTime || Date.now();
                     updateTradeUI(true);
                     initPriceSocket(currentTrade.fullSymbol);
-                } else if (!currentTrade.qty && s.currentTrade.qty) {
-                    // Recuperação de Qty perdida
-                    currentTrade.qty = s.currentTrade.qty;
                 }
             } else if (currentTrade) {
-                // Venda realizada no servidor
                 resetTrade();
             }
         }
-    } catch (e) {}
+        
+        if (d.command === 'STOP') masterToggle();
+
+    } catch (e) {
+        updateLatencyUI(0);
+    }
 }
 
 function initPriceSocket(symbol) {
@@ -257,14 +263,12 @@ function updateTradeUI(active) {
 function renderRanking(ranking) {
     const grid = document.getElementById('dynamic-targets-grid');
     if (!grid) return;
-    
     if (!ranking || ranking.length === 0) {
-        grid.innerHTML = `<div class="empty-msg" style="height: 50px; font-size:0.6rem; color:var(--text-muted); opacity:0.5;">Aguardando Sincronia da Binance API...</div>`;
+        grid.innerHTML = `<div class="empty-msg" style="height: 50px;">Buscando Radar...</div>`;
         return;
     }
-
     grid.innerHTML = ranking.slice(0, 30).map((c, i) => `
-        <div class="log-card" style="margin-bottom:8px; padding:10px; display:flex; justify-content:space-between; ${c.symbol === 'BTCUSDT' && ranking[0].vol === 0 ? 'opacity:0.6;' : ''}">
+        <div class="log-card" style="margin-bottom:8px; padding:10px; display:flex; justify-content:space-between;">
             <span style="font-weight:900; opacity:0.5;">#${i + 1}</span>
             <span style="font-weight:800;">${c.symbol.replace('USDT', '')}</span>
             <span style="font-weight:900; color:var(--accent-green);">${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%</span>
@@ -283,7 +287,6 @@ function renderOpportunityHub(rankingData) {
             <div class="opt-card ${diff >= 0 ? 'recovering' : 'falling'}">
                 <span class="opt-symbol">${hist.symbol}</span>
                 <span style="color:${diff >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)'}">${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%</span>
-                <button onclick="aproveitarOportunidade('${hist.fullSymbol}')" class="btn-opt-buy">SWITCH</button>
             </div>
         `;
     }).join('');
@@ -296,41 +299,43 @@ function resetTrade() {
     updateTradeUI(false); 
 }
 
-async function agentForceSell() {
-    if (!currentTrade) return;
-    if (!confirm("⚠️ FORÇAR VENDA IMEDIATA?")) return;
-    const name = document.getElementById('slot-1-name').value;
-    const keys = { key: document.getElementById('slot-1-key').value, secret: document.getElementById('slot-1-secret').value };
-    await fetch('/panic', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ username: name, key: keys.key, secret: keys.secret, symbol: currentTrade.fullSymbol }) 
-    });
-    resetTrade();
-}
-
-async function agentClearGhost() {
-    const user = document.getElementById('slot-1-name').value;
-    if (!confirm("⚠️ LIMPAR ESTADO FANTASMA?")) return;
-    await fetch('/agent/clear-ghost', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ username: user }) 
-    });
-    resetTrade();
-}
-
 async function loadSavedState() {
      const name = document.getElementById('slot-1-name').value;
      if (!name) return;
-     const r = await fetch('/get-alfa-state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: name }) });
-     const { state } = await r.json();
-     if (state && state.currentTrade) {
-         currentTrade = state.currentTrade;
-         tradeStartTime = state.tradeStartTime;
-         updateTradeUI(true);
-         initPriceSocket(currentTrade.fullSymbol);
-     }
+     try {
+         const r = await fetch('/get-alfa-state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: name }) });
+         const d = await r.json();
+         if(d.found) {
+             // AUTO-HEALING DE CHAVES NO BOOTSTRAP
+             if(d.keys && d.keys.key) {
+                 document.getElementById('slot-1-key').value = d.keys.key;
+                 document.getElementById('slot-1-secret').value = d.keys.secret;
+                 activeSlots[1].key = d.keys.key;
+                 activeSlots[1].secret = d.keys.secret;
+             }
+             if(d.state && d.state.currentTrade) {
+                 currentTrade = d.state.currentTrade;
+                 tradeStartTime = d.state.tradeStartTime;
+                 updateTradeUI(true);
+                 initPriceSocket(currentTrade.fullSymbol);
+             }
+             if(d.state && d.state.monitoring) {
+                 globalSystemPower = true;
+                 const btn = document.getElementById('master-toggle-btn');
+                 if(btn) { btn.textContent = 'DESCONECTAR'; btn.classList.add('active'); }
+             }
+         }
+     } catch(e) {}
+}
+
+function masterToggle() {
+    globalSystemPower = !globalSystemPower;
+    const btn = document.getElementById('master-toggle-btn');
+    if(btn) {
+        btn.textContent = globalSystemPower ? 'DESCONECTAR' : 'CONECTAR MASTER';
+        btn.classList.toggle('active', globalSystemPower);
+    }
+    pushNetworkHeartbeat();
 }
 
 function updateLatencyUI(ms) {
@@ -338,16 +343,20 @@ function updateLatencyUI(ms) {
     if (el) el.textContent = ms > 0 ? `${ms}ms` : '--ms';
 }
 
-function masterToggle() {
-    globalSystemPower = !globalSystemPower;
-    const btn = document.getElementById('master-toggle-btn');
-    btn.textContent = globalSystemPower ? 'DESCONECTAR' : 'CONECTAR';
-    btn.classList.toggle('active', globalSystemPower);
-    pushNetworkHeartbeat();
+function recalibrateCapital() {
+    if(!confirm("Deseja recalibrar o capital inicial para o saldo atual do gabinete?")) return;
+    sessionStartBalance = window.currentBalance || 0;
+    localStorage.setItem('alfa_session_start', sessionStartBalance);
+    location.reload();
 }
 
 // Expose globals
-window.agentForceSell = agentForceSell;
-window.agentClearGhost = agentClearGhost;
+window.agentForceSell = () => fetch('/panic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: document.getElementById('slot-1-name').value, key: activeSlots[1].key, secret: activeSlots[1].secret, symbol: currentTrade?.fullSymbol }) }).then(() => resetTrade());
 window.masterToggle = masterToggle;
-window.syncExistingProfile = (n) => localStorage.setItem('alfa_session_user', n);
+window.recalibrateCapital = recalibrateCapital;
+window.saveSlot = () => { 
+    activeSlots[1].key = document.getElementById('slot-1-key').value; 
+    activeSlots[1].secret = document.getElementById('slot-1-secret').value;
+    syncBalance();
+}; 
+window.syncExistingProfile = (n) => { localStorage.setItem('alfa_session_user', n); loadSavedState(); };

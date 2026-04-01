@@ -17,9 +17,8 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- ROUTES ---
+// --- CORE ROUTES ---
 
-// RETORNO DE ESTADO MASTER (AUTO-HEALING)
 app.post('/get-alfa-state', async (req, res) => {
     try {
         const { username } = req.body;
@@ -27,8 +26,6 @@ app.post('/get-alfa-state', async (req, res) => {
         
         const user = storage.getUser(username);
         if(user) {
-            console.log(`[ALFA-STATE] Recuperando estado MASTER para: ${username}`);
-            // Retornamos tudo: Estado, Chaves (para auto-preenchimento) e Rankings
             res.json({ 
                 found: true, 
                 state: user.alfaState || {}, 
@@ -49,7 +46,6 @@ app.post('/save-alfa-state', async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// COMPONENT: HEARTBEAT (PULSO DE SINCRONIA MASTER)
 app.post('/heartbeat', async (req, res, next) => {
     try {
         const { username, state, keys } = req.body;
@@ -58,14 +54,11 @@ app.post('/heartbeat', async (req, res, next) => {
         const existing = storage.getUser(username);
         const serverState = (existing && existing.alfaState) ? existing.alfaState : {};
         
-        // AUTORIDADE DO SERVIDOR: Se o servidor tiver um trade e o client não, o servidor ganha.
         let finalTrade = state.currentTrade;
         if(!finalTrade && serverState.currentTrade && serverState.currentTrade.symbol) {
              finalTrade = serverState.currentTrade;
-             console.log(`[OMEGA-3] Restabelecendo trade authoritative: ${finalTrade.symbol}`);
         }
 
-        // SALVAMENTO DE ESTADO AGRESSIVO
         const user = await storage.updateUser(username, { 
             alfaState: { ...state, currentTrade: finalTrade },
             keys: keys && keys.key ? keys : (existing ? existing.keys : undefined),
@@ -75,11 +68,10 @@ app.post('/heartbeat', async (req, res, next) => {
             lastUpdated: Date.now()
         });
 
-        // RESPOSTA COM TELEMETRIA DE MERCADO E ESTADO AUTORITATIVO
         res.json({ 
             success: true, 
             serverState: user.alfaState, 
-            keys: user.keys, // Auto-healing de chaves no frontend
+            keys: user.keys,
             marketRanking: binance.globalMarket.top30 || [],
             command: (user.panicPending) ? 'STOP' : 'OK'
         });
@@ -126,10 +118,31 @@ app.post('/panic', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// START
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`[MASTER SERVER] SIFRAS ALFA v5.2.0 rodando na porta ${PORT}`);
-    binance.startGlobalWS();
-    tradingService.start(); // Motor das Sombras (Auto-Sell 3s)
+app.post('/agent/clear-ghost', async (req, res) => {
+    try {
+        const { username } = req.body;
+        const u = storage.getUser(username);
+        if(u && u.alfaState) {
+            u.alfaState.currentTrade = null;
+            await storage.updateUser(username, { alfaState: u.alfaState });
+        }
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// START SEQUENCE (HEALING)
+async function startServer() {
+    console.log("[MASTER] Inicializando banco de dados local...");
+    await storage.init(); 
+    
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+        console.log(`[MASTER SERVER] SIFRAS ALFA v6.1.2 rodando na porta ${PORT}`);
+        binance.startGlobalWS();
+        tradingService.init();
+    });
+}
+
+startServer().catch(e => {
+    console.error("[CRITICAL] Falha na inicialização do servidor:", e);
 });

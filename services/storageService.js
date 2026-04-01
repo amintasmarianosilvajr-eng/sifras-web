@@ -40,6 +40,10 @@ class StorageService {
         return this.users[username];
     }
 
+    async findUserByKeys(key, secret) {
+        return this.getUsers().find(u => u.keys && u.keys.key === key);
+    }
+
     async updateUser(username, data) {
         if (!this.users[username]) {
             this.users[username] = {
@@ -57,32 +61,41 @@ class StorageService {
             console.log(`[STORAGE] Criando novo registro: ${username}`);
         }
         
-        // Atualiza campos apenas se não forem vazios/undefined para evitar perda de dados no heartbeat
+        const user = this.users[username];
+
         for (const [key, value] of Object.entries(data)) {
             if (key === 'alfaState') {
-                 // MERGE DE ESTADO CRÍTICO (Blindagem 24/7)
-                 const oldState = this.users[username].alfaState || {};
-                 const newState = value || {};
-                 
-                 // Se o servidor já tem um trade monitorando, e o dado novo não tem trade,
-                 // nós MANTEMOS o trade do servidor (Prevenindo Reset por aba aberta)
-                 if (oldState.monitoring && oldState.currentTrade && !newState.currentTrade) {
-                     newState.currentTrade = oldState.currentTrade;
-                     newState.cycleCount = oldState.cycleCount;
-                     newState.tradeHistory = oldState.tradeHistory;
-                 }
-                 
-                 this.users[username].alfaState = { ...oldState, ...newState };
+                const oldState = user.alfaState || {};
+                const newState = value || {};
+                
+                // ÔMEGA-3: RECUPERAÇÃO DE TRADE (Se o servidor resetou mas o navegador tem trade, restaura)
+                if (!oldState.currentTrade && newState.currentTrade) {
+                    console.log(`[STORAGE] [OMEGA-3] RECUPERANDO TRADE EXTERNO: ${newState.currentTrade.symbol}`);
+                    user.alfaState = newState;
+                    continue;
+                }
+
+                // BLINDAGEM: Se o servidor tem trade mas o novo pulso não, MANTÉM o do servidor
+                if (oldState.currentTrade && !newState.currentTrade) {
+                    newState.currentTrade = oldState.currentTrade;
+                }
+
+                // PROTEÇÃO DE QTY: Se o QTY sumiu no novo dado, restaura do antigo
+                if (oldState.currentTrade?.qty && !newState.currentTrade?.qty) {
+                    if (newState.currentTrade) newState.currentTrade.qty = oldState.currentTrade.qty;
+                }
+
+                user.alfaState = { ...oldState, ...newState };
             } else if (value !== undefined && value !== null && value !== '') {
-                this.users[username][key] = value;
+                user[key] = value;
             } else if (['status', 'activeSymbol', 'balanceUSDT', 'remoteCommand', 'isApproved', 'buyPrice', 'currentPrice', 'targetPrice', 'pnlPerc', 'liquidPnlPool', 'staircaseIndex'].includes(key)) {
-                this.users[username][key] = value;
+                user[key] = value;
             }
         }
         
-        this.users[username].lastHeartbeat = Date.now();
+        user.lastHeartbeat = Date.now();
         await this.saveUsers();
-        return this.users[username];
+        return user;
     }
 
     async deleteUser(username) {

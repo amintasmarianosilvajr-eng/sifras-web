@@ -9,105 +9,94 @@ class BinanceService {
         this.ws = null;
         this.dynamicBlacklist = [];
         this.isSyncing = false;
-        this.fallbackMode = false;
+        this.lastSyncSuccess = 0;
     }
 
     async initBlacklist() {
         try {
-            const res = await axios.get('https://api.binance.com/api/v3/exchangeInfo', { timeout: 8000 });
+            const res = await axios.get('https://api.binance.com/api/v3/exchangeInfo', { timeout: 5000 });
             if (res.data && Array.isArray(res.data.symbols)) {
                 this.dynamicBlacklist = res.data.symbols
                     .filter(s => s.status !== 'TRADING' || (s.tags && s.tags.includes('Monitoring')))
                     .map(s => s.symbol.replace('USDT', ''));
             }
-        } catch (e) {
-            console.error("[BINANCE] Falha na Blacklist (prosseguindo sem):", e.message);
+        } catch (e) {}
+    }
+
+    // Survivor-1M: Garantia de dados se a API travar
+    async activateSurvivalStats() {
+        console.warn("[BINANCE] ⚠️ Ativando Radar de Emergência (Filtro 1M Garantido)...");
+        const majors = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT", "AVAXUSDT"];
+        
+        // Inicializa com as Majors que sempre têm >1M volume
+        const mockRanking = majors.map(s => ({ symbol: s, vol: 0, price: 0 }));
+        
+        // Tenta buscar o preço de cada uma individualmente (mais chance de sucesso que o listão 24h)
+        for (const coin of mockRanking) {
+            const p = await this.getTickerPrice(coin.symbol);
+            if (p) coin.price = p;
         }
+        
+        this.globalMarket.top30 = mockRanking;
     }
 
     async syncRanking() {
         if (this.isSyncing) return;
         this.isSyncing = true;
         try {
-            console.log(`[BINANCE-SYNC] Buscando Ranking. Vol: ${config.SCAN_MIN_VOL}...`);
-            const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr', { timeout: 10000 });
-            
-            if (!res.data || !Array.isArray(res.data)) throw new Error("Resposta da Binance não é um Array.");
-
-            const filtered = res.data.filter(t => 
-                t.symbol.endsWith("USDT") && 
-                parseFloat(t.quoteVolume) > (config.SCAN_MIN_VOL || 100000) &&
-                !this.dynamicBlacklist.includes(t.symbol.replace('USDT', ''))
-            );
-            
-            if (filtered.length === 0) throw new Error("Nenhuma moeda passou no filtro de volume.");
-
-            this.globalMarket.top30 = filtered
-                .map(t => ({
-                    symbol: t.symbol,
-                    vol: parseFloat(t.priceChangePercent),
-                    price: parseFloat(t.lastPrice)
-                }))
-                .sort((a, b) => b.vol - a.vol)
-                .slice(0, 30);
-            
-            this.fallbackMode = false;
-            console.log(`[BINANCE-SYNC] ✅ Sucesso: ${this.globalMarket.top30.length} moedas.`);
+            // Tenta o listão 24h com timeout curto
+            const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr', { timeout: 8000 });
+            if (res.data && Array.isArray(res.data)) {
+                const filtered = res.data.filter(t => 
+                    t.symbol.endsWith("USDT") && 
+                    parseFloat(t.quoteVolume) >= 1000000 &&
+                    !this.dynamicBlacklist.includes(t.symbol.replace('USDT', ''))
+                );
+                
+                if (filtered.length > 0) {
+                    this.globalMarket.top30 = filtered
+                        .map(t => ({
+                            symbol: t.symbol,
+                            vol: parseFloat(t.priceChangePercent),
+                            price: parseFloat(t.lastPrice)
+                        }))
+                        .sort((a, b) => b.vol - a.vol)
+                        .slice(0, 30);
+                    this.lastSyncSuccess = Date.now();
+                    console.log(`[BINANCE] Radar Master Sincronizado: ${this.globalMarket.top30.length} moedas > 1M.`);
+                }
+            }
         } catch (e) {
-            console.error(`[BINANCE-SYNC] ❌ Falha (Tentando Fallback):`, e.message);
-            this.activateFallback();
+            console.error("[BINANCE] Erro no sync do ranking (Listão 24h pendente).");
+            if (this.globalMarket.top30.length === 0) {
+                await this.activateSurvivalStats();
+            }
         } finally {
             this.isSyncing = false;
         }
     }
 
-    activateFallback() {
-        if (this.fallbackMode) return;
-        this.fallbackMode = true;
-        console.warn("[BINANCE-SYNC] ⚠️ MODO DE SOBREVIVÊNCIA ATIVADO (Ranking Estático)");
-        
-        const majors = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "ADAUSDT", "XRPUSDT", "DOGEUSDT", "DOTUSDT", "AVAXUSDT", "LINKUSDT"];
-        this.globalMarket.top30 = majors.map(s => ({
-            symbol: s,
-            vol: 0,
-            price: 0
-        }));
-        
-        // Tenta atualizar os preços do fallback individualmente
-        this.globalMarket.top30.forEach(async coin => {
-            const p = await this.getTickerPrice(coin.symbol);
-            if (p) coin.price = p;
-        });
-    }
-
     async startGlobalWS() {
-        console.log("[BINANCE] Iniciando Motor Master...");
+        console.log("[BINANCE] Motor de Sincronia Ligado.");
         await this.initBlacklist();
         await this.syncRanking();
         
-        // Loop agressivo de 5s se estiver vazio
-        const retryInt = setInterval(() => {
-            if (this.globalMarket.top30.length === 0 || this.fallbackMode) {
-                this.syncRanking();
-            } else {
-                clearInterval(retryInt);
-            }
-        }, 5000);
-
+        // Tenta sync a cada 60s
         setInterval(() => this.syncRanking(), 60000);
 
         this.connectWS();
     }
 
     connectWS() {
-        console.log("[BINANCE-WS] Conectando Pulse Stream...");
-        this.ws = new WebSocket(config.BINANCE_WS_URL || "wss://stream.binance.com:9443/stream?streams=!ticker@arr");
+        const streamUrl = config.BINANCE_WS_URL || "wss://stream.binance.com:9443/stream?streams=!ticker@arr";
+        this.ws = new WebSocket(streamUrl);
         
         this.ws.on("message", (data) => {
             try {
                 const payload = JSON.parse(data.toString());
-                const updates = payload.data || payload; 
+                const updates = (payload.data || payload);
                 if (!Array.isArray(updates)) return;
+                
                 updates.forEach(u => {
                     const match = this.globalMarket.top30.find(m => m.symbol === u.s);
                     if (match) {
@@ -115,16 +104,16 @@ class BinanceService {
                         if (u.c) match.price = parseFloat(u.c);
                     }
                 });
-                if (!this.fallbackMode) this.globalMarket.top30.sort((a, b) => b.vol - a.vol);
+                
+                // Só ordena se tivermos dados suficientes
+                if (this.globalMarket.top30.length > 5) {
+                    this.globalMarket.top30.sort((a, b) => b.vol - a.vol);
+                }
             } catch (e) {}
         });
-        
-        this.ws.on("close", () => {
-            console.warn("[BINANCE-WS] Conexão perdida. Reconectando...");
-            setTimeout(() => this.connectWS(), 5000);
-        });
-        
-        this.ws.on("error", (e) => console.error("[BINANCE-WS] Erro:", e.message));
+
+        this.ws.on("close", () => setTimeout(() => this.connectWS(), 5000));
+        this.ws.on("error", () => {});
     }
 
     async getAssetBalance(key, secret, asset) {
@@ -157,18 +146,18 @@ class BinanceService {
             });
             const usdt = acc.data.balances.find(b => b.asset === 'USDT');
             const free = parseFloat(usdt ? usdt.free : 0);
-            if (free < 10) throw new Error("Saldo USDT insuficiente na Binance.");
+            if (free < 10) throw new Error("Saldo USDT Insuficiente.");
 
             const priceRes = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const price = parseFloat(priceRes.data.price);
-            const calculatedQty = (free * 0.98) / price; // 2% margin for fees/slippage
+            const calculatedQty = (free * 0.98) / price;
             params.quantity = (Math.floor(calculatedQty / step) * step).toFixed(8).replace(/\.?0+$/, "");
         } else {
             let q = qty;
             if (!q || q <= 0) {
                 q = await this.getAssetBalance(key, secret, symbol.replace('USDT', ''));
             }
-            if (q <= 0) throw new Error("Sem saldo para vender este ativo na Binance.");
+            if (q <= 0) throw new Error("Sem saldo para vender.");
             params.quantity = (Math.floor(q / step) * step).toFixed(8).replace(/\.?0+$/, "");
         }
 

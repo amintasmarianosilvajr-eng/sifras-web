@@ -351,9 +351,16 @@ async function checkAndWithdrawProfit() {
 function renderRanking(ranking) {
     const grid = document.getElementById('dynamic-targets-grid');
     if (!grid) return;
+    
+    if (!ranking || ranking.length === 0) {
+        grid.innerHTML = `<div class="empty-msg" style="height: 50px; font-size:0.6rem; color:var(--text-muted);">Sincronizando Radar com a Nuvem...</div>`;
+        return;
+    }
+
     const currentHash = ranking.slice(0, 30).map(c => c.symbol).join('|');
     if (currentHash === lastRankingHash) return;
     lastRankingHash = currentHash;
+
     grid.innerHTML = ranking.slice(0, 30).map((c, i) => `
         <div class="log-card" style="margin-bottom:8px; padding:10px; display:flex; justify-content:space-between; ${isAnalyzingVolatility && volatilityBuffer[c.symbol] ? 'border:1px solid var(--primary-neon); background:rgba(0,245,255,0.05);' : ''}">
             <span style="font-weight:900; opacity:0.5;">#${i + 1}</span>

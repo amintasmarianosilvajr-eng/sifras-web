@@ -203,17 +203,38 @@ app.post('/executar-ordem', async (req, res, next) => {
 
 app.post('/panic', async (req, res, next) => {
     try {
-        const { key, secret, symbol } = req.body;
-        if (symbol) {
-            try {
-                // Liquida a mercado o saldo da moeda ativa
-                await binance.executeOrder(key, secret, symbol, 'SELL');
-            } catch (e) {
-                console.log("[PANIC] Falha na liquidação final (saldo já pode estar zero):", e.message);
+        const { key, secret, symbol, username } = req.body;
+        let targetSymbol = symbol;
+
+        // Se o frontend não mandou o símbolo, busca na autoridade do servidor
+        if (!targetSymbol) {
+            const users = storage.getUsers();
+            const userMatch = users.find(u => (u.keys?.key === key) || (u.username === username));
+            if (userMatch && userMatch.alfaState && userMatch.alfaState.currentTrade) {
+                targetSymbol = userMatch.alfaState.currentTrade.fullSymbol;
             }
         }
-        res.json({ msg: "PANIC STOP! Ativos Liquidados e Robô Pausado." });
-    } catch (e) { next(e); }
+
+        if (targetSymbol) {
+            console.log(`[PANIC] Executando venda de emergência para: ${targetSymbol}`);
+            await binance.executeOrder(key, secret, targetSymbol, 'SELL');
+        }
+
+        // SEMPRE limpa o estado na nuvem no Panic para destravar o robô
+        if (username) {
+            const user = storage.getUser(username);
+            if (user && user.alfaState) {
+                user.alfaState.currentTrade = null;
+                user.alfaState.monitoring = false;
+                await storage.updateUser(username, { alfaState: user.alfaState });
+            }
+        }
+
+        res.json({ success: true, msg: "PANIC STOP! Ativos Liquidados e Robô Pausado." });
+    } catch (e) { 
+        console.error("[PANIC] Erro na liquidação:", e.message);
+        next(e); 
+    }
 });
 
 app.post('/agent/clear-ghost', async (req, res, next) => {
@@ -233,9 +254,10 @@ app.post('/agent/clear-ghost', async (req, res, next) => {
 });
 
 app.get('/moedas-ranking', (req, res) => {
-    console.log(`[API] Solicitado ranking. Itens em cache: ${binance.globalMarket.top30.length}`);
+    const r = binance.globalMarket.top30 || [];
+    console.log(`[API] Ranking solicitado. Itens: ${r.length} | ServerTime: ${new Date().toLocaleTimeString()}`);
     res.json({
-        ranking: binance.globalMarket.top30,
+        ranking: r,
         serverTime: Date.now()
     });
 });

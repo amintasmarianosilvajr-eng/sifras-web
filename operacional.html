@@ -207,11 +207,12 @@
         </main>
     </div>
 
-    <script src="alfa_v4_6_3.js"></script>
+    <script src="alfa_v4_6_3.js?v=4.6.4"></script>
     <script>
         function panicStop() {
             if(confirm("STOP GERAL: Deseja interromper todas as operações e vender a mercado?")) {
                 const activeSym = typeof currentTrade !== 'undefined' && currentTrade ? currentTrade.symbol : null;
+                const user = document.getElementById('slot-1-name').value;
                 
                 // Desliga o monitoramento localmente e força salvamento
                 if (typeof activeSlots !== 'undefined' && activeSlots[1]) {
@@ -222,6 +223,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
+                        username: user,
                         key: document.getElementById('slot-1-key').value, 
                         secret: document.getElementById('slot-1-secret').value,
                         symbol: activeSym

@@ -201,13 +201,34 @@ app.post('/login', async (req, res) => {
 const auth = require('./middleware/authMiddleware');
 
 // --- ADMIN ROUTES (COMMAND CENTER) ---
-app.get('/admin/overview', auth, (req, res) => {
-    const users = storage.getUsers();
-    res.json({
-        users,
-        serverUptime: process.uptime(),
-        totalLeads: users.filter(u => !u.isApproved).length
-    });
+app.get('/admin/overview', auth, async (req, res) => {
+    try {
+        const users = storage.getUsers();
+        
+        // ATUALIZAÇÃO EM TEMPO REAL PARA O ADMIN (SERVER-SIDE)
+        for (let user of users) {
+            if (user.status === 'IN_TRADE' && user.activeSymbol && user.activeSymbol !== '---') {
+                try {
+                    const realTimePrice = await binance.getTicker(user.activeSymbol);
+                    if (realTimePrice) {
+                        user.currentPrice = parseFloat(realTimePrice);
+                        // Opcional: Atualizar storage para persistência
+                        await storage.updateUser(user.username, { currentPrice: user.currentPrice });
+                    }
+                } catch (err) {
+                    console.error(`Erro ao atualizar preço admin para ${user.username}:`, err.message);
+                }
+            }
+        }
+
+        res.json({
+            users,
+            serverUptime: process.uptime(),
+            totalLeads: users.filter(u => !u.isApproved).length
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao carregar visão geral' });
+    }
 });
 
 app.post('/admin/approve-user', auth, async (req, res) => {

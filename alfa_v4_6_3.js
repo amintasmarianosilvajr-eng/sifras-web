@@ -80,7 +80,7 @@ function updateChronometryActive() {
 
     let elCycle = document.getElementById('cycle-counter');
     if (elCycle) {
-        elCycle.textContent = isCooldownActive ? `PAUSA (${completedCycles}/10)` : `${completedCycles} / 10`;
+        elCycle.textContent = isCooldownActive ? `PAUSA (${completedCycles}/3)` : `${completedCycles} / 3`;
     }
 
     const tradeVal = document.getElementById('trade-timer-val');
@@ -255,7 +255,7 @@ function updateTradeUI(active) {
         document.getElementById('monitoring-symbol').textContent = currentTrade.symbol;
         const prec = currentTrade.buyPrice < 0.1 ? 6 : 4;
         document.getElementById('monitoring-buy-price').textContent = `$${currentTrade.buyPrice.toFixed(prec)}`;
-        document.getElementById('monitoring-target-price').textContent = `$${(currentTrade.buyPrice * 1.008).toFixed(prec)}`;
+        document.getElementById('monitoring-target-price').textContent = `$${(currentTrade.buyPrice * 1.009).toFixed(prec)}`;
         document.getElementById('system-status-pill').textContent = 'TRADE ATIVO';
         document.getElementById('system-status-pill').style.color = 'var(--accent-green)';
     } else {

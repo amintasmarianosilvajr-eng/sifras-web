@@ -464,7 +464,7 @@
             let roi = 0, color = 'var(--accent-ruby)';
             if (u.status === 'IN_TRADE' && u.buyPrice > 0) {
                 roi = ((u.currentPrice - u.buyPrice) / u.buyPrice) * 100;
-                color = roi >= 0.8 ? 'var(--accent-emerald)' : (roi >= 0 ? 'var(--accent-cyan)' : 'var(--accent-ruby)');
+                color = roi >= 0.9 ? 'var(--accent-emerald)' : (roi >= 0 ? 'var(--accent-cyan)' : 'var(--accent-ruby)');
             }
 
             return `
@@ -475,14 +475,21 @@
                 </td>
                 <td class="text-[0.7rem] text-accent-cyan font-bold">${u.whatsapp || '---'}</td>
                 <td><span class="status-pill status-${u.status === 'IN_TRADE' ? 'green' : (u.status === 'OFFLINE' ? 'gray' : 'blue')}">${u.status}</span></td>
-                <td><div class="text-accent-cyan font-black">${roi.toFixed(2)}%</div></td>
+                <td>
+                    <div class="w-24 bg-black/40 h-1.5 rounded-full overflow-hidden border border-white/5 mb-1">
+                        <div class="h-full transition-all duration-500" style="width: ${Math.min(Math.max((roi / 0.9) * 100, 0), 100)}%; background-color: ${color}; box-shadow: 0 0 10px ${color}44;"></div>
+                    </div>
+                    <div class="text-accent-cyan font-black text-[0.65rem]">${roi.toFixed(2)}%</div>
+                </td>
                 <td class="font-black text-white">${u.activeSymbol || '---'}</td>
                 <td class="text-slate-400">$ ${Number(u.buyPrice || 0).toFixed(4)}</td>
                 <td class="text-white font-bold">$ ${Number(u.currentPrice || 0).toFixed(4)}</td>
                 <td class="text-accent-emerald font-bold">$ ${Number(u.targetPrice || 0).toFixed(4)}</td>
                 <td><span class="text-accent-cyan font-bold text-[0.6rem] tracking-widest bg-black/40 px-2 py-1 border border-accent-cyan/20 rounded">${u.password || '---'}</span></td>
-                <td class="font-black">$ ${Number(u.balanceUSDT || 0).toFixed(2)}</td>
-                <td class="${u.liquidPnlPool >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} font-black">$ ${Number(u.liquidPnlPool || 0).toFixed(2)}</td>
+                <td class="font-black italic">$ ${Number(u.balanceUSDT || 0).toFixed(2)}</td>
+                <td class="${(Number(u.liquidPnlPool || 0) + (u.status === 'IN_TRADE' ? (u.qty * (u.currentPrice - u.buyPrice)) : 0)) >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} font-black">
+                    $ ${(Number(u.liquidPnlPool || 0) + (u.status === 'IN_TRADE' ? (u.qty * (u.currentPrice - u.buyPrice)) : 0)).toFixed(2)}
+                </td>
                 <td class="font-bold">${u.cycleCount || 0} / 3</td>
                 <td>
                     <div class="flex gap-2">

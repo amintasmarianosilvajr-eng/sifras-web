@@ -102,6 +102,7 @@ app.post('/heartbeat', async (req, res, next) => {
             buyPrice: finalTrade ? finalTrade.buyPrice : 0,
             targetPrice: finalTrade ? finalTrade.buyPrice * 1.009 : 0,
             currentPrice: state.currentPrice || (finalTrade ? finalTrade.buyPrice : 0),
+            qty: finalTrade ? finalTrade.qty : 0,
             cycleCount: finalAlfaState.cycleCount || 0,
             lastUpdated: Date.now()
         });

@@ -47,78 +47,65 @@ app.post('/get-alfa-state', async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/save-alfa-state', async (req, res) => {
+// --- ALFA CLOUD PERSISTENCE ---
+app.post('/get-alfa-state', async (req, res) => {
     try {
-        const { username, state, keys } = req.body;
-        await storage.updateUser(username, { alfaState: state, keys: keys || undefined });
-        res.json({ success: true });
+        const { username } = req.body;
+        if (!username) return res.status(400).json({ error: "Username required" });
+        const user = storage.getUser(username);
+        if (user && user.alfaState) {
+            return res.json({ success: true, state: user.alfaState });
+        }
+        res.json({ success: false, state: {} });
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/heartbeat', async (req, res, next) => {
+app.post('/save-alfa-state', async (req, res, next) => {
     try {
         const { username, state, keys } = req.body;
-        if (!username) throw new Error("Missing username");
+        if (!username) return res.status(400).json({ error: "Username required" });
         
-        const existing = storage.getUser(username);
-        const serverState = (existing && existing.alfaState) ? existing.alfaState : {};
+        const existing = storage.getUser(username) || {};
+        const serverState = existing.alfaState || {};
         
-        // --- BLINDAGEM SERVER-AS-MASTER (REFINADA) ---
-        // Só restaura se enviou vazio MAS o servidor tem trade E parece uma reconexão (atraso no pulso > 10s)
-        let finalTrade = state.currentTrade;
-        const timeSinceLastUpdate = existing ? (Date.now() - (existing.lastUpdated || 0)) : 0;
-
-        if(!finalTrade && serverState.currentTrade && serverState.currentTrade.symbol && existing) {
-             if (timeSinceLastUpdate > 10000) { 
-                 console.log(`[HEARTBEAT] [SHIELD] Reconexão detectada para ${username}. Restaurando trade: ${serverState.currentTrade.symbol}`);
-                 finalTrade = serverState.currentTrade;
-             } else {
-                 console.log(`[HEARTBEAT] [SYNC] Cliente ${username} limpou trade intencionalmente. Sincronizando com Servidor.`);
-             }
-        }
-
-        // --- BLINDAGEM ÔMEGA-3 (LOCK DE PÂNICO & PERSISTÊNCIA DE HISTÓRICO) ---
-        // Se houve um pânico recente (< 5s), ignora o desejo do cliente de ligar o motor
-        const isRecentPanic = existing && existing.lastPanicTime && (Date.now() - existing.lastPanicTime < 5000);
-        if (isRecentPanic) {
-            state.monitoring = false;
-            finalTrade = null;
-        }
-
-        // FUSÃO DE ESTADO SEGURA: O servidor protege o seu histórico e contador de ciclos
-        const finalAlfaState = {
-            ...serverState,      // Base: Dados REAIS do servidor (History, Cycles, etc)
-            ...state,            // Update: Novos dados do cliente (Balance, Monitoring)
-            currentTrade: finalTrade // Autoridade: Trade real da Binance/Servidor
+        // --- BLINDAGEM ÔMEGA-3 (LOCK DE PERSISTÊNCIA) ---
+        // Se o cliente tentar enviar contadores ZERADOS mas o servidor jé tem progresso, IGNORE o 0.
+        // Isso protege o Ciclo (3/3) e o Lucro acumulado em caso de F5.
+        const mergedState = {
+            ...serverState,
+            ...state,
+            cycleCount: (state.cycleCount > 0 || !serverState.cycleCount) ? state.cycleCount : serverState.cycleCount,
+            sessionProfitUsdt: (state.sessionProfitUsdt > 0 || !serverState.sessionProfitUsdt) ? state.sessionProfitUsdt : serverState.sessionProfitUsdt,
+            lastUpdated: Date.now()
         };
 
+        // Real-time market fetch for Admin Command Center
+        let realTimePrice = mergedState.currentPrice;
+        if (mergedState.monitoring && mergedState.currentTrade) {
+            try {
+                const live = await binance.getTicker(mergedState.currentTrade.symbol);
+                if (live) realTimePrice = parseFloat(live);
+            } catch(e) {}
+        }
+
         const user = await storage.updateUser(username, { 
-            alfaState: finalAlfaState,
-            keys: keys && keys.key ? keys : (existing ? existing.keys : undefined),
-            status: finalTrade ? 'IN_TRADE' : (state.monitoring ? 'SCANNING' : 'OFFLINE'),
-            activeSymbol: finalTrade ? finalTrade.symbol : '---',
-            balanceUSDT: state.currentBalance || (existing ? existing.balanceUSDT : 0),
-            // EXPOSIÇÃO PARA COMMAND CENTER (CICLO 9)
-            buyPrice: finalTrade ? finalTrade.buyPrice : 0,
-            targetPrice: finalTrade ? finalTrade.buyPrice * 1.009 : 0,
-            currentPrice: state.currentPrice || (finalTrade ? finalTrade.buyPrice : 0),
-            qty: finalTrade ? finalTrade.qty : 0,
-            cycleCount: finalAlfaState.cycleCount || 0,
+            alfaState: mergedState, 
+            keys: keys && keys.key ? keys : (existing.keys || undefined),
+            status: mergedState.currentTrade ? 'IN_TRADE' : (mergedState.monitoring ? 'SCANNING' : 'OFFLINE'),
+            activeSymbol: mergedState.currentTrade ? mergedState.currentTrade.symbol : '---',
+            buyPrice: mergedState.currentTrade ? mergedState.currentTrade.buyPrice : 0,
+            currentPrice: realTimePrice || 0,
+            cycleCount: mergedState.cycleCount || 0,
             lastUpdated: Date.now()
         });
 
-        res.json({ 
-            success: true, 
-            serverState: user.alfaState, 
-            keys: user.keys,
-            marketRanking: binance.globalMarket.top30 || [],
-            command: (user.panicPending) ? 'STOP' : 'OK'
-        });
-        
         if(user.panicPending) {
              await storage.updateUser(username, { panicPending: false });
+             return res.json({ success: true, serverState: user.alfaState, command: 'STOP' });
         }
-    } catch (e) { next(e); }
+
+        res.json({ success: true, serverState: user.alfaState });
+    } catch(e) { next(e); }
 });
 
 app.post('/pnl-real', async (req, res, next) => {

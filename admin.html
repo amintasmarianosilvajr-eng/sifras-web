@@ -173,7 +173,7 @@
                 <i data-lucide="shield-check" class="w-6 h-6"></i>
             </div>
             <div>
-                <h1 class="text-xl font-black uppercase italic tracking-tight">Alfa <span class="text-accent-cyan">Command Center</span> <span class="text-[0.6rem] bg-accent-cyan text-black px-1 rounded-sm not-italic ml-2">v4.5.0 STABLE</span></h1>
+                <h1 class="text-xl font-black uppercase italic tracking-tight">Alfa <span class="text-accent-cyan">Command Center</span> <span class="text-[0.6rem] bg-accent-cyan text-black px-1 rounded-sm not-italic ml-2">v4.6.3 STABLE</span></h1>
                 <p class="text-[0.6rem] text-[#D9DFE3] font-bold tracking-widest uppercase mono">Gerenciamento de Rede v4.0</p>
             </div>
         </div>
@@ -483,7 +483,7 @@
                 <td><span class="text-accent-cyan font-bold text-[0.6rem] tracking-widest bg-black/40 px-2 py-1 border border-accent-cyan/20 rounded">${u.password || '---'}</span></td>
                 <td class="font-black">$ ${Number(u.balanceUSDT || 0).toFixed(2)}</td>
                 <td class="${u.liquidPnlPool >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} font-black">$ ${Number(u.liquidPnlPool || 0).toFixed(2)}</td>
-                <td class="font-bold">#${u.staircaseIndex || 10}</td>
+                <td class="font-bold">${u.cycleCount || 0} / 3</td>
                 <td>
                     <div class="flex gap-2">
                         <button onclick="stopUser('${u.username}')" class="px-3 py-2 bg-[#F85149] text-white font-black text-[0.65rem] rounded-lg uppercase shadow-sm active:scale-95 transition-all">Stop</button>

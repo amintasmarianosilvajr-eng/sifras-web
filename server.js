@@ -96,6 +96,11 @@ app.post('/heartbeat', async (req, res, next) => {
             status: finalTrade ? 'IN_TRADE' : (state.monitoring ? 'SCANNING' : 'OFFLINE'),
             activeSymbol: finalTrade ? finalTrade.symbol : '---',
             balanceUSDT: state.currentBalance || (existing ? existing.balanceUSDT : 0),
+            // EXPOSIÇÃO PARA COMMAND CENTER (CICLO 9)
+            buyPrice: finalTrade ? finalTrade.buyPrice : 0,
+            targetPrice: finalTrade ? finalTrade.buyPrice * 1.009 : 0,
+            currentPrice: state.currentPrice || (finalTrade ? finalTrade.buyPrice : 0),
+            cycleCount: finalAlfaState.cycleCount || 0,
             lastUpdated: Date.now()
         });
 

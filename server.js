@@ -83,7 +83,7 @@ app.post('/save-alfa-state', async (req, res, next) => {
         let realTimePrice = mergedState.currentPrice;
         if (mergedState.monitoring && mergedState.currentTrade) {
             try {
-                const live = await binance.getTicker(mergedState.currentTrade.symbol);
+                const live = await binance.getTickerPrice(mergedState.currentTrade.symbol);
                 if (live) realTimePrice = parseFloat(live);
             } catch(e) {}
         }
@@ -94,6 +94,8 @@ app.post('/save-alfa-state', async (req, res, next) => {
             status: mergedState.currentTrade ? 'IN_TRADE' : (mergedState.monitoring ? 'SCANNING' : 'OFFLINE'),
             activeSymbol: mergedState.currentTrade ? mergedState.currentTrade.symbol : '---',
             buyPrice: mergedState.currentTrade ? mergedState.currentTrade.buyPrice : 0,
+            targetPrice: mergedState.currentTrade ? mergedState.currentTrade.buyPrice * 1.009 : 0,
+            qty: mergedState.currentTrade ? mergedState.currentTrade.qty : 0,
             currentPrice: realTimePrice || 0,
             cycleCount: mergedState.cycleCount || 0,
             lastUpdated: Date.now()
@@ -196,7 +198,7 @@ app.get('/admin/overview', auth, async (req, res) => {
         for (let user of users) {
             if (user.status === 'IN_TRADE' && user.activeSymbol && user.activeSymbol !== '---') {
                 try {
-                    const realTimePrice = await binance.getTicker(user.activeSymbol);
+                    const realTimePrice = await binance.getTickerPrice(user.activeSymbol);
                     if (realTimePrice) {
                         user.currentPrice = parseFloat(realTimePrice);
                         // Opcional: Atualizar storage para persistência

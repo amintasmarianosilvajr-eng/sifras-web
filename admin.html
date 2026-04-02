@@ -399,16 +399,20 @@
         const totalCap = users.reduce((sum, u) => sum + (Number(u.balanceUSDT) || 0), 0);
         setVal('avgProfit', `$ ${totalCap.toFixed(2)}`);
 
-        // Realizado USDT -> BRL (Conversão Direta Est. ~5.09)
-        const totalProfitUSDT = users.reduce((sum, u) => sum + (Number(u.liquidPnlPool) || 0), 0);
-        setVal('totalBRL', `R$ ${(totalProfitUSDT * 5.09).toFixed(2).replace('.', ',')}`);
+        // Fluxo de P&L: Saldo Realizado + Projeção dos Trades Ativos
+        const totalFloatingPnl = users.reduce((sum, u) => {
+            const tradeValue = (u.status === 'IN_TRADE' && u.qty > 0) ? (u.qty * (u.currentPrice - u.buyPrice)) : 0;
+            return sum + (Number(u.liquidPnlPool) || 0) + tradeValue;
+        }, 0);
 
-        // ROI Geral
-        let roiGeral = 0;
-        if (totalCap > 0 && totalProfitUSDT > 0) {
-            roiGeral = (totalProfitUSDT / totalCap) * 100;
-        }
+        setVal('totalBRL', `R$ ${(totalFloatingPnl * 5.0).toFixed(2).replace('.', ',')}`);
+        
+        let roiGeral = (totalCap > 0) ? (totalFloatingPnl / totalCap) * 100 : 0;
         setVal('globalProfitPct', `${roiGeral.toFixed(2)}%`);
+        const roiEl = document.getElementById('globalProfitPct');
+        if (roiEl) {
+            roiEl.className = `${roiGeral >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} text-2xl font-black italic`;
+        }
 
         // Alvo Radar (Moeda de Maior Tração)
         let pivot = 'AGUARDANDO...';

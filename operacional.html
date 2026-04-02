@@ -211,10 +211,13 @@
     <script>
         function panicStop() {
             if(confirm("STOP GERAL: Deseja interromper todas as operações e vender a mercado?")) {
-                const activeSym = typeof currentTrade !== 'undefined' && currentTrade ? currentTrade.symbol : null;
+                const activeSym = typeof currentTrade !== 'undefined' && currentTrade ? currentTrade.fullSymbol : null;
                 const user = document.getElementById('slot-1-name').value;
                 
-                // Desliga o monitoramento localmente e força salvamento
+                // --- RESET LOCAL IMEDIATO (Impede o Heartbeat de restaurar) ---
+                if (typeof globalSystemPower !== 'undefined') globalSystemPower = false;
+                if (typeof resetTrade === 'function') resetTrade();
+                
                 if (typeof activeSlots !== 'undefined' && activeSlots[1]) {
                      activeSlots[1].monitoring = false;
                 }
@@ -232,7 +235,7 @@
                 .then(res => res.json())
                 .then(data => {
                     alert(data.msg || "Comando de Panic Stop enviado!");
-                    if (typeof pushStateToServer === "function") pushStateToServer();
+                    if (typeof pushNetworkHeartbeat === "function") pushNetworkHeartbeat();
                     setTimeout(() => location.reload(), 1000);
                 });
             }

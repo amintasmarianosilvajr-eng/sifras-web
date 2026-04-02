@@ -6,12 +6,12 @@
 const CONFIG = {
     UPDATE_INTERVAL: 1000,
     LOG_INTERVAL: 5000,
-    TARGET_PROFIT: 0.8,
+    TARGET_PROFIT: 0.9,
     VOLATILITY_WINDOW: 10000,
     MIN_VOLATILITY_TRIGGER: 0.15,
-    MAX_CYCLES: 10,
-    COOLDOWN_TIME: 1800000,
-    BLACKLIST: ['SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV'],
+    MAX_CYCLES: 3,
+    COOLDOWN_TIME: 1200000,
+    BLACKLIST: ['BLUR', 'SANTOS', 'PORTO', 'LAZIO', 'ALPINE', 'ASR', 'ATM', 'ACM', 'BAR', 'CITY', 'INTER', 'JUV', 'OG', 'PSG', 'ARG', 'POR', 'TRA', 'NAP', 'SAU', 'ALV'],
     WITHDRAW_THRESHOLD: 15,
     WITHDRAW_ENABLED: true
 };
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 500);
 
     setInterval(updateHeartbeatUI, 1000);
-    setInterval(pushNetworkHeartbeat, 5000);
+    setInterval(pushNetworkHeartbeat, 1000);
 });
 
 async function updateHeartbeatUI() {
@@ -119,6 +119,12 @@ function updateTradePriceLive() {
     const progress = Math.min((pl / CONFIG.TARGET_PROFIT) * 100, 100);
     const fill = document.getElementById('trade-progress-fill');
     if (fill) fill.style.width = `${Math.max(progress, 0)}%`;
+
+    // SEGURANÇA ALFA: Venda imediata via Client-Side se bater a meta
+    if (pl >= CONFIG.TARGET_PROFIT) {
+        console.log(`[ALFA] Meta de ${CONFIG.TARGET_PROFIT}% atingida via WebSocket. Liquidando...`);
+        agentForceSell(true); // SILENT SELL (Sem confirm)
+    }
 }
 
 async function syncBalance() {
@@ -172,8 +178,6 @@ async function pushNetworkHeartbeat() {
 
     const state = { 
         monitoring: globalSystemPower, 
-        currentTrade,
-        tradeStartTime,
         currentBalance: window.currentBalance || 0,
         cycleCount: completedCycles,
         tradeHistory
@@ -350,13 +354,84 @@ function recalibrateCapital() {
     location.reload();
 }
 
-// Expose globals
-window.agentForceSell = () => fetch('/panic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: document.getElementById('slot-1-name').value, key: activeSlots[1].key, secret: activeSlots[1].secret, symbol: currentTrade?.fullSymbol }) }).then(() => resetTrade());
+window.panicStop = () => {
+    if(!confirm("🚨 ACIONAR PANIC STOP? (Vende tudo na Binance e trava o motor)")) return;
+    const username = localStorage.getItem('alfa_session_user') || document.getElementById('slot-1-name').value;
+    
+    // UI Feedback Imediato
+    resetTrade();
+    globalSystemPower = false;
+    const btn = document.getElementById('master-toggle-btn');
+    if(btn) { btn.textContent = 'CONECTAR MASTER'; btn.classList.remove('active'); }
+
+    fetch('/panic', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+            username, 
+            key: document.getElementById('slot-1-key').value, 
+            secret: document.getElementById('slot-1-secret').value 
+        }) 
+    }).then(() => {
+        console.warn("[AGENT] Panic Stop acionado com sucesso.");
+        pushNetworkHeartbeat();
+    });
+};
+
+// --- AGENT COMMAND CENTER ---
+
+window.agentForceSell = (silent = false) => {
+    if(!silent && !confirm("⚡ AGENTE: FORÇAR VENDA IMEDIATA A MERCADO?")) return;
+    const username = localStorage.getItem('alfa_session_user') || document.getElementById('slot-1-name').value;
+    const symbol = currentTrade?.fullSymbol;
+    
+    // RESET LOCAL IMEDIATO (Para evitar que o heartbeat re-envie ao servidor)
+    resetTrade(); 
+    
+    fetch('/panic', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+            username, 
+            key: document.getElementById('slot-1-key').value, 
+            secret: document.getElementById('slot-1-secret').value, 
+            symbol 
+        }) 
+    }).then(() => {
+        console.log("[AGENT] Força de venda acionada e sincronizada.");
+        pushNetworkHeartbeat();
+    });
+};
+
+window.agentClearGhost = () => {
+    if(!confirm("👻 AGENTE: LIMPAR TRADE FANTASMA? (Não afeta a Binance, apenas limpa a tela)")) return;
+    const username = localStorage.getItem('alfa_session_user') || document.getElementById('slot-1-name').value;
+    
+    // RESET LOCAL IMEDIATO
+    resetTrade();
+    
+    fetch('/agent/clear-ghost', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ username }) 
+    }).then(() => {
+        console.log("[AGENT] Fantasma exorcizado com sucesso.");
+        pushNetworkHeartbeat();
+    });
+};
+
 window.masterToggle = masterToggle;
 window.recalibrateCapital = recalibrateCapital;
 window.saveSlot = () => { 
     activeSlots[1].key = document.getElementById('slot-1-key').value; 
     activeSlots[1].secret = document.getElementById('slot-1-secret').value;
+    activeSlots[1].name = document.getElementById('slot-1-name').value;
+    localStorage.setItem('alfa_session_user', activeSlots[1].name);
     syncBalance();
+    pushNetworkHeartbeat();
 }; 
-window.syncExistingProfile = (n) => { localStorage.setItem('alfa_session_user', n); loadSavedState(); };
+window.syncExistingProfile = (n) => { 
+    localStorage.setItem('alfa_session_user', n); 
+    loadSavedState(); 
+    pushNetworkHeartbeat();
+};

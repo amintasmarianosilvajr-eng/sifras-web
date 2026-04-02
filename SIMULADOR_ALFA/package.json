@@ -1,0 +1,22 @@
+{
+  "name": "projeto-arcadio-operacional",
+  "version": "1.1.0",
+  "main": "sim_server.js",
+  "bin": "sim_server.js",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "express": "^4.18.2"
+  },
+  "pkg": {
+    "assets": [
+      "painel_operacional.html",
+      "sim_db.json"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ]
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  }
+}

@@ -5,7 +5,7 @@
 
 const CONFIG = {
     UPDATE_INTERVAL: 1500, 
-    TARGET_PROFIT: 0.7,
+    TARGET_PROFIT: 0.9,
     STAIRCASE_START: 10
 };
 

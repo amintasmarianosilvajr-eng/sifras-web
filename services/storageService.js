@@ -20,12 +20,27 @@ class StorageService {
     }
 
     async saveUsers() {
+        const tempFile = `${config.USERS_FILE}.tmp`;
+        const backupFile = `${config.USERS_FILE}.bak`;
         try {
-            const count = Object.keys(this.users).length;
-            await fs.writeFile(config.USERS_FILE, JSON.stringify(this.users, null, 2));
-            console.log(`[STORAGE] Memória Sincronizada: ${count} usuários salvos em disco.`);
+            const data = JSON.stringify(this.users, null, 2);
+            
+            // 1. Escreve em arquivo temporário
+            await fs.writeFile(tempFile, data, 'utf8');
+            
+            // 2. Cria backup do atual (se existir)
+            try {
+                await fs.copyFile(config.USERS_FILE, backupFile);
+            } catch (e) { /* Arquivo original pode não existir no primeiro save */ }
+            
+            // 3. Renomeia o temporário para o oficial (Operação Atômica no SO)
+            await fs.rename(tempFile, config.USERS_FILE);
+            
+            console.log(`[STORAGE] Blindagem Atômica: ${Object.keys(this.users).length} usuários protegidos.`);
         } catch (e) {
-            console.error("[STORAGE] Erro crítico ao salvar usuários:", e);
+            console.error("[STORAGE] [ERRO CRÍTICO] Falha na escrita atômica:", e.message);
+            // Tenta limpar o temporário em caso de falha catastrófica
+            try { await fs.unlink(tempFile); } catch(err) {}
         }
     }
 
@@ -65,30 +80,17 @@ class StorageService {
 
         for (const [key, value] of Object.entries(data)) {
             if (key === 'alfaState') {
-                const oldState = user.alfaState || {};
-                const newState = value || {};
+                const oldAlfa = user.alfaState || {};
+                const newAlfa = value || {};
                 
-                // ÔMEGA-3: RECUPERAÇÃO DE TRADE (Se o servidor resetou mas o navegador tem trade, restaura)
-                if (!oldState.currentTrade && newState.currentTrade) {
-                    console.log(`[STORAGE] [OMEGA-3] RECUPERANDO TRADE EXTERNO: ${newState.currentTrade.symbol}`);
-                    user.alfaState = newState;
-                    continue;
+                // --- ALFA SERVER-AS-MASTER (ESTÁVEL) ---
+                // Se o novo estado não informou trade, mantemos o que está no servidor
+                if (typeof newAlfa.currentTrade === 'undefined') {
+                    newAlfa.currentTrade = oldAlfa.currentTrade;
                 }
-
-                // BLINDAGEM: Se o servidor tem trade mas o novo pulso não, MANTÉM o do servidor
-                if (oldState.currentTrade && !newState.currentTrade) {
-                    newState.currentTrade = oldState.currentTrade;
-                }
-
-                // PROTEÇÃO DE QTY: Se o QTY sumiu no novo dado, restaura do antigo
-                if (oldState.currentTrade?.qty && !newState.currentTrade?.qty) {
-                    if (newState.currentTrade) newState.currentTrade.qty = oldState.currentTrade.qty;
-                }
-
-                user.alfaState = { ...oldState, ...newState };
-            } else if (value !== undefined && value !== null && value !== '') {
-                user[key] = value;
-            } else if (['status', 'activeSymbol', 'balanceUSDT', 'remoteCommand', 'isApproved', 'buyPrice', 'currentPrice', 'targetPrice', 'pnlPerc', 'liquidPnlPool', 'staircaseIndex'].includes(key)) {
+                
+                user.alfaState = { ...oldAlfa, ...newAlfa };
+            } else {
                 user[key] = value;
             }
         }

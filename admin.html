@@ -275,11 +275,20 @@
     async function checkAdminPass() {
         const pass = document.getElementById('adminPass').value;
         const err = document.getElementById('adminError');
-        if (pass === 'amsj777') {
-            localStorage.setItem('sifras_token', pass);
-            location.reload();
-        } else {
+        
+        try {
+            // Tenta um ping no overview para validar a chave com o servidor real
+            const res = await fetch(`/admin/overview?t=${Date.now()}`, {
+                headers: { 'Authorization': `Bearer ${pass}` }
+            });
+            
+            if (res.ok) {
+                localStorage.setItem('sifras_token', pass);
+                location.reload();
+            } else { throw new Error(); }
+        } catch (e) {
             err.classList.remove('hidden');
+            err.textContent = "Chave Inválida. Acesso Negado pelo Servidor.";
         }
     }
 

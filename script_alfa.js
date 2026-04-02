@@ -1,6 +1,6 @@
 /**
- * SIFRAS ALFA PREMIUM v3.7
- * Protocolo de Monitoramento Ativo | Alvo 0.8% | Ciclo 10s
+ * SIFRAS ALFA PREMIUM v3.8 - CICLO 9
+ * Protocolo de Monitoramento Ativo | Alvo 0.9% | Ciclo 3 ops / 20 min
  */
 
 const CONFIG = {
@@ -366,21 +366,21 @@ async function closeTrade() {
         
         cycleCount++;
         
-        if (cycleCount >= 10) {
-            cooldownUntil = Date.now() + (30 * 60 * 1000);
+        if (cycleCount >= 3) {
+            cooldownUntil = Date.now() + (20 * 60 * 1000);
             localStorage.setItem('alfa_cooldown_until', cooldownUntil.toString());
             cycleCount = 0;
             localStorage.setItem('alfa_cycle_count', cycleCount.toString());
             
-            addLog(`🛑 SEGURANÇA: 10 Ciclos atingidos. Pausa obrigatória de 30 minutos ativada.`, 'system');
-            document.getElementById('cycle-counter').innerText = `PAUSA: 30m`;
+            addLog(`🛑 SEGURANÇA: 3 Ciclos atingidos. Pausa obrigatória de 20 minutos ativada.`, 'system');
+            document.getElementById('cycle-counter').innerText = `PAUSA: 20m`;
             
             if (sessionProfitUsdt > 10) {
                 autoWithdrawToBRL(sessionProfitUsdt);
             }
         } else {
             localStorage.setItem('alfa_cycle_count', cycleCount.toString());
-            document.getElementById('cycle-counter').innerText = `${cycleCount} / 10`;
+            document.getElementById('cycle-counter').innerText = `${cycleCount} / 3`;
         }
         
         lastExecutedSymbol = currentTrade.symbol.replace('USDT', '');
@@ -608,7 +608,7 @@ async function loadSavedState() {
             const remainingTicks = Math.ceil((cooldownUntil - Date.now()) / 60000);
             el.innerText = `PAUSA: ${remainingTicks}m`;
         } else {
-            el.innerText = `${cycleCount} / 10`; 
+            el.innerText = `${cycleCount} / 3`; 
         }
     }
     updateSessionUI();

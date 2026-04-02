@@ -1,0 +1,135 @@
+    <title>PROJETO ALFA - ARCÁDIO - OPERACIONAL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gold: #FFD700;
+            --accent-gold: rgba(255, 215, 0, 0.4);
+            --bg-deep: #060B19;
+            --bg-card: #0D1117;
+            --text-main: #f0f3f5;
+        }
+
+        body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; }
+        .app-container { padding: 40px; display: grid; grid-template-columns: 1fr 350px; gap: 30px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,215,0,0.1); padding-bottom: 20px; }
+        .logo-text { font-family: 'Outfit'; font-size: 2rem; color: var(--primary-gold); letter-spacing: -1.5px; }
+        
+        .card { background: var(--bg-card); border: 1px solid rgba(255,215,0,0.1); border-radius: 24px; padding: 30px; position: relative; }
+        .balance-card { text-align: center; border-right: 5px solid var(--primary-gold); }
+        .balance-val { font-family: 'Outfit'; font-size: 4rem; margin: 10px 0; color: #fff; }
+        
+        .monitor-card { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 400px; }
+        .symbol-name { font-family: 'Outfit'; font-size: 5rem; margin: 0; }
+        .pnl-val { font-size: 3rem; font-weight: 800; color: var(--primary-gold); }
+
+        .radar-list { width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 20px; }
+        .radar-item { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,215,0,0.05); padding: 8px 0; }
+        .radar-sym { font-weight: 800; font-size: 1rem; color: #fff; width: 100px; }
+        .radar-bar-container { flex-grow: 1; height: 6px; background: rgba(255,215,0,0.05); border-radius: 3px; margin: 0 15px; position: relative; overflow: hidden; }
+        .radar-bar-fill { height: 100%; background: var(--primary-gold); box-shadow: 0 0 10px var(--accent-gold); border-radius: 3px; transition: 0.5s ease; }
+        .radar-pct { font-size: 0.8rem; color: var(--primary-gold); font-weight: 900; width: 60px; text-align: right; }
+        
+        .scan-line { width: 100%; height: 2px; background: linear-gradient(90deg, transparent, var(--primary-gold), transparent); animation: scan 3s infinite linear; margin-bottom: 20px; }
+        @keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        
+        .btn { 
+            background: var(--primary-gold); color: #000; border: none; padding: 15px 30px; border-radius: 12px; font-weight: 900; cursor: pointer; text-transform: uppercase; 
+            transition: 0.3s; box-shadow: 0 0 20px rgba(255,215,0,0.2);
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(255,215,0,0.3); }
+        .btn.off { background: #333; color: #fff; }
+
+        .log-container { overflow-y: auto; height: 400px; }
+        .log-entry { font-size: 0.8rem; padding: 10px; border-bottom: 1px solid rgba(255,215,0,0.05); color: #8b949e; }
+        .log-entry.profit { color: var(--primary-gold); font-weight: 800; }
+    </style>
+</head>
+<body>
+        <main>
+            <div class="header">
+                <div class="logo-text">PROJETO ALFA | ARCÁDIO</div>
+                <div style="display:flex; gap:10px;">
+                    <button id="toggle-btn" class="btn" onclick="toggleSim()">ATIVAR OPERAÇÕES</button>
+                    <button class="btn off" onclick="resetSim()">RECALIBRAR GABINETE</button>
+                </div>
+            </div>
+
+            <div class="card balance-card" style="margin-top: 30px;">
+                <span style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--primary-gold);">Operational Equity (USDT)</span>
+                <div id="balance" class="balance-val">$25.728,42</div>
+            </div>
+
+            <div class="card monitor-card" style="margin-top: 30px;">
+                <div id="no-trade" style="width: 100%;">
+                    <div class="scan-line"></div>
+                    <div style="text-align:center; font-size:0.6rem; color:var(--primary-gold); letter-spacing:3px; margin-bottom:10px;">VOLATILITY NODE SCANNER</div>
+                    <div id="radar-ranking" class="radar-list"></div>
+                </div>
+                <div id="trade-info" style="display:none; text-align:center;">
+                    <h2 id="symbol" class="symbol-name">---</h2>
+                    <div id="pnl" class="pnl-val">+0.00%</div>
+                </div>
+            </div>
+        </main>
+
+        <aside>
+            <div class="card" style="height: 100%;">
+                <h3 style="font-family:'Outfit'; color:var(--primary-gold); margin-bottom:20px;">Operational History</h3>
+                <div id="history" class="log-container"></div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        async function update() {
+            const res = await fetch('/sim-state');
+            const data = await res.json();
+            
+            document.getElementById('balance').textContent = '$' + data.virtualBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            const btn = document.getElementById('toggle-btn');
+            btn.textContent = data.monitoring ? 'CONEXÃO ATIVA' : 'ATIVAR OPERAÇÕES';
+            btn.classList.toggle('off', !data.monitoring);
+
+            if (data.currentTrade) {
+                document.getElementById('no-trade').style.display = 'none';
+                document.getElementById('trade-info').style.display = 'block';
+                document.getElementById('symbol').textContent = data.currentTrade.symbol;
+                document.getElementById('pnl').textContent = (data.currentTrade.pnl > 0 ? '+' : '') + data.currentTrade.pnl.toFixed(2) + '%';
+            } else {
+                document.getElementById('no-trade').style.display = 'block';
+                document.getElementById('trade-info').style.display = 'none';
+                
+                // RENDER RADAR (CHART MODE)
+                const radar = document.getElementById('radar-ranking');
+                if(data.marketRanking) {
+                   radar.innerHTML = data.marketRanking.slice(0, 10).map(r => {
+                      const barWidth = Math.min(Math.max(Math.abs(r.vol) * 15, 5), 100);
+                      return `
+                      <div class="radar-item">
+                         <span class="radar-sym">${r.symbol}</span>
+                         <div class="radar-bar-container">
+                            <div class="radar-bar-fill" style="width: ${barWidth}%"></div>
+                         </div>
+                         <span class="radar-pct">${r.vol > 0 ? '+' : ''}${r.vol.toFixed(2)}%</span>
+                      </div>
+                   `}).join('');
+                }
+            }
+
+            const hist = document.getElementById('history');
+            hist.innerHTML = data.history.map(h => `
+                <div class="log-entry profit">
+                    [${h.time}] ${h.symbol} | META 0.70% ATINGIDA | +$${h.profit.toFixed(2)}
+                </div>
+            `).join('');
+        }
+
+        async function toggleSim() { await fetch('/sim-toggle', { method: 'POST' }); update(); }
+        async function resetSim() { if(confirm("Recalibrar gabinete para $25.728,42?")) { await fetch('/sim-reset', { method: 'POST' }); update(); } }
+
+        setInterval(update, 1000);
+        update();
+    </script>
+</body>
+</html>

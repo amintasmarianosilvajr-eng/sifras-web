@@ -12,6 +12,8 @@ app.use(bodyParser.json());
 // --- ROTEAMENTO AMIGÁVEL (FIX: Cannot GET /operacional) ---
 app.get('/operacional', (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/ADMIN', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 app.get('/cadastro', (req, res) => res.sendFile(path.join(__dirname, 'cadastro.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));

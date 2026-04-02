@@ -477,7 +477,7 @@
                 <td><span class="status-pill status-${u.status === 'IN_TRADE' ? 'green' : (u.status === 'OFFLINE' ? 'gray' : 'blue')}">${u.status}</span></td>
                 <td>
                     <div class="w-24 bg-black/40 h-1.5 rounded-full overflow-hidden border border-white/5 mb-1">
-                        <div class="h-full transition-all duration-500" style="width: ${Math.min(Math.max((roi / 0.9) * 100, 0), 100)}%; background-color: ${color}; box-shadow: 0 0 10px ${color}44;"></div>
+                        <div class="h-full transition-all duration-500" style="width: ${Math.min(Math.max(((roi + 5) / 5.9) * 100, 0), 100)}%; background-color: ${color}; box-shadow: 0 0 10px ${color}44;"></div>
                     </div>
                     <div class="text-accent-cyan font-black text-[0.65rem]">${roi.toFixed(2)}%</div>
                 </td>

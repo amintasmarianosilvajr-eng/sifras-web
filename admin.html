@@ -250,8 +250,7 @@
                         <th>Atual</th>
                         <th>Alvo</th>
                         <th>Senha</th>
-                        <th>Balanço</th>
-                        <th>P&L</th>
+                        <th>Saldo USDT</th>
                         <th>PNL Real</th>
                         <th>Ciclo</th>
                         <th>Controle</th>
@@ -498,7 +497,6 @@
                 <td class="text-accent-emerald font-bold">$ ${Number(u.targetPrice || 0).toFixed(4)}</td>
                 <td><span class="text-accent-cyan font-bold text-[0.6rem] tracking-widest bg-black/40 px-2 py-1 border border-accent-cyan/20 rounded">${u.password || '---'}</span></td>
                 <td class="font-black italic">$ ${Number(u.balanceUSDT || 0).toFixed(2)}</td>
-                <td class="text-slate-400">$ ${Number(u.liquidPnlPool || 0).toFixed(2)}</td>
                 <td class="${totalCash >= 0 ? 'text-accent-emerald' : 'text-accent-ruby'} font-black">$ ${totalCash}</td>
                 <td class="font-bold">${u.cycleCount || 0} / 3</td>
                 <td>

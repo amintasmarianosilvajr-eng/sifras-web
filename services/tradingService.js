@@ -81,20 +81,12 @@ class TradingService {
             
             // 🎯 GATILHO DE ALVO (0.9%)
             const TARGET_PROFIT = 0.9;
-            const STOP_LOSS = -2.5;
             const TRAILING_PULLBACK = 0.1; // Se cair 0.1% do pico após atingir o alvo, vende.
 
             // Atualiza o pico de lucro (High Water Mark)
             trade.maxPnl = Math.max(trade.maxPnl || pnl, pnl);
             trade.currentPrice = currentPrice;
             trade.currentPnl = pnl;
-
-            // A. VERIFICA STOP LOSS (Proteção de Banca)
-            if (pnl <= STOP_LOSS) {
-                console.log(`[STOP-LOSS] 🚨 ${user.username}: Protegendo banca. Liquidando ${trade.symbol} em ${pnl.toFixed(2)}%`);
-                await this.executeBackendSell(user, "STOP_LOSS");
-                return;
-            }
 
             // B. VERIFICA TRAILING PROFIT (Garantia de Lucro)
             // Só entra aqui se o lucro for POSITIVO e já tiver batido o alvo
@@ -105,12 +97,8 @@ class TradingService {
                     return;
                 }
             } else {
-                // LOCK DE SEGURANÇA: Se o lucro ainda não bateu o alvo E o PNL é negativo (mas acima do Stop Loss),
-                // o robô é PROIBIDO de vender. Ele deve aguardar a recuperação ou o Stop Loss.
-                if (pnl < 0) {
-                    // Log silencioso para monitoramento
-                    return; 
-                }
+                // LOCK DE SEGURANÇA: O robô é PROIBIDO de vender no prejuízo.
+                if (pnl < 0) return; 
             }
 
             // C. PROTEÇÃO ANTI-FANTASMA (Sincronia a cada 10s)

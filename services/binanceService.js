@@ -14,13 +14,22 @@ class BinanceService {
 
     async initBlacklist() {
         try {
+            const fanTokens = ["OG", "SANTOS", "LAZIO", "PORTO", "ALPINE", "CITY", "BAR", "JUV", "ACM", "ATM", "ASR"];
+            const memeIrrelevant = ["PEPE", "FLOKI", "BONK", "SHIB", "DOGE", "MEME", "LADYS", "AIDOGE", "VMP", "ORDI", "1000SATS"];
+            
             const res = await axios.get('https://api.binance.com/api/v3/exchangeInfo', { timeout: 5000 });
             if (res.data && Array.isArray(res.data.symbols)) {
                 this.dynamicBlacklist = res.data.symbols
                     .filter(s => s.status !== 'TRADING' || (s.tags && s.tags.includes('Monitoring')))
                     .map(s => s.symbol.replace('USDT', ''));
+                
+                // Unifica com Fan Tokens e Memes
+                this.dynamicBlacklist = [...new Set([...this.dynamicBlacklist, ...fanTokens, ...memeIrrelevant])];
+                console.log(`[INIT] Blacklist Ativa: ${this.dynamicBlacklist.length} moedas bloqueadas (Times/Memes/Monitoring).`);
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error("[INIT] Falha ao carregar Exchange Info para Blacklist.");
+        }
     }
 
     // Survivor-1M: Garantia de dados se a API travar

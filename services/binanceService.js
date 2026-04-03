@@ -58,7 +58,8 @@ class BinanceService {
                         .map(t => ({
                             symbol: t.symbol,
                             vol: parseFloat(t.priceChangePercent),
-                            price: parseFloat(t.lastPrice)
+                            price: parseFloat(t.lastPrice),
+                            quoteVol: parseFloat(t.quoteVolume)
                         }))
                         .sort((a, b) => b.vol - a.vol)
                         .slice(0, 30);

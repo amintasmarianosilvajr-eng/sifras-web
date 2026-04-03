@@ -24,7 +24,8 @@ function tick() {
 }
 
 async function syncWithServer() {
-    const username = activeSlots[1].name || localStorage.getItem('alfa_session_user');
+    // Busca o usuário logado de várias fontes possíveis para evitar erro de 'User not found'
+    const username = activeSlots[1].name || localStorage.getItem('alfa_session_user') || document.getElementById('slot-1-name')?.value;
     if (!username) return;
 
     try {
@@ -34,7 +35,10 @@ async function syncWithServer() {
             body: JSON.stringify({ 
                 username, 
                 state: { monitoring: activeSlots[1].monitoring },
-                keys: { key: activeSlots[1].key, secret: activeSlots[1].secret } 
+                keys: { 
+                    key: activeSlots[1].key || document.getElementById('slot-1-key')?.value, 
+                    secret: activeSlots[1].secret || document.getElementById('slot-1-secret')?.value 
+                } 
             })
         });
         const d = await r.json();
@@ -42,6 +46,14 @@ async function syncWithServer() {
         if (d.success) {
             updateUIFromState(d.serverState);
             if (d.marketRanking) renderRanking(d.marketRanking);
+            
+            // Se o servidor diz que as chaves estão salvas, atualizamos a UI
+            if (d.keys && d.keys.key && !activeSlots[1].key) {
+                activeSlots[1].key = d.keys.key;
+                activeSlots[1].secret = d.keys.secret;
+                const keyEl = document.getElementById('slot-1-key');
+                if (keyEl) keyEl.value = d.keys.key;
+            }
         }
     } catch (e) {
         console.error("Erro na sincronia cloud:", e);
@@ -137,13 +149,15 @@ function renderRanking(list) {
                 <span style="font-weight:900; font-size:1rem;">#${i + 1} ${item.symbol.replace('USDT', '')}</span>
                 <span style="color:var(--accent-green); font-weight:800;">${item.vol.toFixed(2)}%</span>
             </div>
-            <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">VOL: $${(item.quoteVol || 0 / 1000000).toFixed(1)}M</div>
+            <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">VOL: $${((item.quoteVol || 0) / 1000000).toFixed(1)}M</div>
         </div>
     `).join('');
 }
 
 function updateChronometry() {
     const tradeVal = document.getElementById('trade-timer-val');
+    const syncVal = document.getElementById('sync-timer-val');
+    
     if (currentTrade && tradeVal) {
         const elapsed = Math.floor((Date.now() - (currentTrade.buyTime || Date.now())) / 1000);
         const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
@@ -165,15 +179,21 @@ function addLog(msg, type) {
 function masterToggle() {
     activeSlots[1].monitoring = !activeSlots[1].monitoring;
     const btn = document.getElementById('master-toggle-btn');
-    const pill = document.getElementById('system-status-pill');
+    const pill = document.querySelector('.status-pill');
     
     if (activeSlots[1].monitoring) {
-        btn.innerText = "DESCONECTAR MASTER";
+        if (btn) {
+            btn.innerText = "DESCONECTAR MASTER";
+            btn.style.borderColor = "var(--danger-neon)";
+        }
         if (pill) { pill.innerText = "BUSCANDO ALVO"; pill.className = "status-pill online"; }
         addLog("SISTEMA ALFA CONECTADO AO SERVIDOR.", "system");
         syncBalance(); 
     } else {
-        btn.innerText = "CONNECT MASTER";
+        if (btn) {
+            btn.innerText = "CONNECT MASTER";
+            btn.style.borderColor = "var(--primary-neon)";
+        }
         if (pill) { pill.innerText = "OFFLINE"; pill.className = "status-pill waiting"; }
         addLog("SISTEMA EM PAUSA.", "system");
     }
@@ -182,24 +202,31 @@ function masterToggle() {
 
 function updateSessionUI() {
     const pnlHeader = document.getElementById('header-realtime-pnl');
-    if (!pnlHeader || !window.currentBalance) return;
-    
-    const profit = window.currentBalance - sessionStartBalance;
-    const pct = sessionStartBalance > 0 ? (profit / sessionStartBalance) * 100 : 0;
-    const color = profit >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
-    pnlHeader.innerText = `${profit >= 0 ? '+' : ''}$${profit.toFixed(2)} (${pct.toFixed(2)}%)`;
-    pnlHeader.style.color = color;
+    const balanceCabinet = document.getElementById('cabinet-total-balance');
+
+    if (window.currentBalance !== undefined && balanceCabinet) {
+        balanceCabinet.innerHTML = `$ ${window.currentBalance.toFixed(2)} <span style="font-size:1.5rem; color:var(--text-muted); font-weight:400;">USDT</span>`;
+        
+        if (pnlHeader) {
+            const profit = window.currentBalance - sessionStartBalance;
+            const pct = sessionStartBalance > 0 ? (profit / sessionStartBalance) * 100 : 0;
+            const color = profit >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
+            pnlHeader.innerText = `${profit >= 0 ? '+' : ''}$${profit.toFixed(2)} (${pct.toFixed(2)}%)`;
+            pnlHeader.style.color = color;
+        }
+    }
 }
 
 function loadSavedState() {
+    const slotInput = document.getElementById('slot-1-name');
+    const keyInput = document.getElementById('slot-1-key');
+    const secInput = document.getElementById('slot-1-secret');
+    
     const slot = JSON.parse(localStorage.getItem('alfa_slot_1') || '{}');
     if (slot.key) {
-        const nameEl = document.getElementById('slot-1-name');
-        const keyEl = document.getElementById('slot-1-key');
-        const secEl = document.getElementById('slot-1-secret');
-        if (nameEl) nameEl.value = slot.name || '';
-        if (keyEl) keyEl.value = slot.key || '';
-        if (secEl) secEl.value = slot.secret || '';
+        if (slotInput) slotInput.value = slot.name || '';
+        if (keyInput) keyInput.value = slot.key || '';
+        if (secInput) secInput.value = slot.secret || '';
         activeSlots[1] = { ...activeSlots[1], ...slot };
     }
 }
@@ -210,6 +237,7 @@ function saveSlot() {
     activeSlots[id].secret = document.getElementById(`slot-${id}-secret`).value;
     activeSlots[id].name = document.getElementById(`slot-${id}-name`).value;
     localStorage.setItem('alfa_slot_1', JSON.stringify(activeSlots[id]));
+    localStorage.setItem('alfa_session_user', activeSlots[id].name);
     addLog(`Operador ${activeSlots[id].name} autorizado!`, 'system');
     syncWithServer();
 }

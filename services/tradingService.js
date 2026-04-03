@@ -62,7 +62,7 @@ class TradingService {
             const pnl = ((currentPrice - trade.buyPrice) / trade.buyPrice) * 100;
             
             // PARÂMETROS ORIGINAIS DO PROJETO
-            const TARGET_PROFIT = 0.9;
+            const TARGET_PROFIT = 0.4;
             const TRAILING_PULLBACK = 0.1;
 
             // Atualiza pico de lucro
@@ -156,7 +156,7 @@ class TradingService {
                     symbol: coin.symbol.replace('USDT', ''),
                     fullSymbol: coin.symbol,
                     buyPrice: filledPrice,
-                    targetPrice: filledPrice * 1.009,
+                    targetPrice: filledPrice * 1.004,
                     qty: filledQty,
                     buyTime: Date.now(),
                     maxPnl: 0,

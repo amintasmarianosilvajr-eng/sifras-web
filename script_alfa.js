@@ -1,6 +1,7 @@
 let activeSlots = { 1: { monitoring: false, key: '', secret: '', name: '' } };
 let currentTrade = null;
 let sessionStartBalance = 0;
+let syncCounter = 10;
 
 async function syncBalance() {
     const key = activeSlots[1].key || document.getElementById('slot-1-key')?.value;
@@ -64,18 +65,18 @@ function updateUIFromState(state) {
     if (!state) return;
     const trade = state.currentTrade;
     
-    // Switch between Empty Msg and Active Trade
     const emptyMsg = document.getElementById('no-trade-msg');
     const tradeCont = document.getElementById('active-trade-container');
-    const statusPill = document.querySelector('.status-pill');
+    const statusPill = document.getElementById('system-status-pill');
 
-    if (trade && trade.symbol) {
+    if (trade && trade.fullSymbol) {
         if (emptyMsg) emptyMsg.classList.add('hidden');
         if (tradeCont) tradeCont.classList.remove('hidden');
         
-        document.getElementById('monitoring-symbol').innerText = trade.symbol;
+        document.getElementById('monitoring-symbol').innerText = trade.fullSymbol.replace('USDT', '');
         document.getElementById('monitoring-buy-price').innerText = `$ ${Number(trade.buyPrice).toFixed(4)}`;
-        document.getElementById('monitoring-current-price').innerText = `$ ${Number(trade.currentPrice).toFixed(4)}`;
+        const curPrice = trade.currentPrice || trade.buyPrice;
+        document.getElementById('monitoring-current-price').innerText = `$ ${Number(curPrice).toFixed(4)}`;
         document.getElementById('monitoring-target-price').innerText = `$ ${Number(trade.targetPrice).toFixed(6)}`;
         
         const pnl = trade.currentPnl || 0;
@@ -89,7 +90,7 @@ function updateUIFromState(state) {
         const cashEl = document.getElementById('monitoring-pnl-usdt');
         if (cashEl) cashEl.innerText = `($${pnlCash.toFixed(2)})`;
 
-        // Progress Bar
+        // Progress Bar (Buy vs Target)
         const fill = document.getElementById('trade-progress-fill');
         if (fill) {
             const progress = Math.min(Math.max((pnl / 0.9) * 100, 0), 100);
@@ -106,9 +107,9 @@ function updateUIFromState(state) {
             if (statusPill) { statusPill.innerText = "OFFLINE"; statusPill.className = "status-pill waiting"; }
         }
         currentTrade = null;
+        document.getElementById('trade-timer-val').innerText = '00:00';
     }
 
-    window.currentBalance = state.currentBalance || 0;
     const cycleEl = document.getElementById('cycle-counter');
     if (cycleEl) cycleEl.innerText = `${state.cycleCount || 0} / 3`;
     updateSessionUI();
@@ -132,13 +133,13 @@ function renderOpportunityHub(list) {
     const grid = document.getElementById('opportunity-grid');
     if (!grid) return;
     grid.innerHTML = list.slice(0, 10).map(item => `
-        <div class="opp-card ${item.vol >= 0 ? 'bull' : 'bear'}">
-            <div class="opp-header">
-                <span class="opp-symbol">${item.symbol.replace('USDT', '')}</span>
-                <span class="opp-vol">${item.vol.toFixed(2)}%</span>
+        <div class="opt-card ${item.vol >= 0 ? 'recovering' : 'falling'}">
+            <div class="opt-header">
+                <span class="opt-symbol">${item.symbol.replace('USDT', '')}</span>
+                <span class="opt-pnl-val" style="color:${item.vol >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)'}">${item.vol.toFixed(2)}%</span>
             </div>
-            <div class="opp-price">$${item.price.toFixed(4)}</div>
-            <div class="opp-vol-label">VOL: $${((item.quoteVol || 0) / 1000000).toFixed(1)}M</div>
+            <div class="m-label" style="text-align:left; margin:5px 0;">PRICE: $${item.price.toFixed(4)}</div>
+            <div style="font-size:0.55rem; color:var(--text-muted); font-weight:800;">VOL: $${((item.quoteVol || 0) / 1000000).toFixed(1)}M</div>
         </div>
     `).join('');
 }
@@ -187,9 +188,13 @@ function addLog(msg, type) {
 }
 
 function saveSlot(id = 1) {
-    const name = document.getElementById(`slot-${id}-name`).value;
-    const key = document.getElementById(`slot-${id}-key`).value;
-    const secret = document.getElementById(`slot-${id}-secret`).value;
+    const nameInput = document.getElementById(`slot-${id}-name`);
+    const keyInput = document.getElementById(`slot-${id}-key`);
+    const secretInput = document.getElementById(`slot-${id}-secret`);
+    
+    const name = nameInput ? nameInput.value : '';
+    const key = keyInput ? keyInput.value : '';
+    const secret = secretInput ? secretInput.value : '';
     
     activeSlots[id] = { monitoring: activeSlots[1].monitoring, key, secret, name };
     localStorage.setItem('alfa_session_user', name);
@@ -199,23 +204,47 @@ function saveSlot(id = 1) {
     syncWithServer();
 }
 
-// Inicia Cronômetros
-setInterval(syncWithServer, 2000);
+// --- INSTRUMENTOS VISUAIS (FIX PRINT) ---
 setInterval(() => {
+    // 1. Sync Cycle Countdown & Animation
+    syncCounter = syncCounter <= 1 ? 10 : syncCounter - 1;
     const syncVal = document.getElementById('sync-timer-val');
-    if (syncVal) {
-        let current = parseInt(syncVal.innerText) || 10;
-        current = current <= 1 ? 10 : current - 1;
-        syncVal.innerText = `${current}s`;
+    const syncCircle = document.getElementById('sync-circle');
+    if (syncVal) syncVal.innerText = `${syncCounter}s`;
+    if (syncCircle) {
+        const offset = (syncCounter / 10) * 283;
+        syncCircle.style.strokeDashoffset = offset;
+    }
+
+    // 2. Trade Duration Timer & Animation
+    if (currentTrade && currentTrade.buyTime) {
+        const diff = Date.now() - currentTrade.buyTime;
+        const totalSec = Math.floor(diff / 1000);
+        const mins = Math.floor(totalSec / 60).toString().padStart(2, '0');
+        const secs = (totalSec % 60).toString().padStart(2, '0');
+        
+        const tradeVal = document.getElementById('trade-timer-val');
+        const tradeCircle = document.getElementById('trade-circle');
+        if (tradeVal) tradeVal.innerText = `${mins}:${secs}`;
+        if (tradeCircle) {
+            // Animação cíclica de 60 segundos para o círculo de trade
+            const offset = ((totalSec % 60) / 60) * 283;
+            tradeCircle.style.strokeDashoffset = 283 - offset;
+        }
     }
 }, 1000);
+
+setInterval(syncWithServer, 2000);
 
 window.onload = () => {
     const slot = JSON.parse(localStorage.getItem('alfa_slot_1') || '{}');
     if (slot.key) {
-        document.getElementById('slot-1-name').value = slot.name || '';
-        document.getElementById('slot-1-key').value = slot.key || '';
-        document.getElementById('slot-1-secret').value = slot.secret || '';
+        const nEl = document.getElementById('slot-1-name');
+        const kEl = document.getElementById('slot-1-key');
+        const sEl = document.getElementById('slot-1-secret');
+        if (nEl) nEl.value = slot.name || '';
+        if (kEl) kEl.value = slot.key || '';
+        if (sEl) sEl.value = slot.secret || '';
         activeSlots[1] = { ...activeSlots[1], ...slot };
     }
     syncWithServer();

@@ -68,17 +68,19 @@ class TradingService {
             trade.currentPnl = pnl;
 
             // VERIFICA SE JÁ PASSOU DO ALVO (0.9%)
-            if (trade.maxPnl >= TARGET_PROFIT) {
-                // Se recuar 0.1% do topo, liquida.
-                if ((trade.maxPnl - pnl) >= TRAILING_PULLBACK) {
-                    console.log(`[ALFA-EXECUTION] 🚀 ${user.username}: Meta Batida. Pico: ${trade.maxPnl.toFixed(2)}% | Venda: ${pnl.toFixed(2)}%`);
-                    await this.executeBackendSell(user, "TARGET_MET");
-                    return;
-                }
-            } else {
-                // LOCK DE SEGURANÇA (NÃO VENDE NO PREJUÍZO)
-                if (pnl < 0) return; 
+            if (pnl >= TARGET_PROFIT) {
+                console.log(`[ALFA-EXECUTION] 🚀 ${user.username}: Meta Batida. PNL: ${pnl.toFixed(2)}% | Venda Imediata acionada.`);
+                await this.executeBackendSell(user, "TARGET_MET");
+                return;
             }
+            
+            // LOCK DE SEGURANÇA (OPCIONAL: PULLBACK SE QUISERMOS DEIXAR CORRER, MAS O USUÁRIO QUER 0.9%)
+            // Se preferir manter o trailing, deve-se verificar o recuo aqui.
+            // Para este projeto, o usuário reportou que 0.9% não está fechando, então forçamos a saída.
+            
+            trade.maxPnl = Math.max(trade.maxPnl || pnl, pnl);
+            trade.currentPrice = currentPrice;
+            trade.currentPnl = pnl;
 
             // Sincronia de inventário a cada 10s
             if (Date.now() % 10000 < 1000) {

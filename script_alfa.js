@@ -101,7 +101,7 @@ function updateUIFromState(state, serverUptime, latencyMs) {
         
         const pnlCash = (pnl / 100) * (state.currentBalance || 10);
         const cashEl = document.getElementById('monitoring-pnl-usdt');
-        if (cashEl) cashEl.innerText = `$ ${pnlCash >= 0 ? '+' : ''}${pnlCash.toFixed(2)}`;
+        if (cashEl) cashEl.innerText = `$ ${pnlCash >= 0 ? '+' : ''}${pnlCash.toFixed(4)}`;
 
         // Progress Bar
         const fill = document.getElementById('trade-progress-fill');

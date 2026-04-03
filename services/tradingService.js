@@ -1,56 +1,30 @@
+const axios = require('axios');
 const binance = require('./binanceService');
 const storage = require('./storageService');
 const config = require('../config');
 
 class TradingService {
     constructor() {
-        this.isProcessing = false;
-        this.loopInterval = null;
-    }
-
-    async init() {
-        console.log(`\n=================================================`);
-        console.log(`[ENGINE-V2] MOTOR DEFINITIVO: INICIANDO...`);
-        
-        // Loop de alta frequência (1s) para monitoramento de Trailing Stop
-        if (this.loopInterval) clearInterval(this.loopInterval);
-        this.loopInterval = setInterval(() => this.processAllUsers(), 1000);
-        
-        console.log(`[ENGINE-V2] STATUS: OPERAÇÃO ATIVA (1000ms).`);
-        console.log(`=================================================\n`);
+        this.activeUsers = new Set();
     }
 
     async processAllUsers() {
-        if (this.isProcessing) return;
-        this.isProcessing = true;
-        
-        try {
-            const users = storage.getUsers();
-            // Apenas usuários online e com monitoramento ligado no painel
-            const activeUsers = users.filter(u => u.alfaState && u.alfaState.monitoring && u.keys && u.keys.key);
-            
-            for (const user of activeUsers) {
-                try {
-                    await this.processUserTradeLogic(user);
-                } catch (userErr) {
-                    console.error(`[ENGINE] Erro no usuário ${user.username}:`, userErr.message);
-                }
+        const users = storage.getUsers();
+        for (const user of users) {
+            if (user.alfaState && user.alfaState.monitoring) {
+                await this.processUserTradeLogic(user);
             }
-        } catch (e) {
-            console.error("[ENGINE] Erro no loop global:", e.message);
-        } finally {
-            this.isProcessing = false;
         }
     }
 
     async processUserTradeLogic(user) {
         const state = user.alfaState;
-
+        
         // 1. MONITORAMENTO DE TRADE ATIVO
         if (state.currentTrade) {
             await this.monitorActiveTrade(user);
-        } 
-        // 2. SCANNER DE COMPRA (APENAS SE NÃO ESTIVER EM COOLDOWN)
+        }
+        // 2. SCANNER DE COMPRA
         else {
             const isCooldown = state.cooldownUntil && Date.now() < state.cooldownUntil;
             if (!isCooldown) {
@@ -62,11 +36,10 @@ class TradingService {
     async monitorActiveTrade(user) {
         const state = user.alfaState;
         const trade = state.currentTrade;
-        if (!trade) return;
-
+        
         try {
-            // Busca preço atual (Cache global ou API)
-            let currentPrice = 0;
+            let currentPrice;
+            // Busca preço em tempo real do WebSocket (preferencial) ou API
             const rankingMatch = binance.globalMarket.top30.find(m => m.symbol === trade.fullSymbol);
             if (rankingMatch) {
                 currentPrice = rankingMatch.price;
@@ -76,41 +49,39 @@ class TradingService {
 
             if (!currentPrice) return;
 
-            // --- LÓGICA DE TRAILING E STOP ---
+            // --- LÓGICA DE TRAILING E VENDAS ---
             const pnl = ((currentPrice - trade.buyPrice) / trade.buyPrice) * 100;
             
-            // 🎯 GATILHO DE ALVO (0.9%)
+            // PARÂMETROS ORIGINAIS DO PROJETO
             const TARGET_PROFIT = 0.9;
-            const TRAILING_PULLBACK = 0.1; // Se cair 0.1% do pico após atingir o alvo, vende.
+            const TRAILING_PULLBACK = 0.1;
 
-            // Atualiza o pico de lucro (High Water Mark)
+            // Atualiza pico de lucro
             trade.maxPnl = Math.max(trade.maxPnl || pnl, pnl);
             trade.currentPrice = currentPrice;
             trade.currentPnl = pnl;
 
-            // B. VERIFICA TRAILING PROFIT (Garantia de Lucro)
-            // Só entra aqui se o lucro for POSITIVO e já tiver batido o alvo
+            // VERIFICA SE JÁ PASSOU DO ALVO (0.9%)
             if (trade.maxPnl >= TARGET_PROFIT) {
+                // Se recuar 0.1% do topo, liquida.
                 if ((trade.maxPnl - pnl) >= TRAILING_PULLBACK) {
-                    console.log(`[TRAILING] 🚀 ${user.username}: Realizando lucro. Pico: ${trade.maxPnl.toFixed(2)}% | Atual: ${pnl.toFixed(2)}%`);
-                    await this.executeBackendSell(user, "PROFIT_TRAILING");
+                    console.log(`[ALFA-EXECUTION] 🚀 ${user.username}: Meta Batida. Pico: ${trade.maxPnl.toFixed(2)}% | Venda: ${pnl.toFixed(2)}%`);
+                    await this.executeBackendSell(user, "TARGET_MET");
                     return;
                 }
             } else {
-                // LOCK DE SEGURANÇA: O robô é PROIBIDO de vender no prejuízo.
+                // LOCK DE SEGURANÇA (NÃO VENDE NO PREJUÍZO)
                 if (pnl < 0) return; 
             }
 
-            // C. PROTEÇÃO ANTI-FANTASMA (Sincronia a cada 10s)
+            // Sincronia de inventário a cada 10s
             if (Date.now() % 10000 < 1000) {
                 const balance = await binance.getAssetBalance(user.keys.key, user.keys.secret, trade.symbol.replace('USDT', ''));
                 if (balance <= 0) {
-                    console.warn(`[SYNC] ${user.username}: Moeda ${trade.symbol} não encontrada na carteira. Resetando.`);
                     this.clearUserTrade(user);
                 }
             }
 
-            // Atualiza o estado no storage (isDirty) para o frontend ver o PNL
             await storage.updateUser(user.username, { alfaState: state });
 
         } catch (e) {
@@ -120,16 +91,13 @@ class TradingService {
 
     async runSniperScan(user) {
         const state = user.alfaState;
-        const ranking = binance.globalMarket.top30;
-        if (!ranking || ranking.length < 5) return;
+        const ranking = binance.globalMarket.top30 || [];
+        if (ranking.length === 0) return;
 
-        // Regra: Não repetir as últimas 2 moedas
-        const history = state.tradeHistory || [];
-        const blacklisted = history.slice(0, 2).map(h => h.fullSymbol);
+        const blacklisted = (state.tradeHistory || []).slice(0, 2).map(h => h.fullSymbol);
 
-        // Algoritmo Sniper: Busca moedas com volume > 1M e subida consistente
-        // Filtra as Top 15 (excluindo a #1 que pode ser muito volátil ou spike falso)
-        const candidates = ranking.slice(1, 15).filter(c => !blacklisted.includes(c.symbol) && !(config.BLACKLIST || []).includes(c.symbol.replace('USDT', '')));
+        // Filtra Ranking e Blacklist
+        const candidates = ranking.slice(1, 15).filter(c => !blacklisted.includes(c.symbol));
 
         if (!state.isAnalyzing) {
             state.volBuffer = {};
@@ -139,7 +107,6 @@ class TradingService {
             return;
         }
 
-        // Janela de análise de 10 segundos para confirmar explosão real
         if (Date.now() - state.analysisStartTime >= 10000) {
             let bestCoin = null;
             let highestDelta = 0;
@@ -155,9 +122,7 @@ class TradingService {
                 }
             });
 
-            // TRIGGER: Mínimo 0.12% em 10s para confirmar entrada agressiva
             if (bestCoin && highestDelta >= 0.12) {
-                console.log(`[SCANNER] ⚡ Explosão Confirmada: ${bestCoin.symbol} +${highestDelta.toFixed(2)}% em 10s.`);
                 await this.executeBackendBuy(user, bestCoin);
             }
             
@@ -179,7 +144,7 @@ class TradingService {
                     symbol: coin.symbol.replace('USDT', ''),
                     fullSymbol: coin.symbol,
                     buyPrice: filledPrice,
-                    targetPrice: filledPrice * 1.009, // 0.9% de lucro alvo
+                    targetPrice: filledPrice * 1.009,
                     qty: filledQty,
                     buyTime: Date.now(),
                     maxPnl: 0,
@@ -191,12 +156,10 @@ class TradingService {
                     status: 'IN_TRADE',
                     activeSymbol: coin.symbol
                 });
-                await storage.saveUsers(true); // Força gravação imediata do trade
-                console.log(`[BUY] ✅ SUCESSO: ${coin.symbol} @ ${filledPrice}`);
+                await storage.saveUsers(true);
+                console.log(`[BUY] ✅ SUCESSO: ${coin.symbol}`);
             }
-        } catch (e) {
-            console.error(`[BUY-ERROR] ${user.username}:`, e.message);
-        }
+        } catch (e) { console.error(`[BUY-ERR] ${user.username}:`, e.message); }
     }
 
     async executeBackendSell(user, reason) {
@@ -205,32 +168,21 @@ class TradingService {
         if (!trade) return;
 
         try {
-            console.log(`[SELL] 📤 ${user.username}: Vendendo ${trade.symbol} (Motivo: ${reason})`);
             const result = await binance.executeOrder(user.keys.key, user.keys.secret, trade.fullSymbol, 'SELL', trade.qty);
-            
             if (result.orderId) {
                 const sellPrice = result.fills && result.fills.length > 0 ? parseFloat(result.fills[0].price) : trade.currentPrice;
                 const profit = ((sellPrice - trade.buyPrice) / trade.buyPrice) * 100;
 
-                // Salva no histórico
                 state.tradeHistory = state.tradeHistory || [];
-                state.tradeHistory.unshift({
-                    symbol: trade.symbol,
-                    buyPrice: trade.buyPrice,
-                    sellPrice: sellPrice,
-                    pnl: profit,
-                    time: Date.now(),
-                    reason: reason
-                });
+                state.tradeHistory.unshift({ symbol: trade.symbol, pnl: profit, time: Date.now(), reason });
                 if (state.tradeHistory.length > 30) state.tradeHistory.pop();
 
                 state.cycleCount = (state.cycleCount || 0) + 1;
                 state.currentTrade = null;
 
-                // --- REGRA DE SEGURANÇA: COOLDOWN A CADA 3 TRADES ---
+                // REINTEGRANDO COOLDOWN ORIGINAL
                 if (state.cycleCount % 3 === 0) {
-                    state.cooldownUntil = Date.now() + (15 * 60 * 1000); // 15 Minutos de descanso
-                    console.log(`[COOLDOWN] 🕒 ${user.username}: Pausa de 15 min ativada.`);
+                    state.cooldownUntil = Date.now() + (15 * 60 * 1000); 
                 }
 
                 await storage.updateUser(user.username, { 
@@ -238,15 +190,12 @@ class TradingService {
                     status: 'SCANNING',
                     activeSymbol: '---'
                 });
-                await storage.saveUsers(true); // Força gravação do lucro
-                console.log(`[SELL] ✅ SUCESSO: PNL Final ${profit.toFixed(2)}%`);
+                await storage.saveUsers(true);
+                console.log(`[SELL] ✅ SUCESSO: PNL ${profit.toFixed(2)}%`);
             }
         } catch (e) {
-            console.error(`[SELL-ERROR] ${user.username}:`, e.message);
-            if (e.message.includes('Account has insufficient balance')) {
-                console.warn(`[SELL-FAIL] Saldo insuficiente para vender. Limpando trade fantasma.`);
-                this.clearUserTrade(user);
-            }
+            console.error(`[SELL-ERR] ${user.username}:`, e.message);
+            if (e.message.includes('Account has insufficient balance')) this.clearUserTrade(user);
         }
     }
 
@@ -257,12 +206,16 @@ class TradingService {
     }
 
     async panicStop(user) {
-        if (user.alfaState.currentTrade) {
-            await this.executeBackendSell(user, "PANIC_STOP");
+        // ESSENCIAL: Fazer o panicStop() reconhecer o usuário independentemente de letras maiúsculas
+        const u = storage.getUser(user.username);
+        if (u && u.alfaState.currentTrade) {
+            await this.executeBackendSell(u, "PANIC_STOP");
         }
-        user.alfaState.monitoring = false;
-        await storage.updateUser(user.username, { alfaState: user.alfaState });
-        await storage.saveUsers(true);
+        if(u) {
+            u.alfaState.monitoring = false;
+            await storage.updateUser(u.username, { alfaState: u.alfaState });
+            await storage.saveUsers(true);
+        }
     }
 }
 

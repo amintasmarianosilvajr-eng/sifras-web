@@ -68,7 +68,8 @@ class StorageService {
     }
 
     getUser(username) {
-        return this.users[username];
+        if (!username) return null;
+        return this.users[username.toLowerCase()];
     }
 
     async findUserByKeys(key, secret) {
@@ -76,9 +77,10 @@ class StorageService {
     }
 
     async updateUser(username, data) {
-        if (!this.users[username]) {
-            this.users[username] = {
-                username,
+        const key = username.toLowerCase();
+        if (!this.users[key]) {
+            this.users[key] = {
+                username: key,
                 fullName: data.fullName || '',
                 email: data.email || '',
                 whatsapp: data.whatsapp || '',
@@ -89,13 +91,13 @@ class StorageService {
                 staircaseIndex: 10,
                 alfaState: {}
             };
-            console.log(`[STORAGE] Criando novo registro: ${username}`);
+            console.log(`[STORAGE] Criando novo registro: ${key}`);
         }
         
-        const user = this.users[username];
+        const user = this.users[key];
 
-        for (const [key, value] of Object.entries(data)) {
-            if (key === 'alfaState') {
+        for (const [propKey, value] of Object.entries(data)) {
+            if (propKey === 'alfaState') {
                 const oldAlfa = user.alfaState || {};
                 const newAlfa = value || {};
                 
@@ -107,7 +109,7 @@ class StorageService {
                 
                 user.alfaState = { ...oldAlfa, ...newAlfa };
             } else {
-                user[key] = value;
+                user[propKey] = value;
             }
         }
         
@@ -117,7 +119,8 @@ class StorageService {
     }
 
     async deleteUser(username) {
-        delete this.users[username];
+        if (!username) return;
+        delete this.users[username.toLowerCase()];
         await this.saveUsers();
     }
 

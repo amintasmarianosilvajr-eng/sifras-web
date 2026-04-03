@@ -8,6 +8,12 @@ class TradingService {
         this.activeUsers = new Set();
     }
 
+    // --- CORAÇÃO DO MOTOR: INICIALIZAÇÃO ---
+    init() {
+        console.log("[O-3 ENGINE] Motor de Ciclos Ligado. Frequência: 1s");
+        setInterval(() => this.processAllUsers(), 1000);
+    }
+
     async processAllUsers() {
         const users = storage.getUsers();
         for (const user of users) {

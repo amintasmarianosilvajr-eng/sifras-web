@@ -50,7 +50,7 @@ async function syncWithServer() {
             updateUIFromState(d.serverState, d.serverUptime, latency);
             if (d.marketRanking) {
                 renderRanking(d.marketRanking);
-                renderOpportunityHub(d.marketRanking);
+                renderHistoryHub(d.serverState.tradeHistory || []);
             }
             if (d.keys && d.keys.key && !activeSlots[1].key) {
                 activeSlots[1].key = d.keys.key;
@@ -143,17 +143,28 @@ function renderRanking(list) {
     `).join('');
 }
 
-function renderOpportunityHub(list) {
+function renderHistoryHub(history) {
     const grid = document.getElementById('opportunity-grid');
     if (!grid) return;
-    grid.innerHTML = list.slice(0, 10).map(item => `
-        <div class="opt-card ${item.vol >= 0 ? 'recovering' : 'falling'}">
+    if (history.length === 0) {
+        grid.innerHTML = '<div class="empty-msg">Waiting for first cycle profit...</div>';
+        return;
+    }
+
+    grid.innerHTML = history.slice(0, 10).map(item => `
+        <div class="opt-card ${item.pnl >= 0 ? 'recovering' : 'falling'}">
             <div class="opt-header">
-                <span class="opt-symbol">${item.symbol.replace('USDT', '')}</span>
-                <span class="opt-pnl-val" style="color:${item.vol >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)'}">${item.vol.toFixed(2)}%</span>
+                <span class="opt-symbol">${item.symbol}</span>
+                <span class="opt-pnl-val" style="color:${item.pnl >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)'}">
+                    ${item.pnl >= 0 ? '+' : ''}${item.pnl.toFixed(2)}%
+                </span>
             </div>
-            <div class="m-label" style="text-align:left; margin:5px 0;">PRICE: $${item.price.toFixed(4)}</div>
-            <div style="font-size:0.55rem; color:var(--text-muted); font-weight:800;">VOL: $${((item.quoteVol || 0) / 1000000).toFixed(1)}M</div>
+            <div style="font-size:0.6rem; color:var(--text-muted); margin-top:5px; font-weight:700;">
+                DATE: ${new Date(item.time).toLocaleTimeString()}
+            </div>
+            <div style="font-size:0.55rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">
+                TAG: ${item.reason || 'TARGET'}
+            </div>
         </div>
     `).join('');
 }

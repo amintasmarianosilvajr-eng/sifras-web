@@ -139,17 +139,17 @@
                 </div>
             </section>
 
-            <!-- SNIPER OPPORTUNITY HUB (10 CARDS) -->
+            <!-- ALPHA PROFIT HISTORY (LATEST GAINS) -->
             <section class="card opportunity-hub" style="grid-column: span 1;">
                 <div class="card-header" style="margin-bottom: 20px;">
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <h3 style="font-size:0.8rem; text-transform:uppercase; font-weight:800; color:var(--primary-neon);">Sniper Opportunity Hub</h3>
-                        <span class="badge-real" style="font-size:0.5rem;">RECUPERAÇÃO REAL-TIME</span>
+                        <h3 style="font-size:0.8rem; text-transform:uppercase; font-weight:800; color:var(--primary-neon);">Alpha Profit History</h3>
+                        <span class="badge-real" style="font-size:0.5rem;">LATEST GAINS</span>
                     </div>
                 </div>
                 <div id="opportunity-grid" class="opportunity-grid">
-                    <!-- Cards serão injetados pelo JS -->
-                    <div class="empty-msg" style="height: 100px;">Aguardando conclusões de ciclos para mapear oportunidades...</div>
+                    <!-- Cards de histórico injetados pelo JS -->
+                    <div class="empty-msg" style="height: 100px;">Aguardando conclusões de ciclos para exibir lucros...</div>
                 </div>
             </section>
 
@@ -210,33 +210,30 @@
     <script src="script_alfa.js?v=7.0.0"></script>
     <script>
         function panicStop() {
-            if(confirm("STOP GERAL: Deseja interromper todas as operações e vender a mercado?")) {
-                const activeSym = typeof currentTrade !== 'undefined' && currentTrade ? currentTrade.fullSymbol : null;
-                const user = document.getElementById('slot-1-name').value;
+            const user = localStorage.getItem('alfa_session_user') || document.getElementById('slot-1-name').value;
+            if(!user) { alert("Erro: Usuário não identificado."); return; }
+
+            if(confirm(`🛑 PANIC STOP: Deseja interromper TODAS as operações de ${user} e vender a mercado imediatamente?`)) {
                 
-                // --- RESET LOCAL IMEDIATO (Impede o Heartbeat de restaurar) ---
-                if (typeof globalSystemPower !== 'undefined') globalSystemPower = false;
-                if (typeof resetTrade === 'function') resetTrade();
-                
-                if (typeof activeSlots !== 'undefined' && activeSlots[1]) {
-                     activeSlots[1].monitoring = false;
-                }
+                // Reset visual imediato
+                if (typeof masterToggle === 'function' && activeSlots[1].monitoring) masterToggle();
                 
                 fetch('/panic', { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        username: user,
-                        key: document.getElementById('slot-1-key').value, 
-                        secret: document.getElementById('slot-1-secret').value,
-                        symbol: activeSym
-                    })
+                    body: JSON.stringify({ username: user })
                 })
                 .then(res => res.json())
                 .then(data => {
-                    alert(data.msg || "Comando de Panic Stop enviado!");
-                    if (typeof pushNetworkHeartbeat === "function") pushNetworkHeartbeat();
-                    setTimeout(() => location.reload(), 1000);
+                    if (data.success) {
+                        alert("✅ COMANDO EXECUTADO: O robô foi desligado e a venda a mercado foi enviada.");
+                        location.reload();
+                    } else {
+                        alert("⚠️ Erro ao executar Panic: " + data.error);
+                    }
+                })
+                .catch(err => {
+                    alert("❌ Falha de comunicação com o servidor.");
                 });
             }
         }

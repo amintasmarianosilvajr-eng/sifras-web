@@ -17,10 +17,13 @@ class TradingService {
     async processAllUsers() {
         const users = storage.getUsers();
         for (const user of users) {
-            if (user.alfaState && user.alfaState.monitoring) {
-                await this.processUserTradeLogic(user);
-            }
-        }
+             if (user.alfaState && user.alfaState.monitoring) {
+                 await this.processUserTradeLogic(user);
+             } else {
+                 // Segurança: Garante que o motor está desligado se o monitoring for false
+                 if (user.alfaState) user.alfaState.isAnalyzing = false;
+             }
+         }
     }
 
     async processUserTradeLogic(user) {
@@ -214,16 +217,24 @@ class TradingService {
         await storage.saveUsers(true);
     }
 
-    async panicStop(user) {
+    async panicStop(userArg) {
         // ESSENCIAL: Fazer o panicStop() reconhecer o usuário independentemente de letras maiúsculas
-        const u = storage.getUser(user.username);
-        if (u && u.alfaState.currentTrade) {
-            await this.executeBackendSell(u, "PANIC_STOP");
-        }
-        if(u) {
-            u.alfaState.monitoring = false;
+        const username = typeof userArg === 'string' ? userArg : userArg.username;
+        const u = storage.getUser(username);
+        
+        if (u) {
+            console.warn(`[PANIC] ❗ Acionado para: ${u.username}`);
+            u.alfaState.monitoring = false; // Desliga o motor primeiro
+            
+            if (u.alfaState.currentTrade) {
+                console.log(`[PANIC] 📉 Liquidando trade ativo: ${u.alfaState.currentTrade.symbol}`);
+                await this.executeBackendSell(u, "PANIC_STOP");
+            }
+            
             await storage.updateUser(u.username, { alfaState: u.alfaState });
             await storage.saveUsers(true);
+        } else {
+            console.error(`[PANIC-ERR] Usuário não encontrado: ${username}`);
         }
     }
 }

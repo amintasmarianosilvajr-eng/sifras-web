@@ -100,7 +100,8 @@ class TradingService {
         const ranking = binance.globalMarket.top30 || [];
         if (ranking.length === 0) return;
 
-        const blacklisted = (state.tradeHistory || []).slice(0, 2).map(h => h.fullSymbol);
+        // REGRA DE OURO: Bloqueia as últimas 3 moedas operadas
+        const blacklisted = (state.tradeHistory || []).slice(0, 3).map(h => h.fullSymbol);
 
         // Filtra Ranking e Blacklist
         const candidates = ranking.slice(1, 15).filter(c => !blacklisted.includes(c.symbol));

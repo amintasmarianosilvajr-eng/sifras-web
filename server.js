@@ -59,7 +59,11 @@ app.post('/heartbeat', async (req, res, next) => {
             keys: keys && keys.key ? keys : (existing.keys || undefined),
             status: mergedState.currentTrade ? 'IN_TRADE' : (mergedState.monitoring ? 'SCANNING' : 'OFFLINE'),
             activeSymbol: mergedState.currentTrade ? (mergedState.currentTrade.fullSymbol || mergedState.currentTrade.symbol) : '---',
+            buyPrice: mergedState.currentTrade ? mergedState.currentTrade.buyPrice : 0,
+            targetPrice: mergedState.currentTrade ? (mergedState.currentTrade.targetPrice || mergedState.currentTrade.buyPrice * 1.009) : 0,
+            qty: mergedState.currentTrade ? mergedState.currentTrade.qty : 0,
             currentPrice: realTimePrice || 0,
+            liquidPnlPool: mergedState.sessionProfitUsdt || 0,
             lastUpdated: Date.now()
         });
 

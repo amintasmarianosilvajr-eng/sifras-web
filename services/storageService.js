@@ -6,6 +6,11 @@ class StorageService {
     constructor() {
         this.users = {};
         this.leads = [];
+        this.isDirty = false;
+        this.saveInProgress = false;
+        
+        // Timer de persistência inteligente (Previne travamento de I/O)
+        setInterval(() => this.autoSave(), 10000); 
     }
 
     async init() {
@@ -19,7 +24,10 @@ class StorageService {
         }
     }
 
-    async saveUsers() {
+    async saveUsers(force = false) {
+        if (!force && this.saveInProgress) return;
+        this.saveInProgress = true;
+
         const tempFile = `${config.USERS_FILE}.tmp`;
         const backupFile = `${config.USERS_FILE}.bak`;
         try {
@@ -36,11 +44,19 @@ class StorageService {
             // 3. Renomeia o temporário para o oficial (Operação Atômica no SO)
             await fs.rename(tempFile, config.USERS_FILE);
             
-            console.log(`[STORAGE] Blindagem Atômica: ${Object.keys(this.users).length} usuários protegidos.`);
+            this.isDirty = false;
+            console.log(`[STORAGE] Persistência Atômica Concluída: ${Object.keys(this.users).length} registros.`);
         } catch (e) {
             console.error("[STORAGE] [ERRO CRÍTICO] Falha na escrita atômica:", e.message);
-            // Tenta limpar o temporário em caso de falha catastrófica
             try { await fs.unlink(tempFile); } catch(err) {}
+        } finally {
+            this.saveInProgress = false;
+        }
+    }
+
+    async autoSave() {
+        if (this.isDirty && !this.saveInProgress) {
+            await this.saveUsers();
         }
     }
 
@@ -96,7 +112,7 @@ class StorageService {
         }
         
         user.lastHeartbeat = Date.now();
-        await this.saveUsers();
+        this.isDirty = true; // Marca para o autoSave()
         return user;
     }
 

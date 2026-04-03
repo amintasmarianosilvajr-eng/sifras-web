@@ -28,6 +28,55 @@ app.use((req, res, next) => {
 });
 // --- CORE ROUTES ---
 
+app.post('/heartbeat', async (req, res, next) => {
+    try {
+        const { username, state, keys } = req.body;
+        if (!username) return res.status(400).json({ error: "Username required" });
+        
+        const existing = storage.getUser(username) || {};
+        const serverState = existing.alfaState || {};
+        
+        // --- BLINDAGEM ÔMEGA-3 (LOCK DE PERSISTÊNCIA) ---
+        const mergedState = {
+            ...serverState,
+            ...state,
+            cycleCount: (state && state.cycleCount > 0) ? state.cycleCount : (serverState.cycleCount || 0),
+            sessionProfitUsdt: (state && state.sessionProfitUsdt > 0) ? state.sessionProfitUsdt : (serverState.sessionProfitUsdt || 0),
+            lastUpdated: Date.now()
+        };
+
+        // Real-time market fetch for monitoring
+        let realTimePrice = mergedState.currentPrice;
+        if (mergedState.monitoring && mergedState.currentTrade) {
+            try {
+                const live = await binance.getTickerPrice(mergedState.currentTrade.symbol);
+                if (live) realTimePrice = parseFloat(live);
+            } catch(e) {}
+        }
+
+        const user = await storage.updateUser(username, { 
+            alfaState: mergedState, 
+            keys: keys && keys.key ? keys : (existing.keys || undefined),
+            status: mergedState.currentTrade ? 'IN_TRADE' : (mergedState.monitoring ? 'SCANNING' : 'OFFLINE'),
+            activeSymbol: mergedState.currentTrade ? (mergedState.currentTrade.fullSymbol || mergedState.currentTrade.symbol) : '---',
+            currentPrice: realTimePrice || 0,
+            lastUpdated: Date.now()
+        });
+
+        if(user.panicPending) {
+             await storage.updateUser(username, { panicPending: false });
+             return res.json({ success: true, serverState: user.alfaState, command: 'STOP' });
+        }
+
+        res.json({ 
+            success: true, 
+            serverState: user.alfaState, 
+            keys: user.keys || {},
+            marketRanking: binance.globalMarket.top30 || [] 
+        });
+    } catch(e) { next(e); }
+});
+
 app.post('/get-alfa-state', async (req, res) => {
     try {
         const { username } = req.body;
@@ -47,67 +96,10 @@ app.post('/get-alfa-state', async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- ALFA CLOUD PERSISTENCE ---
-app.post('/get-alfa-state', async (req, res) => {
-    try {
-        const { username } = req.body;
-        if (!username) return res.status(400).json({ error: "Username required" });
-        const user = storage.getUser(username);
-        if (user && user.alfaState) {
-            return res.json({ success: true, state: user.alfaState });
-        }
-        res.json({ success: false, state: {} });
-    } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
+// Rota legada para compatibilidade, aponta para o heartbeat
 app.post('/save-alfa-state', async (req, res, next) => {
-    try {
-        const { username, state, keys } = req.body;
-        if (!username) return res.status(400).json({ error: "Username required" });
-        
-        const existing = storage.getUser(username) || {};
-        const serverState = existing.alfaState || {};
-        
-        // --- BLINDAGEM ÔMEGA-3 (LOCK DE PERSISTÊNCIA) ---
-        // Se o cliente tentar enviar contadores ZERADOS mas o servidor jé tem progresso, IGNORE o 0.
-        // Isso protege o Ciclo (3/3) e o Lucro acumulado em caso de F5.
-        const mergedState = {
-            ...serverState,
-            ...state,
-            cycleCount: (state.cycleCount > 0 || !serverState.cycleCount) ? state.cycleCount : serverState.cycleCount,
-            sessionProfitUsdt: (state.sessionProfitUsdt > 0 || !serverState.sessionProfitUsdt) ? state.sessionProfitUsdt : serverState.sessionProfitUsdt,
-            lastUpdated: Date.now()
-        };
-
-        // Real-time market fetch for Admin Command Center
-        let realTimePrice = mergedState.currentPrice;
-        if (mergedState.monitoring && mergedState.currentTrade) {
-            try {
-                const live = await binance.getTickerPrice(mergedState.currentTrade.symbol);
-                if (live) realTimePrice = parseFloat(live);
-            } catch(e) {}
-        }
-
-        const user = await storage.updateUser(username, { 
-            alfaState: mergedState, 
-            keys: keys && keys.key ? keys : (existing.keys || undefined),
-            status: mergedState.currentTrade ? 'IN_TRADE' : (mergedState.monitoring ? 'SCANNING' : 'OFFLINE'),
-            activeSymbol: mergedState.currentTrade ? mergedState.currentTrade.symbol : '---',
-            buyPrice: mergedState.currentTrade ? mergedState.currentTrade.buyPrice : 0,
-            targetPrice: mergedState.currentTrade ? mergedState.currentTrade.buyPrice * 1.009 : 0,
-            qty: mergedState.currentTrade ? mergedState.currentTrade.qty : 0,
-            currentPrice: realTimePrice || 0,
-            cycleCount: mergedState.cycleCount || 0,
-            lastUpdated: Date.now()
-        });
-
-        if(user.panicPending) {
-             await storage.updateUser(username, { panicPending: false });
-             return res.json({ success: true, serverState: user.alfaState, command: 'STOP' });
-        }
-
-        res.json({ success: true, serverState: user.alfaState });
-    } catch(e) { next(e); }
+    req.url = '/heartbeat';
+    app.handle(req, res, next);
 });
 
 app.post('/pnl-real', async (req, res, next) => {

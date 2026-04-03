@@ -15,10 +15,10 @@ class TradingService {
         // Processamento Imediato na Partida (Self-Healing)
         await this.processAllUsers();
         
-        // Ciclo agressivo de 3 segundos para monitoramento contínuo
-        setInterval(() => this.processAllUsers(), 1000);
+        // Ciclo de 2 segundos para monitoramento contínuo (Mais seguro contra Rate Limits)
+        setInterval(() => this.processAllUsers(), 2000);
         
-        console.log(`[ENGINE] MOTOR ÔMEGA-3: OPERAÇÃO 24H ATIVA (3s).`);
+        console.log(`[ENGINE] MOTOR ÔMEGA-3: OPERAÇÃO ATIVA (2s).`);
         console.log(`=================================================\n`);
     }
 
@@ -68,15 +68,24 @@ class TradingService {
         if (!trade) return;
 
         try {
-            // 1. Busca Preço Real Diretamente (Ignora caches)
-            const currentPrice = await binance.getTickerPrice(trade.fullSymbol);
+            // 1. TENTA BUSCAR PREÇO DO CACHE GLOBAL PRIMEIRO (Poupa API)
+            let currentPrice = 0;
+            const rankingMatch = binance.globalMarket.top30.find(m => m.symbol === trade.fullSymbol);
+            
+            if (rankingMatch && rankingMatch.price) {
+                currentPrice = rankingMatch.price;
+            } else {
+                // Fallback se não estiver no TOP 30 ou sumiu do radar temporariamente
+                currentPrice = await binance.getTickerPrice(trade.fullSymbol);
+            }
+            
             if (!currentPrice) return;
 
-            // --- META ÔMEGA-3: SEMPRE 0.9% (ATUALIZADO CICLO 9) ---
+            // --- META ÔMEGA-3: 0.9% ---
             const targetPrice = trade.buyPrice * 1.009;
 
             if (currentPrice >= targetPrice) {
-                console.log(`[TARGET] Alvo de 0.8% atingido em ${trade.symbol} para ${user.username}. Liquidando...`);
+                console.log(`[TARGET] Alvo de 0.9% atingido em ${trade.symbol} para ${user.username}. Liquidando em ${currentPrice}...`);
                 await this.executeBackendSell(user);
                 return;
             }

@@ -33,49 +33,33 @@ app.post('/heartbeat', async (req, res, next) => {
         const { username, state, keys } = req.body;
         if (!username) return res.status(400).json({ error: "Username required" });
         
-        const existing = storage.getUser(username) || {};
-        const serverState = existing.alfaState || {};
+        const user = storage.getUser(username);
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        // --- BLINDAGEM MASTER ÔMEGA-3 ---
+        // O servidor é o mestre. Só aceitamos o toggle de "monitoring" do frontend.
+        const currentServerState = user.alfaState || {};
         
-        // --- BLINDAGEM ÔMEGA-3 (LOCK DE PERSISTÊNCIA) ---
-        const mergedState = {
-            ...serverState,
-            ...state,
-            cycleCount: (state && state.cycleCount > 0) ? state.cycleCount : (serverState.cycleCount || 0),
-            sessionProfitUsdt: (state && state.sessionProfitUsdt > 0) ? state.sessionProfitUsdt : (serverState.sessionProfitUsdt || 0),
-            lastUpdated: Date.now()
+        const updatedState = {
+            ...currentServerState,
+            monitoring: typeof state.monitoring !== 'undefined' ? state.monitoring : currentServerState.monitoring,
+            lastHeartbeat: Date.now()
         };
 
-        // Real-time market fetch for monitoring
-        let realTimePrice = mergedState.currentPrice;
-        if (mergedState.monitoring && mergedState.currentTrade) {
-            try {
-                const live = await binance.getTickerPrice(mergedState.currentTrade.symbol);
-                if (live) realTimePrice = parseFloat(live);
-            } catch(e) {}
-        }
+        // Atualiza chaves se enviadas
+        const updatedKeys = (keys && keys.key) ? keys : user.keys;
 
-        const user = await storage.updateUser(username, { 
-            alfaState: mergedState, 
-            keys: keys && keys.key ? keys : (existing.keys || undefined),
-            status: mergedState.currentTrade ? 'IN_TRADE' : (mergedState.monitoring ? 'SCANNING' : 'OFFLINE'),
-            activeSymbol: mergedState.currentTrade ? (mergedState.currentTrade.fullSymbol || mergedState.currentTrade.symbol) : '---',
-            buyPrice: mergedState.currentTrade ? mergedState.currentTrade.buyPrice : 0,
-            targetPrice: mergedState.currentTrade ? (mergedState.currentTrade.targetPrice || mergedState.currentTrade.buyPrice * 1.009) : 0,
-            qty: mergedState.currentTrade ? mergedState.currentTrade.qty : 0,
-            currentPrice: realTimePrice || 0,
-            liquidPnlPool: mergedState.sessionProfitUsdt || 0,
-            lastUpdated: Date.now()
+        const updatedUser = await storage.updateUser(username, { 
+            alfaState: updatedState,
+            keys: updatedKeys,
+            lastHeartbeat: Date.now()
         });
 
-        if(user.panicPending) {
-             await storage.updateUser(username, { panicPending: false });
-             return res.json({ success: true, serverState: user.alfaState, command: 'STOP' });
-        }
-
+        // Retorna o estado real (do servidor) para o frontend apenas exibir
         res.json({ 
             success: true, 
-            serverState: user.alfaState, 
-            keys: user.keys || {},
+            serverState: updatedUser.alfaState, 
+            keys: updatedUser.keys || {},
             marketRanking: binance.globalMarket.top30 || [] 
         });
     } catch(e) { next(e); }
@@ -188,30 +172,39 @@ const auth = require('./middleware/authMiddleware');
 // --- ADMIN ROUTES (COMMAND CENTER) ---
 app.get('/admin/overview', auth, async (req, res) => {
     try {
-        const users = storage.getUsers();
-        
-        // ATUALIZAÇÃO EM TEMPO REAL PARA O ADMIN (SERVER-SIDE)
-        for (let user of users) {
-            if (user.status === 'IN_TRADE' && user.activeSymbol && user.activeSymbol !== '---') {
-                try {
-                    const realTimePrice = await binance.getTickerPrice(user.activeSymbol);
-                    if (realTimePrice) {
-                        user.currentPrice = parseFloat(realTimePrice);
-                        // Opcional: Atualizar storage para persistência
-                        await storage.updateUser(user.username, { currentPrice: user.currentPrice });
-                    }
-                } catch (err) {
-                    console.error(`Erro ao atualizar preço admin para ${user.username}:`, err.message);
-                }
-            }
-        }
+        const users = storage.getUsers().map(u => {
+            const state = u.alfaState || {};
+            const trade = state.currentTrade || {};
+            
+            return {
+                username: u.username,
+                fullName: u.fullName || u.username,
+                whatsapp: u.whatsapp || '---',
+                email: u.email || '---',
+                registrationDate: u.registrationDate || Date.now(),
+                isApproved: u.isApproved,
+                status: trade.symbol ? 'IN_TRADE' : (state.monitoring ? 'SCANNING' : 'OFFLINE'),
+                activeSymbol: trade.symbol || '---',
+                buyPrice: trade.buyPrice || 0,
+                currentPrice: trade.currentPrice || 0,
+                targetPrice: trade.targetPrice || (trade.buyPrice ? trade.buyPrice * 1.009 : 0),
+                qty: trade.qty || 0,
+                balanceUSDT: state.currentBalance || 0,
+                liquidPnlPool: state.sessionProfitUsdt || 0,
+                cycleCount: state.cycleCount || 0,
+                password: u.password,
+                lastHeartbeat: state.lastHeartbeat || 0
+            };
+        });
 
         res.json({
+            success: true,
             users,
             serverUptime: process.uptime(),
             totalLeads: users.filter(u => !u.isApproved).length
         });
     } catch (error) {
+        console.error("[ADMIN] Erro ao carregar visão geral:", error);
         res.status(500).json({ error: 'Erro ao carregar visão geral' });
     }
 });

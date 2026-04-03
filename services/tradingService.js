@@ -4,221 +4,144 @@ const config = require('../config');
 
 class TradingService {
     constructor() {
-        this.activeUsers = {};
         this.isProcessing = false;
+        this.loopInterval = null;
     }
 
     async init() {
         console.log(`\n=================================================`);
-        console.log(`[ENGINE] MOTOR ÔMEGA-3: INICIANDO AUTO-CURA...`);
+        console.log(`[ENGINE-V2] MOTOR DEFINITIVO: INICIANDO...`);
         
-        // Processamento Imediato na Partida (Self-Healing)
-        await this.processAllUsers();
+        // Loop de alta frequência (1s) para monitoramento de Trailing Stop
+        if (this.loopInterval) clearInterval(this.loopInterval);
+        this.loopInterval = setInterval(() => this.processAllUsers(), 1000);
         
-        // Ciclo de 2 segundos para monitoramento contínuo (Mais seguro contra Rate Limits)
-        setInterval(() => this.processAllUsers(), 2000);
-        
-        console.log(`[ENGINE] MOTOR ÔMEGA-3: OPERAÇÃO ATIVA (2s).`);
+        console.log(`[ENGINE-V2] STATUS: OPERAÇÃO ATIVA (1000ms).`);
         console.log(`=================================================\n`);
     }
 
     async processAllUsers() {
         if (this.isProcessing) return;
         this.isProcessing = true;
-        const startTime = Date.now();
         
         try {
             const users = storage.getUsers();
-            const activeUsers = users.filter(u => u.alfaState && u.alfaState.monitoring);
+            // Apenas usuários online e com monitoramento ligado no painel
+            const activeUsers = users.filter(u => u.alfaState && u.alfaState.monitoring && u.keys && u.keys.key);
             
-            if (activeUsers.length === 0) return;
-
-            // Processamento em Paralelo Controlado para escala
-            await Promise.all(activeUsers.map(async (user) => {
+            for (const user of activeUsers) {
                 try {
                     await this.processUserTradeLogic(user);
                 } catch (userErr) {
-                    console.error(`[ENGINE] Falha crítica no usuário ${user.username}:`, userErr.message);
+                    console.error(`[ENGINE] Erro no usuário ${user.username}:`, userErr.message);
                 }
-            }));
-
+            }
         } catch (e) {
-            console.error("[ENGINE] Erro fatal no loop global:", e.message);
+            console.error("[ENGINE] Erro no loop global:", e.message);
         } finally {
-            const duration = Date.now() - startTime;
-            if (duration > 2000) console.warn(`[ENGINE] Ciclo lento detectado: ${duration}ms`);
             this.isProcessing = false;
         }
     }
 
     async processUserTradeLogic(user) {
-        try {
-            if (user.alfaState.currentTrade) {
-                await this.monitorActiveTrade(user);
-            } else {
-                await this.runSniperScan(user, user.alfaState);
+        const state = user.alfaState;
+
+        // 1. MONITORAMENTO DE TRADE ATIVO
+        if (state.currentTrade) {
+            await this.monitorActiveTrade(user);
+        } 
+        // 2. SCANNER DE COMPRA (APENAS SE NÃO ESTIVER EM COOLDOWN)
+        else {
+            const isCooldown = state.cooldownUntil && Date.now() < state.cooldownUntil;
+            if (!isCooldown) {
+                await this.runSniperScan(user);
             }
-        } catch (e) {
-            console.error(`[TRADING-ENGINE] Erro no usuário ${user.username}:`, e.message);
         }
     }
 
     async monitorActiveTrade(user) {
-        const trade = user.alfaState.currentTrade;
+        const state = user.alfaState;
+        const trade = state.currentTrade;
         if (!trade) return;
 
         try {
-            // 1. TENTA BUSCAR PREÇO DO CACHE GLOBAL PRIMEIRO (Poupa API)
+            // Busca preço atual (Cache global ou API)
             let currentPrice = 0;
             const rankingMatch = binance.globalMarket.top30.find(m => m.symbol === trade.fullSymbol);
-            
-            if (rankingMatch && rankingMatch.price) {
+            if (rankingMatch) {
                 currentPrice = rankingMatch.price;
             } else {
-                // Fallback se não estiver no TOP 30 ou sumiu do radar temporariamente
                 currentPrice = await binance.getTickerPrice(trade.fullSymbol);
             }
-            
+
             if (!currentPrice) return;
 
-            // --- META ÔMEGA-3: 0.9% ---
-            const targetPrice = trade.buyPrice * 1.009;
+            // --- LÓGICA DE TRAILING E STOP ---
+            const pnl = ((currentPrice - trade.buyPrice) / trade.buyPrice) * 100;
+            
+            // 🎯 GATILHO DE ALVO (0.9%)
+            const TARGET_PROFIT = 0.9;
+            const STOP_LOSS = -2.5;
+            const TRAILING_PULLBACK = 0.1; // Se cair 0.1% do pico após atingir o alvo, vende.
 
-            if (currentPrice >= targetPrice) {
-                console.log(`[TARGET] Alvo de 0.9% atingido em ${trade.symbol} para ${user.username}. Liquidando em ${currentPrice}...`);
-                await this.executeBackendSell(user);
+            // Atualiza o pico de lucro (High Water Mark)
+            trade.maxPnl = Math.max(trade.maxPnl || pnl, pnl);
+            trade.currentPrice = currentPrice;
+            trade.currentPnl = pnl;
+
+            // A. VERIFICA STOP LOSS (Proteção de Banca)
+            if (pnl <= STOP_LOSS) {
+                console.log(`[STOP-LOSS] 🚨 ${user.username}: Protegendo banca. Liquidando ${trade.symbol} em ${pnl.toFixed(2)}%`);
+                await this.executeBackendSell(user, "STOP_LOSS");
                 return;
             }
 
-            // --- SINCRONIA BINANCE (ANTI-FANTASMA) ---
-            // Se o monitor ainda rodar após 5 segundos do trade iniciado, verifica se a moeda ainda existe na Binance
-            if (Date.now() - (trade.buyTime || 0) > 5000) {
-                const balance = await binance.getAssetBalance(user.keys.key, user.keys.secret, trade.symbol.replace('USDT', ''));
-                if (balance <= 0) {
-                    console.warn(`[SYNC] ${trade.symbol} não encontrado na Binance. Limpando Ghost Trade.`);
-                    this.clearUserTrade(user);
-                }
-            }
-        } catch (e) {
-            console.error(`[MONITOR-ERROR] ${user.username}:`, e.message);
-        }
-    }
-
-    async executeBackendSell(user) {
-        const trade = user.alfaState.currentTrade;
-        if (!trade) return;
-
-        try {
-            // 1. Inicializar QUANTIDADE COM FALLBACK DE SEGURANÇA
-            let qtyToSell = trade.qty || 0;
-            const asset = trade.symbol.replace('USDT', '');
-
-            if (qtyToSell <= 0) {
-                console.warn(`[SELL] Quantidade zero detectada para ${trade.symbol}. Consultando carteira Binance...`);
-                const realBalance = await binance.getAssetBalance(user.keys.key, user.keys.secret, asset);
-                if (realBalance > 0) {
-                    qtyToSell = realBalance;
-                    trade.qty = realBalance;
-                } else {
-                    console.error(`[SELL] Nenhum saldo de ${asset} na Binance. Trade fantasma limpo.`);
-                    this.clearUserTrade(user);
+            // B. VERIFICA TRAILING PROFIT (Garantia de Lucro)
+            // Só entra aqui se o lucro for POSITIVO e já tiver batido o alvo
+            if (trade.maxPnl >= TARGET_PROFIT) {
+                if ((trade.maxPnl - pnl) >= TRAILING_PULLBACK) {
+                    console.log(`[TRAILING] 🚀 ${user.username}: Realizando lucro. Pico: ${trade.maxPnl.toFixed(2)}% | Atual: ${pnl.toFixed(2)}%`);
+                    await this.executeBackendSell(user, "PROFIT_TRAILING");
                     return;
                 }
-            }
-
-            // 2. APLICAR FILTRO DE LOTE (PREVENIR ERRO DE "LOT_SIZE")
-            const info = await binance.getSymbolInfo(trade.symbol);
-            if (info && info.filters) {
-                const lot = info.filters.find(f => f.filterType === 'LOT_SIZE');
-                if (lot) {
-                    const stepSize = parseFloat(lot.stepSize);
-                    qtyToSell = (Math.floor(qtyToSell / stepSize) * stepSize).toFixed(8).replace(/\.?0+$/, "");
+            } else {
+                // LOCK DE SEGURANÇA: Se o lucro ainda não bateu o alvo E o PNL é negativo (mas acima do Stop Loss),
+                // o robô é PROIBIDO de vender. Ele deve aguardar a recuperação ou o Stop Loss.
+                if (pnl < 0) {
+                    // Log silencioso para monitoramento
+                    return; 
                 }
             }
 
-            console.log(`[SELL] Executando venda a mercado: ${trade.symbol} | Qty: ${qtyToSell}`);
-            const result = await binance.executeOrder(user.keys.key, user.keys.secret, trade.symbol, 'SELL', qtyToSell);
-            
-            if (result.orderId) {
-                console.log(`[SELL] ✅ VENDA CONCLUÍDA: ${trade.symbol}.`);
-                await this.finalizeTrade(user, result);
+            // C. PROTEÇÃO ANTI-FANTASMA (Sincronia a cada 10s)
+            if (Date.now() % 10000 < 1000) {
+                const balance = await binance.getAssetBalance(user.keys.key, user.keys.secret, trade.symbol.replace('USDT', ''));
+                if (balance <= 0) {
+                    console.warn(`[SYNC] ${user.username}: Moeda ${trade.symbol} não encontrada na carteira. Resetando.`);
+                    this.clearUserTrade(user);
+                }
             }
+
+            // Atualiza o estado no storage (isDirty) para o frontend ver o PNL
+            await storage.updateUser(user.username, { alfaState: state });
+
         } catch (e) {
-            console.error(`[SELL-ERROR] ${user.username}:`, e.message);
-            // Se der erro de "insufficient balance", limpa o trade para não travar
-            if (e.message.includes('Account has insufficient balance')) {
-                this.clearUserTrade(user);
-            }
+            console.error(`[MONITOR] Erro ${user.username}:`, e.message);
         }
     }
 
-    async finalizeTrade(user, result) {
-        // --- ÔMEGA-3: FINALIZAÇÃO ATÔMICA ---
-        console.log(`[FINALIZE] Limpando estado de trade para ${user.username}...`);
-        
-        const trade = user.alfaState.currentTrade;
-        if (!trade) return;
-
-        const historyEntry = {
-            symbol: trade.symbol,
-            fullSymbol: trade.fullSymbol,
-            buyPrice: trade.buyPrice,
-            sellPrice: result.price || trade.buyPrice * 1.009,
-            qty: trade.qty,
-            time: Date.now()
-        };
-
-        // Mutação imediata em memória para o ciclo de 1s não pegar o trade velho
-        user.alfaState.tradeHistory = user.alfaState.tradeHistory || [];
-        user.alfaState.tradeHistory.unshift(historyEntry);
-        if (user.alfaState.tradeHistory.length > 20) user.alfaState.tradeHistory.pop();
-        
-        user.alfaState.currentTrade = null;
-        user.alfaState.tradeStartTime = null;
-        user.alfaState.cycleCount = (user.alfaState.cycleCount || 0) + 1;
-        
-        // --- REGRA DO NONO CICLO: 20 MINUTOS A CADA 3 TRADES ---
-        if (user.alfaState.cycleCount % 3 === 0) {
-            user.alfaState.cooldownUntil = Date.now() + (20 * 60 * 1000); // 20 Minutos
-            console.log(`[CYCLE] 🎯 Ciclo de 3 operações concluído para ${user.username}. Iniciando intervalo de 20 minutos.`);
-        }
-
-        user.alfaState.monitoring = true; 
-
-        // Persistência forçada com clone limpo
-        const updatedAlfaState = JSON.parse(JSON.stringify(user.alfaState));
-        await storage.updateUser(user.username, { alfaState: updatedAlfaState });
-        console.log(`[FINALIZE] ✅ Sistema pronto para Recompra (Loop Snipe Ativo).`);
-    }
-
-    async clearUserTrade(user) {
+    async runSniperScan(user) {
         const state = user.alfaState;
-        state.currentTrade = null;
-        state.tradeStartTime = null;
-        await storage.updateUser(user.username, { alfaState: state });
-    }
-
-    async runSniperScan(user, state) {
-        // --- VERIFICAÇÃO DE INTERVALO DE CICLO (20 MIN) ---
-        if (state.cooldownUntil && Date.now() < state.cooldownUntil) {
-            const remaining = Math.ceil((state.cooldownUntil - Date.now()) / 60000);
-            if (Date.now() % 60000 < 2000) { // Log a cada minuto aproximadamente
-                console.log(`[COOLDOWN] ${user.username}: Aguardando intervalo de ciclo operacional (${remaining} min restantes).`);
-            }
-            return;
-        }
-
         const ranking = binance.globalMarket.top30;
-        if (!ranking || ranking.length < 10) return;
+        if (!ranking || ranking.length < 5) return;
 
-        // REGRA DE OURO: Não repete as últimas 3 moedas do histórico
-        const last3Symbols = (state.tradeHistory || []).slice(0, 3).map(h => h.fullSymbol || h.symbol);
-        
-        const candidates = ranking.slice(1, 15).filter(c => 
-            !last3Symbols.includes(c.symbol) &&
-            !(config.BLACKLIST || []).includes(c.symbol) &&
-            !ranking[0].symbol.includes(c.symbol) // Pula o Top 1 se já estiver operando ele
-        );
+        // Regra: Não repetir as últimas 2 moedas
+        const history = state.tradeHistory || [];
+        const blacklisted = history.slice(0, 2).map(h => h.fullSymbol);
+
+        // Algoritmo Sniper: Busca moedas com volume > 1M e subida consistente
+        // Filtra as Top 15 (excluindo a #1 que pode ser muito volátil ou spike falso)
+        const candidates = ranking.slice(1, 15).filter(c => !blacklisted.includes(c.symbol) && !(config.BLACKLIST || []).includes(c.symbol.replace('USDT', '')));
 
         if (!state.isAnalyzing) {
             state.volBuffer = {};
@@ -228,76 +151,130 @@ class TradingService {
             return;
         }
 
+        // Janela de análise de 10 segundos para confirmar explosão real
         if (Date.now() - state.analysisStartTime >= 10000) {
             let bestCoin = null;
             let highestDelta = 0;
 
             candidates.forEach(c => {
-                const init = state.volBuffer[c.symbol];
-                if (init) {
-                    const d = ((c.price - init) / init) * 100;
-                    if (d > highestDelta) { highestDelta = d; bestCoin = c; }
+                const initial = state.volBuffer[c.symbol];
+                if (initial) {
+                    const delta = ((c.price - initial) / initial) * 100;
+                    if (delta > highestDelta) {
+                        highestDelta = delta;
+                        bestCoin = c;
+                    }
                 }
             });
 
-            if (bestCoin && highestDelta >= 0.1) {
-                console.log(`[SCANNER] Explosão: ${bestCoin.symbol} +${highestDelta.toFixed(2)}%!`);
+            // TRIGGER: Mínimo 0.12% em 10s para confirmar entrada agressiva
+            if (bestCoin && highestDelta >= 0.12) {
+                console.log(`[SCANNER] ⚡ Explosão Confirmada: ${bestCoin.symbol} +${highestDelta.toFixed(2)}% em 10s.`);
                 await this.executeBackendBuy(user, bestCoin);
             }
+            
             state.isAnalyzing = false;
+            await storage.updateUser(user.username, { alfaState: state });
         }
     }
 
     async executeBackendBuy(user, coin) {
         try {
-            console.log(`[BUY] Comprando ${coin.symbol} para ${user.username}...`);
+            console.log(`[BUY] 🛒 ${user.username}: Comprando ${coin.symbol}...`);
             const result = await binance.executeOrder(user.keys.key, user.keys.secret, coin.symbol, 'BUY');
             
             if (result.orderId) {
-                const state = user.alfaState;
-                state.currentTrade = {
-                    symbol: coin.symbol,
+                const filledPrice = result.fills && result.fills.length > 0 ? parseFloat(result.fills[0].price) : coin.price;
+                const filledQty = parseFloat(result.executedQty);
+
+                user.alfaState.currentTrade = {
+                    symbol: coin.symbol.replace('USDT', ''),
                     fullSymbol: coin.symbol,
-                    buyPrice: parseFloat(result.fills[0].price),
-                    qty: parseFloat(result.executedQty),
-                    startTime: Date.now()
+                    buyPrice: filledPrice,
+                    targetPrice: filledPrice * 1.009, // 0.9% de lucro alvo
+                    qty: filledQty,
+                    buyTime: Date.now(),
+                    maxPnl: 0,
+                    currentPnl: 0
                 };
-                state.tradeStartTime = Date.now();
-                await storage.updateUser(user.username, { alfaState: state });
-                console.log(`[BUY] ✅ COMPRA CONCLUÍDA: ${coin.symbol} | Qty: ${state.currentTrade.qty}`);
+                
+                await storage.updateUser(user.username, { 
+                    alfaState: user.alfaState,
+                    status: 'IN_TRADE',
+                    activeSymbol: coin.symbol
+                });
+                await storage.saveUsers(true); // Força gravação imediata do trade
+                console.log(`[BUY] ✅ SUCESSO: ${coin.symbol} @ ${filledPrice}`);
             }
         } catch (e) {
             console.error(`[BUY-ERROR] ${user.username}:`, e.message);
         }
     }
 
-    async panicStop(user) {
-        console.warn(`[PANIC] Executando Parada de Emergência para ${user.username}...`);
-        
+    async executeBackendSell(user, reason) {
+        const state = user.alfaState;
+        const trade = state.currentTrade;
+        if (!trade) return;
+
         try {
-            const trade = user.alfaState.currentTrade;
-            if (trade) {
-                console.log(`[PANIC] Liquidando ${trade.symbol} a mercado...`);
-                await binance.executeOrder(user.keys.key, user.keys.secret, trade.symbol, 'SELL');
+            console.log(`[SELL] 📤 ${user.username}: Vendendo ${trade.symbol} (Motivo: ${reason})`);
+            const result = await binance.executeOrder(user.keys.key, user.keys.secret, trade.fullSymbol, 'SELL', trade.qty);
+            
+            if (result.orderId) {
+                const sellPrice = result.fills && result.fills.length > 0 ? parseFloat(result.fills[0].price) : trade.currentPrice;
+                const profit = ((sellPrice - trade.buyPrice) / trade.buyPrice) * 100;
+
+                // Salva no histórico
+                state.tradeHistory = state.tradeHistory || [];
+                state.tradeHistory.unshift({
+                    symbol: trade.symbol,
+                    buyPrice: trade.buyPrice,
+                    sellPrice: sellPrice,
+                    pnl: profit,
+                    time: Date.now(),
+                    reason: reason
+                });
+                if (state.tradeHistory.length > 30) state.tradeHistory.pop();
+
+                state.cycleCount = (state.cycleCount || 0) + 1;
+                state.currentTrade = null;
+
+                // --- REGRA DE SEGURANÇA: COOLDOWN A CADA 3 TRADES ---
+                if (state.cycleCount % 3 === 0) {
+                    state.cooldownUntil = Date.now() + (15 * 60 * 1000); // 15 Minutos de descanso
+                    console.log(`[COOLDOWN] 🕒 ${user.username}: Pausa de 15 min ativada.`);
+                }
+
+                await storage.updateUser(user.username, { 
+                    alfaState: state,
+                    status: 'SCANNING',
+                    activeSymbol: '---'
+                });
+                await storage.saveUsers(true); // Força gravação do lucro
+                console.log(`[SELL] ✅ SUCESSO: PNL Final ${profit.toFixed(2)}%`);
             }
         } catch (e) {
-            console.error(`[PANIC-ERROR] Erro na liquidação Binance:`, e.message);
+            console.error(`[SELL-ERROR] ${user.username}:`, e.message);
+            if (e.message.includes('Account has insufficient balance')) {
+                console.warn(`[SELL-FAIL] Saldo insuficiente para vender. Limpando trade fantasma.`);
+                this.clearUserTrade(user);
+            }
         }
+    }
 
-        // Deep Wipe
+    async clearUserTrade(user) {
         user.alfaState.currentTrade = null;
-        user.alfaState.tradeStartTime = null;
-        user.alfaState.monitoring = false; // DESLIGA O MOTOR MASTER
-        user.alfaState.isAnalyzing = false;
-        
-        const updatedAlfaState = JSON.parse(JSON.stringify(user.alfaState));
-        await storage.updateUser(user.username, { 
-            alfaState: updatedAlfaState,
-            status: 'OFFLINE',
-            lastPanicTime: Date.now()
-        });
-        
-        console.log(`[PANIC] ✅ Sistema em STANDBY para ${user.username}.`);
+        await storage.updateUser(user.username, { alfaState: user.alfaState });
+        await storage.saveUsers(true);
+    }
+
+    async panicStop(user) {
+        if (user.alfaState.currentTrade) {
+            await this.executeBackendSell(user, "PANIC_STOP");
+        }
+        user.alfaState.monitoring = false;
+        await storage.updateUser(user.username, { alfaState: user.alfaState });
+        await storage.saveUsers(true);
     }
 }
 

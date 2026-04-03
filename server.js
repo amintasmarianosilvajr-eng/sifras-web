@@ -61,7 +61,8 @@ app.post('/heartbeat', async (req, res) => {
             success: true, 
             serverState: user.alfaState, 
             keys: user.keys || {},
-            marketRanking: binance.globalMarket.top30 || [] 
+            marketRanking: binance.globalMarket.top30 || [],
+            serverUptime: process.uptime()
         });
     } catch (e) {
         console.error("[HEARTBEAT] Erro de sincronia cloud:", e.message);

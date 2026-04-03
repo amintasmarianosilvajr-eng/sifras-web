@@ -2,6 +2,7 @@ let activeSlots = { 1: { monitoring: false, key: '', secret: '', name: '' } };
 let currentTrade = null;
 let sessionStartBalance = 0;
 let syncCounter = 10;
+let lastHeartbeatTime = Date.now();
 
 async function syncBalance() {
     const key = activeSlots[1].key || document.getElementById('slot-1-key')?.value;
@@ -28,6 +29,7 @@ async function syncWithServer() {
     const username = activeSlots[1].name || localStorage.getItem('alfa_session_user') || (nameInput ? nameInput.value : '');
     if (!username) return;
 
+    const startTime = Date.now();
     try {
         const r = await fetch('/heartbeat', {
             method: 'POST',
@@ -41,10 +43,11 @@ async function syncWithServer() {
                 } 
             })
         });
+        const latency = Date.now() - startTime;
         const d = await r.json();
 
         if (d.success) {
-            updateUIFromState(d.serverState);
+            updateUIFromState(d.serverState, d.serverUptime, latency);
             if (d.marketRanking) {
                 renderRanking(d.marketRanking);
                 renderOpportunityHub(d.marketRanking);
@@ -61,13 +64,23 @@ async function syncWithServer() {
     } catch (e) { console.error("Sync error:", e); }
 }
 
-function updateUIFromState(state) {
+function updateUIFromState(state, serverUptime, latencyMs) {
     if (!state) return;
     const trade = state.currentTrade;
     
+    // Switch between Empty Msg and Active Trade
     const emptyMsg = document.getElementById('no-trade-msg');
     const tradeCont = document.getElementById('active-trade-container');
     const statusPill = document.getElementById('system-status-pill');
+
+    // -- TELEMETRIA UPTIME & LATENCIA (Admin Style) --
+    const latEl = document.getElementById('header-latency');
+    if(latEl && serverUptime) {
+        const h = Math.floor(serverUptime / 3600).toString().padStart(2, '0');
+        const m = Math.floor((serverUptime % 3600) / 60).toString().padStart(2, '0');
+        latEl.innerText = `${latencyMs} ms | ${h}h ${m}m`;
+        latEl.classList.remove('waiting');
+    }
 
     if (trade && trade.fullSymbol) {
         if (emptyMsg) emptyMsg.classList.add('hidden');
@@ -88,9 +101,9 @@ function updateUIFromState(state) {
         
         const pnlCash = (pnl / 100) * (state.currentBalance || 10);
         const cashEl = document.getElementById('monitoring-pnl-usdt');
-        if (cashEl) cashEl.innerText = `($${pnlCash.toFixed(2)})`;
+        if (cashEl) cashEl.innerText = `$ ${pnlCash >= 0 ? '+' : ''}${pnlCash.toFixed(2)}`;
 
-        // Progress Bar (Buy vs Target)
+        // Progress Bar
         const fill = document.getElementById('trade-progress-fill');
         if (fill) {
             const progress = Math.min(Math.max((pnl / 0.9) * 100, 0), 100);
@@ -110,6 +123,7 @@ function updateUIFromState(state) {
         document.getElementById('trade-timer-val').innerText = '00:00';
     }
 
+    window.currentBalance = state.currentBalance || 0;
     const cycleEl = document.getElementById('cycle-counter');
     if (cycleEl) cycleEl.innerText = `${state.cycleCount || 0} / 3`;
     updateSessionUI();
@@ -156,9 +170,14 @@ function updateSessionUI() {
             const profit = window.currentBalance - sessionStartBalance;
             const pct = sessionStartBalance > 0 ? (profit / sessionStartBalance) * 100 : 0;
             const color = profit >= 0 ? 'var(--accent-green)' : 'var(--danger-neon)';
-            pnlHeader.innerText = `${profit >= 0 ? '+' : ''}$${profit.toFixed(2)} (${pct.toFixed(2)}%)`;
+            
+            // -- PNL REAL EM DINHEIRO (Como no Admin) --
+            pnlHeader.innerText = `$ ${profit >= 0 ? '+' : ''}${profit.toFixed(2)} (${pct.toFixed(2)}%)`;
             pnlHeader.style.color = color;
-            if (valPnl) { valPnl.innerText = `$${profit.toFixed(2)}`; valPnl.style.color = color; }
+            if (valPnl) { 
+                valPnl.innerText = `$ ${profit >= 0 ? '+' : ''}${profit.toFixed(2)}`; 
+                valPnl.style.color = color; 
+            }
         }
     }
 }
@@ -204,9 +223,8 @@ function saveSlot(id = 1) {
     syncWithServer();
 }
 
-// --- INSTRUMENTOS VISUAIS (FIX PRINT) ---
+// INSTRUMENTOS VISUAIS E RELOGIOS
 setInterval(() => {
-    // 1. Sync Cycle Countdown & Animation
     syncCounter = syncCounter <= 1 ? 10 : syncCounter - 1;
     const syncVal = document.getElementById('sync-timer-val');
     const syncCircle = document.getElementById('sync-circle');
@@ -216,7 +234,6 @@ setInterval(() => {
         syncCircle.style.strokeDashoffset = offset;
     }
 
-    // 2. Trade Duration Timer & Animation
     if (currentTrade && currentTrade.buyTime) {
         const diff = Date.now() - currentTrade.buyTime;
         const totalSec = Math.floor(diff / 1000);
@@ -227,7 +244,6 @@ setInterval(() => {
         const tradeCircle = document.getElementById('trade-circle');
         if (tradeVal) tradeVal.innerText = `${mins}:${secs}`;
         if (tradeCircle) {
-            // Animação cíclica de 60 segundos para o círculo de trade
             const offset = ((totalSec % 60) / 60) * 283;
             tradeCircle.style.strokeDashoffset = 283 - offset;
         }
@@ -253,3 +269,5 @@ window.onload = () => {
 window.masterToggle = masterToggle;
 window.saveSlot = saveSlot;
 window.recalibrateCapital = () => { sessionStartBalance = window.currentBalance; updateSessionUI(); };
+window.agentForceSell = () => { fetch('/panic', { method: 'POST', body: JSON.stringify({ username: localStorage.getItem('alfa_session_user') }), headers: { 'Content-Type': 'application/json' } }); };
+window.agentClearGhost = () => { fetch('/agent/clear-ghost', { method: 'POST', body: JSON.stringify({ username: localStorage.getItem('alfa_session_user') }), headers: { 'Content-Type': 'application/json' } }); };

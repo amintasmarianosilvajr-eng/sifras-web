@@ -123,13 +123,10 @@ class BinanceService {
                         }
                     }
 
-                    // 2. Atualiza Preço de Trades Ativos (Garantia de 0,4%)
-                    const activeUsers = storage.getUsers().filter(user => user.alfaState?.currentTrade?.fullSymbol === symbol);
-                    activeUsers.forEach(user => {
-                        if (!isNaN(cur)) {
-                            user.alfaState.currentTrade.currentPrice = cur;
-                        }
-                    });
+                    // 2. Atualiza Preço de Trades Ativos (ALFA MASTER SYNC)
+                    if (!isNaN(cur)) {
+                        storage.updateTradePrice(symbol, cur);
+                    }
                 });
                 
                 // Só ordena se tivermos dados suficientes

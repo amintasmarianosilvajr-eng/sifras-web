@@ -8,10 +8,19 @@ class TradingService {
         this.activeUsers = new Set();
     }
 
-    // --- CORAÇÃO DO MOTOR: INICIALIZAÇÃO ---
+    // --- CORAÇÃO DO MOTOR: INICIALIZAÇÃO ALINHADA ---
     init() {
-        console.log("[O-3 ENGINE] Motor de Ciclos Ligado. Frequência: 1s");
-        setInterval(() => this.processAllUsers(), 1000);
+        console.log("[O-3 ENGINE] Motor de Ciclos Ligado. Sincronia Master Ativa.");
+        this.runEngineLoop();
+    }
+    
+    async runEngineLoop() {
+        try {
+            await this.processAllUsers();
+        } catch (e) { 
+            console.error("[ENGINE-FAIL]", e.message); 
+        }
+        setTimeout(() => this.runEngineLoop(), 1000);
     }
 
     async processAllUsers() {
@@ -19,9 +28,8 @@ class TradingService {
         for (const user of users) {
              if (user.alfaState && user.alfaState.monitoring) {
                  await this.processUserTradeLogic(user);
-             } else {
-                 // Segurança: Garante que o motor está desligado se o monitoring for false
-                 if (user.alfaState) user.alfaState.isAnalyzing = false;
+             } else if (user.alfaState) {
+                 user.alfaState.isAnalyzing = false;
              }
          }
     }
@@ -48,7 +56,7 @@ class TradingService {
         
         try {
             let currentPrice;
-            // Busca preço em tempo real do WebSocket (preferencial) ou API
+            // SYNC REAL-TIME: Prioriza WebSocket e depois API
             const rankingMatch = binance.globalMarket.top30.find(m => m.symbol === trade.fullSymbol);
             if (rankingMatch) {
                 currentPrice = rankingMatch.price;
@@ -58,39 +66,25 @@ class TradingService {
 
             if (!currentPrice) return;
 
-            // --- LÓGICA DE TRAILING E VENDAS ---
-            // ATUALIZAÇÃO MANUAL (SEMPRE GARANTE PREÇO REAL)
-            if (!rankingMatch) {
-                const freshPrice = await binance.getTickerPrice(trade.fullSymbol);
-                if (freshPrice) currentPrice = freshPrice;
-            }
-
-            if (!currentPrice) return;
-
-            // --- LÓGICA DE VENDAS (FOCO TOTAL EM 0,4%) ---
+            // --- LÓGICA DE VENDAS (FOCO TOTAL EM 0,9%) ---
             const pnl = ((currentPrice - trade.buyPrice) / trade.buyPrice) * 100;
-            
-            const TARGET_PROFIT = 0.4;
+            const TARGET_PROFIT = 0.9;
 
-            // Log de telemetria interna
             if (pnl >= TARGET_PROFIT) {
                 console.log(`[ALFA-EXECUTION] 🚀 ${user.username}: Venda disparada para ${trade.fullSymbol} em +${pnl.toFixed(2)}%`);
                 await this.executeBackendSell(user, "TARGET_MET");
                 return;
             }
             
-            // LOCK DE SEGURANÇA (OPCIONAL: PULLBACK SE QUISERMOS DEIXAR CORRER, MAS O USUÁRIO QUER 0.9%)
-            // Se preferir manter o trailing, deve-se verificar o recuo aqui.
-            // Para este projeto, o usuário reportou que 0.9% não está fechando, então forçamos a saída.
-            
             trade.maxPnl = Math.max(trade.maxPnl || pnl, pnl);
             trade.currentPrice = currentPrice;
             trade.currentPnl = pnl;
 
-            // Sincronia de inventário a cada 10s
-            if (Date.now() % 10000 < 1000) {
+            // --- DETECTOR DE GHOSTS (SINCRONIZAÇÃO DE SALDO 5s) ---
+            if (Date.now() % 5000 < 1100) {
                 const balance = await binance.getAssetBalance(user.keys.key, user.keys.secret, trade.symbol.replace('USDT', ''));
                 if (balance <= 0) {
+                    console.warn(`[GHOST-CLEAN] ${user.username}: Limpeza de Fantasma Detectada (Ativo Zerado na Binance).`);
                     this.clearUserTrade(user);
                 }
             }
@@ -158,7 +152,7 @@ class TradingService {
                     symbol: coin.symbol.replace('USDT', ''),
                     fullSymbol: coin.symbol,
                     buyPrice: filledPrice,
-                    targetPrice: filledPrice * 1.004,
+                    targetPrice: filledPrice * 1.009,
                     qty: filledQty,
                     buyTime: Date.now(),
                     maxPnl: 0,

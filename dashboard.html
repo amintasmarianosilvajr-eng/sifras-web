@@ -224,7 +224,7 @@
                 <div>
                     <h1 class="text-lg font-black uppercase italic tracking-tight">Sifras <span class="text-accent-cyan">Master Pro</span></h1>
                     <div class="flex items-center gap-2 mt-0.5">
-                        <span class="text-[0.6rem] text-[#D9DFE3] font-bold tracking-widest uppercase mono">Algoritmo Alfa v4.2</span>
+                        <span class="text-[0.6rem] text-[#D9DFE3] font-bold tracking-widest uppercase mono">Algoritmo Alfa v7.5</span>
                         <div class="w-1 h-1 rounded-full bg-slate-700"></div>
                         <span class="text-[0.6rem] text-accent-emerald font-bold tracking-widest uppercase mono">Nuvem 24h</span>
                     </div>
@@ -374,7 +374,7 @@
                             <div id="valTradeTarget" class="mt-4 space-y-1 text-[0.65rem] mono font-bold text-[#D9DFE3]">
                                 <p> ENTRADA: <span class="text-[#FFFFFF]">$---</span></p>
                                 <p> ATUAL: <span class="text-[#FFFFFF]">$---</span></p>
-                                <p> ALVO: <span class="text-accent-emerald uppercase tracking-widest">+0.80% TAKE</span></p>
+                                <p> ALVO: <span class="text-accent-emerald uppercase tracking-widest">+0.90% TAKE</span></p>
                             </div>
                         </div>
 
@@ -390,7 +390,7 @@
                                 </div>
                                 <div class="text-center">
                                     <span class="text-[0.5rem] text-[#D9DFE3] uppercase font-black block mb-1">Meta Sniper</span>
-                                    <span class="text-xs font-bold mono text-accent-emerald">+0.80%</span>
+                                    <span class="text-xs font-bold mono text-accent-emerald">+0.90%</span>
                                 </div>
                             </div>
                             <div class="telemetry-progress">
@@ -582,7 +582,7 @@
                 document.getElementById('telemetrySymbol').innerText = state.activeSymbol;
                 const buyP = state.buyPrice || 0;
                 const currP = state.currentPrice || buyP;
-                const tgtP = state.targetPrice || (buyP * 1.004);
+                const tgtP = state.targetPrice || (buyP * 1.009);
                 
                 const curPnl = buyP > 0 ? ((currP - buyP) / buyP) * 100 : 0;
                 const pnlText = document.getElementById('telemetryPct');
@@ -592,10 +592,10 @@
                 document.getElementById('valTradeTarget').innerHTML = `
                     <p> ENTRADA: <span class="text-[#FFFFFF]">$${buyP.toFixed(8)}</span></p>
                     <p> ATUAL: <span class="text-[#FFFFFF]">$${currP.toFixed(8)}</span></p>
-                    <p> ALVO: <span class="text-accent-emerald uppercase tracking-widest">$${tgtP.toFixed(8)} (+0.40%)</span></p>
+                    <p> ALVO: <span class="text-accent-emerald uppercase tracking-widest">$${tgtP.toFixed(8)} (+0.90%)</span></p>
                 `;
 
-                const target = 0.8;
+                const target = 0.9;
                 let barW = (curPnl / target) * 100;
                 const barEl = document.getElementById('telemetryBar');
                 barEl.style.width = `${Math.min(100, Math.max(0, barW))}%`;
@@ -715,7 +715,7 @@
             document.getElementById('apiKey').value = localStorage.getItem('sifrasApiKey') || '';
             document.getElementById('apiSecret').value = localStorage.getItem('sifrasApiSecret') || '';
 
-            refreshInterval = setInterval(fetchStatus, 3000);
+            refreshInterval = setInterval(fetchStatus, 1000);
             fetchStatus();
         };
     </script>

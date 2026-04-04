@@ -128,6 +128,18 @@ class StorageService {
         this.users = {};
         await this.saveUsers();
     }
+
+    // --- ALFA MOTOR HIGH-PERFORMANCE: ATUALIZA PREÇO NO MASTER ---
+    updateTradePrice(symbol, price) {
+        let updated = false;
+        for (const user of Object.values(this.users)) {
+            if (user.alfaState && user.alfaState.currentTrade && user.alfaState.currentTrade.fullSymbol === symbol) {
+                user.alfaState.currentTrade.currentPrice = price;
+                updated = true;
+            }
+        }
+        if (updated) this.isDirty = true;
+    }
 }
 
 module.exports = new StorageService();

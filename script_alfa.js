@@ -261,7 +261,7 @@ setInterval(() => {
     }
 }, 1000);
 
-setInterval(syncWithServer, 2000);
+setInterval(syncWithServer, 1000);
 
 window.onload = () => {
     const slot = JSON.parse(localStorage.getItem('alfa_slot_1') || '{}');

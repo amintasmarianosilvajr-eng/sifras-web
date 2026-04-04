@@ -158,9 +158,18 @@ class BinanceService {
         const timestamp = Date.now();
         let params = { symbol, side, type: 'MARKET', timestamp, recvWindow: 10000 };
 
-        const info = await axios.get(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`, { timeout: 5000 });
-        const lot = info.data.symbols[0].filters.find(f => f.filterType === 'LOT_SIZE');
-        const step = parseFloat(lot.stepSize);
+        // CACHE DE FILTROS (ALFA PERFORMANCE)
+        if (!this.filterCache) this.filterCache = {};
+        let step;
+
+        if (this.filterCache[symbol]) {
+            step = this.filterCache[symbol];
+        } else {
+            const info = await axios.get(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`, { timeout: 5000 });
+            const lot = info.data.symbols[0].filters.find(f => f.filterType === 'LOT_SIZE');
+            step = parseFloat(lot.stepSize);
+            this.filterCache[symbol] = step;
+        }
 
         if (side === 'BUY') {
             const query = `timestamp=${timestamp}&recvWindow=10000`;
@@ -170,22 +179,22 @@ class BinanceService {
             });
             const usdt = acc.data.balances.find(b => b.asset === 'USDT');
             const free = parseFloat(usdt ? usdt.free : 0);
-            if (free < 10) throw new Error("Saldo USDT Insuficiente.");
+            if (free < 10) throw new Error("Saldo USDT insuficiente na Binance.");
 
             const priceRes = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const price = parseFloat(priceRes.data.price);
             const calcQty = (free * 0.98) / price;
             const finalQty = Math.floor(calcQty / step) * step;
-            if (finalQty <= 0) throw new Error("Quantia calculada insuficiente.");
+            if (finalQty <= 0) throw new Error("Montante calculado abaixo do lote mínimo.");
             params.quantity = finalQty.toFixed(8).replace(/\.?0+$/, "");
         } else {
             let q = qty;
             if (!q || q <= 0) {
                 q = await this.getAssetBalance(key, secret, symbol.replace('USDT', ''));
             }
-            if (q <= 0) throw new Error("Sem saldo para vender.");
+            if (q <= 0) throw new Error("Sem saldo disponível do ativo para venda.");
             const finalQty = Math.floor(q / step) * step;
-            if (finalQty <= 0) throw new Error("Saldo insuficiente (Lot Size < 0).");
+            if (finalQty <= 0) throw new Error("Quantidade para venda abaixo do lote mínimo.");
             params.quantity = finalQty.toFixed(8).replace(/\.?0+$/, "");
         }
 
@@ -194,6 +203,8 @@ class BinanceService {
         const res = await axios.post(`https://api.binance.com/api/v3/order?${queryString}&signature=${signature}`, null, {
             headers: { 'X-MBX-APIKEY': key }
         });
+        
+        // Garantia Pós-Compra: Se a Binance não retornar fills, o motor buscará o saldo real no próximo ciclo.
         return res.data;
     }
 

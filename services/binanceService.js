@@ -174,15 +174,19 @@ class BinanceService {
 
             const priceRes = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
             const price = parseFloat(priceRes.data.price);
-            const calculatedQty = (free * 0.98) / price;
-            params.quantity = (Math.floor(calculatedQty / step) * step).toFixed(8).replace(/\.?0+$/, "");
+            const calcQty = (free * 0.98) / price;
+            const finalQty = Math.floor(calcQty / step) * step;
+            if (finalQty <= 0) throw new Error("Quantia calculada insuficiente.");
+            params.quantity = finalQty.toFixed(8).replace(/\.?0+$/, "");
         } else {
             let q = qty;
             if (!q || q <= 0) {
                 q = await this.getAssetBalance(key, secret, symbol.replace('USDT', ''));
             }
             if (q <= 0) throw new Error("Sem saldo para vender.");
-            params.quantity = (Math.floor(q / step) * step).toFixed(8).replace(/\.?0+$/, "");
+            const finalQty = Math.floor(q / step) * step;
+            if (finalQty <= 0) throw new Error("Saldo insuficiente (Lot Size < 0).");
+            params.quantity = finalQty.toFixed(8).replace(/\.?0+$/, "");
         }
 
         const queryString = new URLSearchParams(params).toString();

@@ -203,12 +203,9 @@ class TradingService {
             }
         } catch (e) {
             console.error(`[SELL-ERR] ${user.username}:`, e.message);
-            // IMPORTANTE: Se o erro for de saldo ou ordem inexistente, o usuário provavelmente já vendeu manual.
-            // Limpamos o trade para não travar o bot e o frontend em loop.
-            if (e.message.includes('Account') || e.message.includes('Filter') || e.message.includes('API error') || e.message.includes('order')) {
-                console.warn(`[ALFA] Limpando registro de trade após erro de venda para evitar 'Ghost'.`);
-                this.clearUserTrade(user);
-            }
+            // BLINDAGEM TOTAL: Se qualquer erro ocorrer na venda (Ex: Error 400, Saldo insuficiente, API offline)
+            // limpamos o estado para não inundar o log e nem travar o frontend em loop.
+            this.clearUserTrade(user);
         }
     }
 

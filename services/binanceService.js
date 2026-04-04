@@ -2,6 +2,7 @@ const axios = require('axios');
 const WebSocket = require('ws');
 const crypto = require('crypto');
 const config = require('../config');
+const storage = require('./storageService');
 
 class BinanceService {
     constructor() {
@@ -105,25 +106,30 @@ class BinanceService {
             try {
                 const payload = JSON.parse(data.toString());
                 const updates = (payload.data || payload);
-                if (!Array.isArray(updates)) return;
-                
                 updates.forEach(u => {
-                    const match = this.globalMarket.top30.find(m => m.symbol === (u.s || u.symbol));
-                    if (match) {
-                        // Suporte a Tickers Completos e MiniTickers
-                        const cur = parseFloat(u.c || u.closePrice || u.p);
-                        const open = parseFloat(u.o || u.openPrice);
-                        const change = parseFloat(u.P || u.priceChangePercent);
+                    const symbol = u.s || u.symbol;
+                    const cur = parseFloat(u.c || u.closePrice || u.p);
+                    const open = parseFloat(u.o || u.openPrice);
+                    const change = parseFloat(u.P || u.priceChangePercent);
 
+                    // 1. Atualiza Top 30 Ranking
+                    const match = this.globalMarket.top30.find(m => m.symbol === symbol);
+                    if (match) {
                         if (!isNaN(cur)) match.price = cur;
-                        
                         if (!isNaN(change)) {
                             match.vol = change;
                         } else if (!isNaN(cur) && !isNaN(open) && open > 0) {
-                            // Cálculo manual para MiniTickers sem campo de variação
                             match.vol = ((cur - open) / open) * 100;
                         }
                     }
+
+                    // 2. Atualiza Preço de Trades Ativos (Garantia de 0,4%)
+                    const activeUsers = storage.getUsers().filter(user => user.alfaState?.currentTrade?.fullSymbol === symbol);
+                    activeUsers.forEach(user => {
+                        if (!isNaN(cur)) {
+                            user.alfaState.currentTrade.currentPrice = cur;
+                        }
+                    });
                 });
                 
                 // Só ordena se tivermos dados suficientes

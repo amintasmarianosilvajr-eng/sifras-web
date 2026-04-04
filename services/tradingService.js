@@ -59,20 +59,22 @@ class TradingService {
             if (!currentPrice) return;
 
             // --- LÓGICA DE TRAILING E VENDAS ---
+            // ATUALIZAÇÃO MANUAL (SEMPRE GARANTE PREÇO REAL)
+            if (!rankingMatch) {
+                const freshPrice = await binance.getTickerPrice(trade.fullSymbol);
+                if (freshPrice) currentPrice = freshPrice;
+            }
+
+            if (!currentPrice) return;
+
+            // --- LÓGICA DE VENDAS (FOCO TOTAL EM 0,4%) ---
             const pnl = ((currentPrice - trade.buyPrice) / trade.buyPrice) * 100;
             
-            // PARÂMETROS ORIGINAIS DO PROJETO
             const TARGET_PROFIT = 0.4;
-            const TRAILING_PULLBACK = 0.1;
 
-            // Atualiza pico de lucro
-            trade.maxPnl = Math.max(trade.maxPnl || pnl, pnl);
-            trade.currentPrice = currentPrice;
-            trade.currentPnl = pnl;
-
-            // VERIFICA SE JÁ PASSOU DO ALVO (0.9%)
+            // Log de telemetria interna
             if (pnl >= TARGET_PROFIT) {
-                console.log(`[ALFA-EXECUTION] 🚀 ${user.username}: Meta Batida. PNL: ${pnl.toFixed(2)}% | Venda Imediata acionada.`);
+                console.log(`[ALFA-EXECUTION] 🚀 ${user.username}: Venda disparada para ${trade.fullSymbol} em +${pnl.toFixed(2)}%`);
                 await this.executeBackendSell(user, "TARGET_MET");
                 return;
             }
@@ -207,7 +209,12 @@ class TradingService {
             }
         } catch (e) {
             console.error(`[SELL-ERR] ${user.username}:`, e.message);
-            if (e.message.includes('Account has insufficient balance')) this.clearUserTrade(user);
+            // IMPORTANTE: Se o erro for de saldo ou ordem inexistente, o usuário provavelmente já vendeu manual.
+            // Limpamos o trade para não travar o bot e o frontend em loop.
+            if (e.message.includes('Account') || e.message.includes('Filter') || e.message.includes('API error') || e.message.includes('order')) {
+                console.warn(`[ALFA] Limpando registro de trade após erro de venda para evitar 'Ghost'.`);
+                this.clearUserTrade(user);
+            }
         }
     }
 

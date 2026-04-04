@@ -110,8 +110,10 @@ app.post('/agent/clear-ghost', async (req, res) => {
         const { username } = req.body;
         const u = storage.getUser(username);
         if(u && u.alfaState) {
+            console.warn(`[GHOST] Limpeza forçada solicitada para: ${u.username}`);
             u.alfaState.currentTrade = null;
-            await storage.updateUser(username, { alfaState: u.alfaState });
+            await storage.updateUser(u.username, { alfaState: u.alfaState });
+            await storage.saveUsers(true);
         }
         res.json({ success: true });
     } catch(e) { res.status(500).json({ error: e.message }); }

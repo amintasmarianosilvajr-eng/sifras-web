@@ -108,10 +108,21 @@ class BinanceService {
                 if (!Array.isArray(updates)) return;
                 
                 updates.forEach(u => {
-                    const match = this.globalMarket.top30.find(m => m.symbol === u.s);
+                    const match = this.globalMarket.top30.find(m => m.symbol === (u.s || u.symbol));
                     if (match) {
-                        if (u.P) match.vol = parseFloat(u.P);
-                        if (u.c) match.price = parseFloat(u.c);
+                        // Suporte a Tickers Completos e MiniTickers
+                        const cur = parseFloat(u.c || u.closePrice || u.p);
+                        const open = parseFloat(u.o || u.openPrice);
+                        const change = parseFloat(u.P || u.priceChangePercent);
+
+                        if (!isNaN(cur)) match.price = cur;
+                        
+                        if (!isNaN(change)) {
+                            match.vol = change;
+                        } else if (!isNaN(cur) && !isNaN(open) && open > 0) {
+                            // Cálculo manual para MiniTickers sem campo de variação
+                            match.vol = ((cur - open) / open) * 100;
+                        }
                     }
                 });
                 

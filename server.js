@@ -230,7 +230,7 @@ async function startServer() {
     await storage.init(); 
     const PORT = config.PORT || process.env.PORT || 3000;
     app.listen(PORT, () => {
-        console.log(`[MASTER SERVER] SIFRAS ALFA v6.1.2 ON PORT ${PORT}`);
+        console.log(`[MASTER SERVER] SIFRAS ALFA v7.5.0 ON PORT ${PORT}`);
         binance.startGlobalWS();
         tradingService.init();
     });

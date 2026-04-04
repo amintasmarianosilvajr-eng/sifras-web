@@ -108,7 +108,7 @@ class TradingService {
         if (ranking.length === 0) return;
 
         // REGRA DE OURO: Bloqueia as últimas 3 moedas operadas
-        const blacklisted = (state.tradeHistory || []).slice(0, 3).map(h => h.fullSymbol);
+        const blacklisted = (state.tradeHistory || []).slice(0, 1).map(h => h.fullSymbol);
 
         // Filtra Ranking e Blacklist
         const candidates = ranking.slice(1, 15).filter(c => !blacklisted.includes(c.symbol));
@@ -121,7 +121,7 @@ class TradingService {
             return;
         }
 
-        if (Date.now() - state.analysisStartTime >= 10000) {
+        if (Date.now() - state.analysisStartTime >= 5000) {
             let bestCoin = null;
             let highestDelta = 0;
 
@@ -195,8 +195,8 @@ class TradingService {
                 state.currentTrade = null;
 
                 // REINTEGRANDO COOLDOWN ORIGINAL
-                if (state.cycleCount % 3 === 0) {
-                    state.cooldownUntil = Date.now() + (15 * 60 * 1000); 
+                if (state.cycleCount % 10 === 0) {
+                    state.cooldownUntil = Date.now() + (1 * 60 * 1000); 
                 }
 
                 await storage.updateUser(user.username, { 

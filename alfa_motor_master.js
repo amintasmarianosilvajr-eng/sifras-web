@@ -120,7 +120,7 @@ function renderRanking(ranking) {
         <div class="log-card" style="margin-bottom:8px; padding:10px; display:flex; justify-content:space-between;">
             <span style="font-weight:900; color:var(--text-muted);">#${i + 1}</span>
             <span style="font-weight:800; color:#fff;">${c.symbol.replace('USDT', '')}</span>
-            <span class="coin-vol" style="font-weight:900; color:var(--accent-green);">${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%</span>
+            <span class="coin-vol" style="font-weight:900; color:var(${c.vol >= 0 ? '--accent-green' : '--danger-neon'});">${c.vol >= 0 ? '+' : ''}${c.vol.toFixed(2)}%</span>
         </div>
     `}).join('');
 }
